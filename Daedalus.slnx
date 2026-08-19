@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Daedalus.FileSystem/Daedalus.FileSystem.csproj" />
+  <Project Path="Daedalus.FUSE/Daedalus.FUSE.csproj" />
+</Solution>
