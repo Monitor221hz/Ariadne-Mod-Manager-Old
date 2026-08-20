@@ -40,7 +40,15 @@ public static partial class Win32
             DateTime? changeTime
         )
         {
-            FileAttributes = (uint)fileAttributes;
+            uint attrs = unchecked((uint)fileAttributes);
+            // -1 means "leave attributes unchanged" (a zero FILE_BASIC_INFO
+            // field does exactly that); 0 means FILE_ATTRIBUTE_NORMAL.
+            FileAttributes =
+                attrs == unchecked((uint)-1)
+                    ? 0u
+                    : attrs == 0u
+                        ? (uint)System.IO.FileAttributes.Normal
+                        : attrs;
             LastAccessTime = lastAccessTime.HasValue
                 ? (ulong)lastAccessTime.Value.ToFileTimeUtc()
                 : 0;

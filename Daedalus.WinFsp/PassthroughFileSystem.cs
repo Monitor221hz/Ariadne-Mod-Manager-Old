@@ -1,4 +1,3 @@
-using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Security.AccessControl;
@@ -9,6 +8,7 @@ using SysFileInfo = System.IO.FileInfo;
 
 namespace Daedalus.WinFsp;
 
+// adapted from https://github.com/winfsp/winfsp/blob/master/tst/passthrough-dotnet/Program.cs
 public static class FileSystemInfoExtensions
 {
     public static FileInfo GetFileInfo(
@@ -50,35 +50,58 @@ public class FileDescription : IDisposable
         DirectoryInfo = directoryInfo;
     }
 
-    [MemberNotNullWhen(true, nameof(IsFile))]
     public FileStream? Stream { get; private set; }
 
-    [MemberNotNullWhen(false, nameof(IsFile))]
     public DirectoryInfo? DirectoryInfo { get; private set; }
     public List<FileSystemInfo>? FileSystemInfos { get; set; }
 
+    [MemberNotNullWhen(true, nameof(Stream))]
+    [MemberNotNullWhen(false, nameof(DirectoryInfo))]
     public bool IsFile => Stream != null;
 
-    public byte[] SecurityDescriptor
+    public byte[] SecurityDescriptor =>
+        IsFile
+            ? Stream.GetAccessControl().GetSecurityDescriptorBinaryForm()
+            : DirectoryInfo!.GetAccessControl().GetSecurityDescriptorBinaryForm();
+
+    public void SetSecurityDescriptor(AccessControlSections sections, byte[] securityDescriptor)
     {
-        get =>
-            IsFile
-                ? Stream.GetAccessControl().GetSecurityDescriptorBinaryForm()
-                : DirectoryInfo!.GetAccessControl().GetSecurityDescriptorBinaryForm();
-        set
+        const int OWNER_SECURITY_INFORMATION = 1;
+        const int GROUP_SECURITY_INFORMATION = 2;
+        const int DACL_SECURITY_INFORMATION = 4;
+        const int SACL_SECURITY_INFORMATION = 8;
+
+        int securityInformation = 0;
+        if (sections.HasFlag(AccessControlSections.Owner))
         {
-            if (IsFile)
-            {
-                var fileSecurity = Stream.GetAccessControl();
-                fileSecurity.SetSecurityDescriptorBinaryForm(value);
-                Stream.SetAccessControl(fileSecurity);
-            }
-            else
-            {
-                var dirSecurity = DirectoryInfo!.GetAccessControl();
-                dirSecurity.SetSecurityDescriptorBinaryForm(value);
-                DirectoryInfo!.SetAccessControl(dirSecurity);
-            }
+            securityInformation |= OWNER_SECURITY_INFORMATION;
+        }
+        if (sections.HasFlag(AccessControlSections.Group))
+        {
+            securityInformation |= GROUP_SECURITY_INFORMATION;
+        }
+        if (sections.HasFlag(AccessControlSections.Access))
+        {
+            securityInformation |= DACL_SECURITY_INFORMATION;
+        }
+        if (sections.HasFlag(AccessControlSections.Audit))
+        {
+            securityInformation |= SACL_SECURITY_INFORMATION;
+        }
+        bool ok = IsFile
+            ? Win32.SetKernelObjectSecurity(
+                Stream.SafeFileHandle.DangerousGetHandle(),
+                securityInformation,
+                securityDescriptor
+            )
+            : Win32.SetFileSecurityW(
+                DirectoryInfo!.FullName,
+                securityInformation,
+                securityDescriptor
+            );
+        if (!ok)
+        {
+            Win32.ThrowIoExceptionWithWin32(Marshal.GetLastWin32Error());
         }
     }
 
@@ -101,6 +124,25 @@ public class FileDescription : IDisposable
             if (!Win32.SetFileInformationByHandle(Stream, ref basicInfo))
             {
                 Win32.ThrowIoExceptionWithWin32(Marshal.GetLastWin32Error());
+            }
+        }
+        else
+        {
+            if ((int)fileAttributes != -1)
+            {
+                DirectoryInfo.Attributes = fileAttributes;
+            }
+            if (creationTime.HasValue)
+            {
+                DirectoryInfo.CreationTimeUtc = creationTime.Value;
+            }
+            if (lastAccessTime.HasValue)
+            {
+                DirectoryInfo.LastAccessTimeUtc = lastAccessTime.Value;
+            }
+            if (lastWriteTime.HasValue)
+            {
+                DirectoryInfo.LastWriteTimeUtc = lastWriteTime.Value;
             }
         }
     }
@@ -142,7 +184,17 @@ public class FileDescription : IDisposable
         }
         else
         {
-            DirectoryInfo.Delete();
+            try
+            {
+                DirectoryInfo.Delete();
+            }
+            catch (Exception ex)
+            {
+                if (!safe)
+                {
+                    Win32.ThrowIoExceptionWithHResult(ex.HResult);
+                }
+            }
         }
     }
 
@@ -196,8 +248,12 @@ public class PassthroughFileSystem : FileSystem<FileNode, FileDescription>
 
     public PassthroughFileSystem(string rootPath)
     {
-        _rootPath = rootPath;
+        _rootPath = Path.GetFullPath(rootPath).TrimEnd('\\');
     }
+
+    // WinFsp file names are rooted at the mount point ("\dir\file.txt");
+    // Path.Combine would discard the root in that case, hence plain concatenation.
+    private string ConcatPath(string fileName) => _rootPath + fileName;
 
     public override int Init(FileSystemHost host)
     {
@@ -217,6 +273,16 @@ public class PassthroughFileSystem : FileSystem<FileNode, FileDescription>
         return STATUS_SUCCESS;
     }
 
+    public override int ExceptionHandler(Exception ex)
+    {
+        int hresult = ex.HResult;
+        if (0x80070000 == unchecked((uint)hresult & 0xFFFF0000))
+        {
+            return NtStatusFromWin32((uint)hresult & 0xFFFF);
+        }
+        return STATUS_UNEXPECTED_IO_ERROR;
+    }
+
     public override int GetVolumeInfo(out VolumeInfo VolumeInfo)
     {
         VolumeInfo = default(VolumeInfo);
@@ -226,10 +292,11 @@ public class PassthroughFileSystem : FileSystem<FileNode, FileDescription>
             VolumeInfo.TotalSize = (ulong)info.TotalSize;
             VolumeInfo.FreeSize = (ulong)info.AvailableFreeSpace;
         }
-        catch (Exception)
+        catch (ArgumentException)
         {
-            // driveinfo only supports drives and not unc paths. better to use GetDiskFreeSpaceEx here.
-            return STATUS_UNSUCCESSFUL;
+            // DriveInfo only supports drives and not UNC paths;
+            // better to use GetDiskFreeSpaceEx here. Until then, report zeros
+            // instead of failing the query.
         }
         return STATUS_SUCCESS;
     }
@@ -240,7 +307,7 @@ public class PassthroughFileSystem : FileSystem<FileNode, FileDescription>
         ref byte[]? securityDescriptor
     )
     {
-        fileName = Path.Combine(_rootPath, fileName);
+        fileName = ConcatPath(fileName);
         SysFileInfo fileInfo = new SysFileInfo(fileName);
         fileAttributes = fileInfo.Attributes;
         if (securityDescriptor == null)
@@ -270,7 +337,7 @@ public class PassthroughFileSystem : FileSystem<FileNode, FileDescription>
         normalizedName = null;
         try
         {
-            fileName = Path.Combine(_rootPath, fileName);
+            fileName = ConcatPath(fileName);
             if (!createdOptions.HasFlag(FileCreateOptions.DirectoryFile))
             {
                 FileSecurity? fileSecurity = null;
@@ -293,7 +360,7 @@ public class PassthroughFileSystem : FileSystem<FileNode, FileDescription>
             }
             else
             {
-                if (!Directory.Exists(fileName))
+                if (Directory.Exists(fileName))
                 {
                     Win32.ThrowIoExceptionWithNtStatus(STATUS_OBJECT_NAME_COLLISION);
                 }
@@ -341,7 +408,7 @@ public class PassthroughFileSystem : FileSystem<FileNode, FileDescription>
         normalizedName = null;
         try
         {
-            fileName = Path.Combine(_rootPath, fileName);
+            fileName = ConcatPath(fileName);
             if (!Directory.Exists(fileName))
             {
                 fileDesc = new FileDescription(
@@ -398,6 +465,7 @@ public class PassthroughFileSystem : FileSystem<FileNode, FileDescription>
         {
             fileDesc.Stream.SetLength(0);
         }
+        fileInfo = fileDesc.GetFileInfo();
         return STATUS_SUCCESS;
     }
 
@@ -431,11 +499,8 @@ public class PassthroughFileSystem : FileSystem<FileNode, FileDescription>
         {
             Win32.ThrowIoExceptionWithNtStatus(STATUS_END_OF_FILE);
         }
-        byte[] bytes = ArrayPool<byte>.Shared.Rent((int)length);
         fileDesc.Stream.Seek((long)offset, SeekOrigin.Begin);
-        pBytesTransferred = (uint)fileDesc.Stream.Read(bytes, 0, (int)length);
-        bytes.AsSpan(0, (int)pBytesTransferred).CopyTo(buffer);
-        ArrayPool<byte>.Shared.Return(bytes);
+        pBytesTransferred = (uint)fileDesc.Stream.Read(buffer[..(int)length]);
         return STATUS_SUCCESS;
     }
 
@@ -470,16 +535,17 @@ public class PassthroughFileSystem : FileSystem<FileNode, FileDescription>
                 length = (uint)((ulong)fileDesc.Stream.Length - offset);
             }
         }
-        byte[] bytes = ArrayPool<byte>.Shared.Rent((int)length);
-        buffer.CopyTo(bytes);
-        if (!writeToEOF)
+        if (writeToEOF)
+        {
+            fileDesc.Stream.Seek(0, SeekOrigin.End);
+        }
+        else
         {
             fileDesc.Stream.Seek((long)offset, SeekOrigin.Begin);
         }
         long start = fileDesc.Stream.Position;
-        fileDesc.Stream.Write(bytes, 0, (int)length);
+        fileDesc.Stream.Write(buffer[..(int)length]);
         pBytesTransferred = (uint)(fileDesc.Stream.Position - start);
-        ArrayPool<byte>.Shared.Return(bytes);
         fileInfo = fileDesc.GetFileInfo();
         return STATUS_SUCCESS;
     }
@@ -502,7 +568,7 @@ public class PassthroughFileSystem : FileSystem<FileNode, FileDescription>
         }
         if (fileDesc.IsFile)
         {
-            fileDesc.Stream.Flush();
+            fileDesc.Stream.Flush(true);
         }
         fileInfo = fileDesc.GetFileInfo();
         return STATUS_SUCCESS;
@@ -564,8 +630,8 @@ public class PassthroughFileSystem : FileSystem<FileNode, FileDescription>
         bool replaceIfExists
     )
     {
-        fileName = Path.Combine(_rootPath, fileName);
-        newFileName = Path.Combine(_rootPath, newFileName);
+        fileName = ConcatPath(fileName);
+        newFileName = ConcatPath(newFileName);
         FileDescription.Rename(fileName, newFileName, replaceIfExists);
         return STATUS_SUCCESS;
     }
@@ -587,7 +653,7 @@ public class PassthroughFileSystem : FileSystem<FileNode, FileDescription>
         byte[] securityDescriptor
     )
     {
-        fileDesc.SecurityDescriptor = securityDescriptor;
+        fileDesc.SetSecurityDescriptor(sections, securityDescriptor);
         return STATUS_SUCCESS;
     }
 

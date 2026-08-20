@@ -2,4 +2,5 @@
   <Project Path="Daedalus.FileSystem/Daedalus.FileSystem.csproj" />
   <Project Path="Daedalus.FUSE/Daedalus.FUSE.csproj" />
   <Project Path="Daedalus.WinFsp/Daedalus.WinFsp.csproj" />
+  <Project Path="Daedalus.WinFsp.Tests/Daedalus.WinFsp.Tests.csproj" />
 </Solution>
