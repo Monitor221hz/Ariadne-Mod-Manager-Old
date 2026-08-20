@@ -27,9 +27,24 @@ public abstract class FileSystem<TNode, TDesc> : FileSystemBase
 
     public abstract override int GetVolumeInfo(out VolumeInfo VolumeInfo);
 
-    public abstract override int GetSecurityByName(
+    public sealed override int GetSecurityByName(
         string fileName,
         out uint fileAttributes,
+        ref byte[]? securityDescriptor
+    )
+    {
+        int result = GetSecurityByName(
+            fileName,
+            out FileAttributes fileAttributes2,
+            ref securityDescriptor
+        );
+        fileAttributes = (uint)fileAttributes2;
+        return result;
+    }
+
+    public abstract int GetSecurityByName(
+        string fileName,
+        out FileAttributes fileAttributes,
         ref byte[]? securityDescriptor
     );
 
@@ -65,7 +80,7 @@ public abstract class FileSystem<TNode, TDesc> : FileSystemBase
 
     public abstract int Create(
         string fileName,
-        FileCreateOptions options,
+        FileCreateOptions createOptions,
         FileSystemRights grantedAccess,
         FileAttributes fileAttributes,
         byte[]? securityDescriptor,
