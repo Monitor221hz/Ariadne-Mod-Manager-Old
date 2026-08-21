@@ -550,8 +550,7 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
         catch (ArgumentException)
         {
             // DriveInfo only supports drives and not UNC paths;
-            // better to use GetDiskFreeSpaceEx here. Until then, report zeros
-            // instead of failing the query.
+            // better to use GetDiskFreeSpaceEx here? report zeros for now
         }
         return STATUS_SUCCESS;
     }
@@ -676,7 +675,7 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
                 else if (index == 1)
                 {
                     fileName = "..";
-                    // '..' can be root itself NTFS
+                    // .. can be root itself, NTFS
                     fileInfo = GetInfoFor(fileNode.Node.Parent ?? fileNode.Node);
                 }
                 else
@@ -739,7 +738,7 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
             return info.GetFileInfo(ALLOCATION_UNIT);
         }
 
-        // placeholder directory: no single physical backing
+        // placeholder dir
         var fileInfo = new FileInfo
         {
             FileAttributes = (uint)System.IO.FileAttributes.Directory,
@@ -832,7 +831,10 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
         lock (_sync)
         {
             Debug.WriteLine($"SetBasicInfo '{fileDesc.Owner.GetPath()}'");
-            EnsureWritable(fileDesc);
+            if (!fileDesc.IsFile && fileDesc.Owner.Data.PhysicalPath is null)
+            {
+                EnsureWritable(fileDesc); // materialize placeholder dir
+            }
             fileDesc.SetBasicInfo(fileAttributes, creationTime, lastAccessTime, lastWriteTime);
             fileInfo = fileDesc.GetFileInfo();
             return STATUS_SUCCESS;
@@ -873,7 +875,12 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
     {
         lock (_sync)
         {
-            EnsureWritable(fileDesc);
+            Debug.WriteLine($"SetSecurity '{fileDesc.Owner.GetPath()}'");
+            // metadata-only change: no file content, so no copy-up
+            if (!fileDesc.IsFile && fileDesc.Owner.Data.PhysicalPath is null)
+            {
+                EnsureWritable(fileDesc); // materialize a placeholder directory
+            }
             fileDesc.SetSecurityDescriptor(sections, securityDescriptor);
             return STATUS_SUCCESS;
         }

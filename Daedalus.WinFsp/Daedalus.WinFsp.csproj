@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="winfsp.net" Version="2.1.25156" />
+    <PackageReference Include="winfsp.net" Version="2.2.26215" />
   </ItemGroup>
 
   <ItemGroup>

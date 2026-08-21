@@ -521,17 +521,17 @@ public class OverlayFileSystemHeadlessTests : IDisposable
     }
 
     [SkippableFact]
-    public void SetBasicInfo_On_ReadOnly_Open_Mod_File_Copies_Up()
+    public void SetBasicInfo_On_Mod_File_Applies_In_Place_Without_CopyUp()
     {
         SkipNonWindows();
         using var desc = OpenFile("\\meshes\\sword.nif", FileSystemRights.FullControl);
         string sink = Path.Combine(OverwriteDir, "meshes", "sword.nif");
+        string modFile = Path.Combine(ModADir, "meshes", "sword.nif");
 
-        Assert.False(File.Exists(sink));
         FS.SetBasicInfo(
             null!,
             desc,
-            System.IO.FileAttributes.ReadOnly,
+            System.IO.FileAttributes.Normal,
             null,
             null,
             new DateTime(2021, 5, 5, 5, 5, 5, DateTimeKind.Utc),
@@ -539,14 +539,10 @@ public class OverlayFileSystemHeadlessTests : IDisposable
             out _
         );
 
-        Assert.True(File.Exists(sink));
+        Assert.False(File.Exists(sink));
         Assert.Equal(
             new DateTime(2021, 5, 5, 5, 5, 5, DateTimeKind.Utc),
-            File.GetLastWriteTimeUtc(sink)
-        );
-        Assert.NotEqual(
-            new DateTime(2021, 5, 5, 5, 5, 5, DateTimeKind.Utc),
-            File.GetLastWriteTimeUtc(Path.Combine(ModADir, "meshes", "sword.nif"))
+            File.GetLastWriteTimeUtc(modFile)
         );
     }
 
