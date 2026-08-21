@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Fsp;
@@ -8,16 +9,19 @@ namespace Daedalus.WinFsp;
 
 public static partial class Win32
 {
+    [DoesNotReturn]
     public static void ThrowIoExceptionWithHResult(int HResult)
     {
         throw new IOException(null, HResult);
     }
 
+    [DoesNotReturn]
     public static void ThrowIoExceptionWithWin32(int Error)
     {
         ThrowIoExceptionWithHResult(unchecked((int)(0x80070000 | Error)));
     }
 
+    [DoesNotReturn]
     public static void ThrowIoExceptionWithNtStatus(int Status)
     {
         ThrowIoExceptionWithWin32((int)FileSystemBase.Win32FromNtStatus(Status));
@@ -41,14 +45,10 @@ public static partial class Win32
         )
         {
             uint attrs = unchecked((uint)fileAttributes);
-            // -1 means "leave attributes unchanged" (a zero FILE_BASIC_INFO
-            // field does exactly that); 0 means FILE_ATTRIBUTE_NORMAL.
             FileAttributes =
-                attrs == unchecked((uint)-1)
-                    ? 0u
-                    : attrs == 0u
-                        ? (uint)System.IO.FileAttributes.Normal
-                        : attrs;
+                attrs == unchecked((uint)-1) ? 0u
+                : attrs == 0u ? (uint)System.IO.FileAttributes.Normal
+                : attrs;
             LastAccessTime = lastAccessTime.HasValue
                 ? (ulong)lastAccessTime.Value.ToFileTimeUtc()
                 : 0;
