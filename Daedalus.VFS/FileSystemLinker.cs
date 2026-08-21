@@ -59,18 +59,7 @@ public static class FileSystemLinker
                 && relative.EndsWith(".daehidden", StringComparison.OrdinalIgnoreCase)
             )
             {
-                string hiddenVirtual = virtualPath[..^".daehidden".Length];
-                var existing = root.FindNode(hiddenVirtual);
-                if (
-                    existing?.Data.PhysicalPath is string existingPath
-                    && !existingPath.StartsWith(
-                        physicalDirectory + Path.DirectorySeparatorChar,
-                        StringComparison.OrdinalIgnoreCase
-                    )
-                )
-                {
-                    existing.RemoveFromParent();
-                }
+                root.FindNode(virtualPath.AsSpan()[..^".daehidden".Length])?.RemoveFromParent();
                 continue;
             }
 

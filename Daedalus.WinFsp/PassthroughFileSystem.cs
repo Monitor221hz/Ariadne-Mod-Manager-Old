@@ -13,9 +13,10 @@ public class FileDescription : IDisposable
 {
     protected const int ALLOCATION_UNIT = 4096;
 
-    public FileDescription(FileStream stream)
+    public FileDescription(FileStream stream, string? physicalPath = null)
     {
         Stream = stream;
+        PhysicalPath = physicalPath;
     }
 
     public FileDescription(DirectoryInfo directoryInfo)
@@ -27,6 +28,8 @@ public class FileDescription : IDisposable
 
     public DirectoryInfo? DirectoryInfo { get; private set; }
     public List<FileSystemInfo>? FileSystemInfos { get; set; }
+
+    public string? PhysicalPath { get; }
 
     [MemberNotNullWhen(true, nameof(Stream))]
     [MemberNotNullWhen(false, nameof(DirectoryInfo))]
@@ -122,27 +125,19 @@ public class FileDescription : IDisposable
 
     public FileInfo GetFileInfo()
     {
+        FileSystemInfo info =
+            IsFile && PhysicalPath != null && File.Exists(PhysicalPath)
+                ? new SysFileInfo(PhysicalPath)
+            : IsFile ? null!
+            : DirectoryInfo!;
+        var fileInfo = info?.GetFileInfo(ALLOCATION_UNIT) ?? new FileInfo();
         if (IsFile)
         {
-            var fileInfo = new FileInfo();
-            if (!Win32.GetFileInformationByHandle(Stream, out var handleFileInfo))
-            {
-                Win32.ThrowIoExceptionWithWin32(Marshal.GetLastWin32Error());
-            }
-            fileInfo.FileAttributes = handleFileInfo.dwFileAttributes;
-            fileInfo.ReparseTag = 0;
-            fileInfo.FileSize = (ulong)Stream.Length;
+            fileInfo.FileSize = (ulong)Stream!.Length;
             fileInfo.AllocationSize =
                 (fileInfo.FileSize + ALLOCATION_UNIT - 1) / ALLOCATION_UNIT * ALLOCATION_UNIT;
-            fileInfo.CreationTime = handleFileInfo.ftCreationTime;
-            fileInfo.LastAccessTime = handleFileInfo.ftLastAccessTime;
-            fileInfo.LastWriteTime = handleFileInfo.ftLastWriteTime;
-            fileInfo.ChangeTime = handleFileInfo.ftLastWriteTime;
-            fileInfo.IndexNumber = 0;
-            fileInfo.HardLinks = 0;
-            return fileInfo;
         }
-        return DirectoryInfo!.GetFileInfo(ALLOCATION_UNIT);
+        return fileInfo;
     }
 
     public void SetDisposition(bool safe)
@@ -282,6 +277,11 @@ public class PassthroughFileSystem : FileSystem<FileNode, FileDescription>
     {
         fileName = ConcatPath(fileName);
         SysFileInfo fileInfo = new SysFileInfo(fileName);
+        if (!fileInfo.Exists && !Directory.Exists(fileName))
+        {
+            fileAttributes = 0;
+            return STATUS_OBJECT_NAME_NOT_FOUND;
+        }
         fileAttributes = fileInfo.Attributes;
         if (securityDescriptor == null)
         {
@@ -327,7 +327,8 @@ public class PassthroughFileSystem : FileSystem<FileNode, FileDescription>
                         4096,
                         FileOptions.None,
                         fileSecurity
-                    )
+                    ),
+                    fileName
                 );
                 fileDesc.SetBasicInfo(fileAttributes | FileAttributes.Archive);
             }
@@ -335,7 +336,7 @@ public class PassthroughFileSystem : FileSystem<FileNode, FileDescription>
             {
                 if (Directory.Exists(fileName))
                 {
-                    Win32.ThrowIoExceptionWithNtStatus(STATUS_OBJECT_NAME_COLLISION);
+                    return STATUS_OBJECT_NAME_COLLISION;
                 }
                 DirectorySecurity? dirSecurity = null;
                 if (securityDescriptor != null)
@@ -355,13 +356,13 @@ public class PassthroughFileSystem : FileSystem<FileNode, FileDescription>
             fileInfo = fileDesc.GetFileInfo();
             return STATUS_SUCCESS;
         }
-        catch
+        catch (Exception ex)
         {
             if (fileDesc != null && fileDesc.Stream != null)
             {
                 fileDesc.Dispose();
             }
-            throw;
+            return ExceptionHandler(ex);
         }
     }
 
@@ -392,7 +393,8 @@ public class PassthroughFileSystem : FileSystem<FileNode, FileDescription>
                         ALLOCATION_UNIT,
                         FileOptions.None,
                         null
-                    )
+                    ),
+                    fileName
                 );
             }
             else
@@ -404,13 +406,13 @@ public class PassthroughFileSystem : FileSystem<FileNode, FileDescription>
             fileInfo = fileDesc.GetFileInfo();
             return STATUS_SUCCESS;
         }
-        catch
+        catch (Exception ex)
         {
             if (fileDesc != null && fileDesc.Stream != null)
             {
                 fileDesc.Dispose();
             }
-            throw;
+            return ExceptionHandler(ex);
         }
     }
 
@@ -468,9 +470,10 @@ public class PassthroughFileSystem : FileSystem<FileNode, FileDescription>
         out uint pBytesTransferred
     )
     {
+        pBytesTransferred = 0;
         if (offset >= (ulong)fileDesc.Stream.Length)
         {
-            Win32.ThrowIoExceptionWithNtStatus(STATUS_END_OF_FILE);
+            return STATUS_END_OF_FILE;
         }
         fileDesc.Stream.Seek((long)offset, SeekOrigin.Begin);
         pBytesTransferred = (uint)fileDesc.Stream.Read(buffer[..(int)length]);
@@ -615,7 +618,11 @@ public class PassthroughFileSystem : FileSystem<FileNode, FileDescription>
         ref byte[]? securityDescriptor
     )
     {
-        securityDescriptor = fileDesc.SecurityDescriptor;
+        securityDescriptor = fileDesc.IsFile
+            ? new SysFileInfo(fileDesc.PhysicalPath!)
+                .GetAccessControl()
+                .GetSecurityDescriptorBinaryForm()
+            : fileDesc.DirectoryInfo!.GetAccessControl().GetSecurityDescriptorBinaryForm();
         return STATUS_SUCCESS;
     }
 

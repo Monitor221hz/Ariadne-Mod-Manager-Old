@@ -110,16 +110,26 @@ public class PassthroughFileSystemHeadlessTests
     }
 
     [SkippableFact]
-    public void Create_ExistingFile_Throws_IOException()
+    public void Create_ExistingFile_Returns_Failure_Status()
     {
         Skip.IfNot(IsWindows(), "Windows only");
         using var root = new TempDirectory();
         var fs = new PassthroughFileSystem(root.Path);
 
         using var first = CreateFile(fs, "\\hello.txt");
-        var ex = Assert.Throws<IOException>(() => CreateFile(fs, "\\hello.txt"));
-        // WinFsp covers ERROR_ALREADY_EXISTS183 but not ERROR_FILE_EXISTS (80) which FileMode.CreateNew can yield
-        Assert.True(fs.ExceptionHandler(ex) < 0);
+        int status = fs.Create(
+            "\\hello.txt",
+            (FileCreateOptions)0,
+            FileSystemRights.FullControl,
+            FileAttributes.Normal,
+            null,
+            0,
+            out _,
+            out _,
+            out _,
+            out _
+        );
+        Assert.True(status < 0);
     }
 
     [SkippableFact]
@@ -181,7 +191,7 @@ public class PassthroughFileSystemHeadlessTests
     }
 
     [SkippableFact]
-    public void Read_Beyond_End_Of_File_Throws_And_Maps_To_EndOfFile()
+    public void Read_Beyond_End_Of_File_Returns_StatusEndOfFile()
     {
         Skip.IfNot(IsWindows(), "Windows only");
         using var root = new TempDirectory();
@@ -189,8 +199,9 @@ public class PassthroughFileSystemHeadlessTests
 
         using var desc = CreateFile(fs, "\\empty.txt");
         byte[] buffer = new byte[16];
-        var ex = Assert.Throws<IOException>(() => fs.Read(null!, desc, buffer, 100, 10, out _));
-        Assert.Equal(STATUS_END_OF_FILE, fs.ExceptionHandler(ex));
+        int status = fs.Read(null!, desc, buffer, 100, 10, out uint transferred);
+        Assert.Equal(STATUS_END_OF_FILE, status);
+        Assert.Equal(0u, transferred);
     }
 
     [SkippableFact]

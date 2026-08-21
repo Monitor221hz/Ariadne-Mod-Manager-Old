@@ -6,6 +6,7 @@ using Daedalus.VFS;
 namespace Daedalus.WinFsp;
 
 using FileInfo = Fsp.Interop.FileInfo;
+using SysFileInfo = System.IO.FileInfo;
 
 public class FileSystemDescription : IDisposable
 {
@@ -199,21 +200,14 @@ public class FileSystemDescription : IDisposable
         }
         if (IsFile)
         {
-            var fileInfo = new FileInfo();
-            if (!Win32.GetFileInformationByHandle(Stream, out var handleFileInfo))
-            {
-                Win32.ThrowIoExceptionWithWin32(Marshal.GetLastWin32Error());
-            }
-            fileInfo.FileAttributes = handleFileInfo.dwFileAttributes;
-            fileInfo.ReparseTag = 0;
+            string? physical = Owner.Data.PhysicalPath;
+            var fileInfo =
+                physical != null && File.Exists(physical)
+                    ? new SysFileInfo(physical).GetFileInfo(ALLOCATION_UNIT)
+                    : new FileInfo();
             fileInfo.FileSize = (ulong)Stream.Length;
             fileInfo.AllocationSize =
                 (fileInfo.FileSize + ALLOCATION_UNIT - 1) / ALLOCATION_UNIT * ALLOCATION_UNIT;
-            fileInfo.CreationTime = handleFileInfo.ftCreationTime;
-            fileInfo.LastAccessTime = handleFileInfo.ftLastAccessTime;
-            fileInfo.LastWriteTime = handleFileInfo.ftLastWriteTime;
-            fileInfo.ChangeTime = handleFileInfo.ftLastWriteTime;
-            fileInfo.IndexNumber = 0;
             fileInfo.HardLinks = 0;
             return fileInfo;
         }

@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Security.AccessControl;
 using Fsp;
+using Fsp.Interop;
 
 namespace Daedalus.WinFsp;
 
@@ -12,6 +14,9 @@ public abstract class FileSystem<TNode, TDesc> : FileSystemBase
 {
     public override int ExceptionHandler(Exception ex)
     {
+        Debug.WriteLine(
+            $"FAIL: {ex.GetType().Name} 0x{ex.HResult:X8} {ex.Message}\n{ex.StackTrace}"
+        );
         int hResult = ex.HResult;
         if (0x80070000 == (hResult & 0xFFFF0000))
             return NtStatusFromWin32((uint)hResult & 0xFFFF);
@@ -399,4 +404,158 @@ public abstract class FileSystem<TNode, TDesc> : FileSystemBase
         out string? fileName,
         out FileInfo fileInfo
     );
+
+    public sealed override int SetVolumeLabel(string VolumeLabel, out VolumeInfo VolumeInfo)
+    {
+        Debug.WriteLine(
+            $"unimplemented call: SetVolumeLabel('{VolumeLabel}') — implement in {GetType().Name}"
+        );
+        throw new NotImplementedException(nameof(SetVolumeLabel));
+    }
+
+    public sealed override int Control(
+        object FileNode,
+        object FileDesc,
+        uint ControlCode,
+        IntPtr InputBuffer,
+        uint InputBufferLength,
+        IntPtr OutputBuffer,
+        uint OutputBufferLength,
+        out uint BytesTransferred
+    )
+    {
+        Debug.WriteLine($"unimplemented call: Control(code=0x{ControlCode:X8})");
+        throw new NotImplementedException(nameof(Control));
+    }
+
+    public sealed override int GetEa(
+        object FileNode,
+        object FileDesc,
+        IntPtr Ea,
+        uint EaLength,
+        out uint BytesTransferred
+    )
+    {
+        Debug.WriteLine("unimplemented call: GetEa");
+        throw new NotImplementedException(nameof(GetEa));
+    }
+
+    public sealed override bool GetEaEntry(
+        object FileNode,
+        object FileDesc,
+        ref object Context,
+        out string EaName,
+        out byte[] EaValue,
+        out bool NeedEa
+    )
+    {
+        Debug.WriteLine("unimplemented call: GetEaEntry");
+        throw new NotImplementedException(nameof(GetEaEntry));
+    }
+
+    public sealed override int SetEa(
+        object FileNode,
+        object FileDesc,
+        IntPtr Ea,
+        uint EaLength,
+        out FileInfo FileInfo
+    )
+    {
+        Debug.WriteLine("unimplemented call: SetEa");
+        throw new NotImplementedException(nameof(SetEa));
+    }
+
+    public sealed override int SetEaEntry(
+        object FileNode,
+        object FileDesc,
+        ref object Context,
+        string EaName,
+        byte[] EaValue,
+        bool NeedEa
+    )
+    {
+        Debug.WriteLine("unimplemented call: SetEaEntry");
+        throw new NotImplementedException(nameof(SetEaEntry));
+    }
+
+    public sealed override int GetStreamInfo(
+        object FileNode,
+        object FileDesc,
+        IntPtr Buffer,
+        uint Length,
+        out uint BytesTransferred
+    )
+    {
+        Debug.WriteLine("unimplemented call: GetStreamInfo");
+        throw new NotImplementedException(nameof(GetStreamInfo));
+    }
+
+    public sealed override bool GetStreamEntry(
+        object FileNode,
+        object FileDesc,
+        ref object Context,
+        out string StreamName,
+        out ulong StreamSize,
+        out ulong StreamAllocationSize
+    )
+    {
+        Debug.WriteLine("unimplemented call: GetStreamEntry");
+        throw new NotImplementedException(nameof(GetStreamEntry));
+    }
+
+    public sealed override int GetReparsePoint(
+        object FileNode,
+        object FileDesc,
+        string FileName,
+        ref byte[] ReparseData
+    )
+    {
+        Debug.WriteLine($"unimplemented call: GetReparsePoint('{FileName}')");
+        throw new NotImplementedException(nameof(GetReparsePoint));
+    }
+
+    public sealed override int SetReparsePoint(
+        object FileNode,
+        object FileDesc,
+        string FileName,
+        byte[] ReparseData
+    )
+    {
+        Debug.WriteLine($"unimplemented call: SetReparsePoint('{FileName}')");
+        throw new NotImplementedException(nameof(SetReparsePoint));
+    }
+
+    public sealed override int DeleteReparsePoint(
+        object FileNode,
+        object FileDesc,
+        string FileName,
+        byte[] ReparseData
+    )
+    {
+        Debug.WriteLine($"unimplemented call: DeleteReparsePoint('{FileName}')");
+        throw new NotImplementedException(nameof(DeleteReparsePoint));
+    }
+
+    public sealed override int GetReparsePointByName(
+        string FileName,
+        bool IsDirectory,
+        ref byte[] ReparseData
+    )
+    {
+        Debug.WriteLine($"unimplemented call: GetReparsePointByName('{FileName}')");
+        throw new NotImplementedException(nameof(GetReparsePointByName));
+    }
+
+    public sealed override int ResolveReparsePoints(
+        string FileName,
+        uint ReparsePointIndex,
+        bool ResolveLastPathComponent,
+        out IoStatusBlock IoStatus,
+        IntPtr Buffer,
+        IntPtr PSize
+    )
+    {
+        Debug.WriteLine($"unimplemented call: ResolveReparsePoints('{FileName}')");
+        throw new NotImplementedException(nameof(ResolveReparsePoints));
+    }
 }

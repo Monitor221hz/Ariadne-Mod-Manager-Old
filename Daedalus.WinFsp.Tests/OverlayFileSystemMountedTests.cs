@@ -84,7 +84,11 @@ public class OverlayFileSystemMountedTests : IDisposable
         var root = new VirtualNode<BackedEntry>("", NodeFlags.Directory, null, default);
         root.LinkDirectory(BaseDir, "");
         root.LinkDirectory(ModDir, "");
-        root.LinkDirectory(OverwriteDir, "", LinkFlags.Recursive | LinkFlags.CreateTarget);
+        root.LinkDirectory(
+            OverwriteDir,
+            "",
+            LinkFlags.Recursive | LinkFlags.CreateTarget | LinkFlags.Whiteouts
+        );
         return root;
     }
 
@@ -316,6 +320,40 @@ public class OverlayFileSystemMountedTests : IDisposable
     }
 
     [SkippableFact]
+    public void Mounted_LargeFile_Roundtrips_Without_Corruption()
+    {
+        RequireWinFsp();
+        var fs = new OverlayFileSystem(BuildTree());
+        string mountPoint = _tmp + "-mount";
+
+        using var host = new FileSystemHost(fs);
+        int status = host.Mount(mountPoint, null, false, 0);
+        Assert.True(status >= 0, $"Mount failed: 0x{unchecked((uint)status):X8}");
+        string mounted = host.MountPoint()!;
+
+        var payload = new byte[20 * 1024 * 1024];
+        new Random(42).NextBytes(payload);
+        string path = mounted + "\\blob.bin";
+        File.WriteAllBytes(path, payload);
+
+        byte[] back = File.ReadAllBytes(path);
+        Assert.Equal(payload, back);
+        Assert.Equal(
+            System.Security.Cryptography.SHA256.HashData(payload),
+            System.Security.Cryptography.SHA256.HashData(back)
+        );
+
+        host.Unmount();
+
+        Assert.Equal(
+            System.Security.Cryptography.SHA256.HashData(payload),
+            System.Security.Cryptography.SHA256.HashData(
+                File.ReadAllBytes(OverwriteDir + "\\blob.bin")
+            )
+        );
+    }
+
+    [SkippableFact]
     public void Mounted_Delete_Produces_Whiteout_And_Entry_Vanishes()
     {
         RequireWinFsp();
@@ -338,5 +376,42 @@ public class OverlayFileSystemMountedTests : IDisposable
 
         Assert.True(File.Exists(OverwriteDir + "\\readme.txt.daehidden"));
         Assert.True(File.Exists(BaseDir + "\\readme.txt"));
+    }
+
+    [SkippableFact]
+    public void Deleted_Files_Stay_Hidden_Across_Mount_Cycles()
+    {
+        RequireWinFsp();
+
+        {
+            var fs = new OverlayFileSystem(BuildTree());
+            using var host1 = new FileSystemHost(fs);
+            int status = host1.Mount(_tmp + "-mount", null, false, 0);
+            Assert.True(status >= 0, $"Mount failed: 0x{unchecked((uint)status):X8}");
+            string mounted = host1.MountPoint()!;
+            File.Delete(mounted + "\\readme.txt");
+            host1.Unmount();
+        }
+
+        string mountAfter = _tmp + "-mount";
+        if (Directory.Exists(mountAfter))
+        {
+            Directory.Delete(mountAfter);
+        }
+
+        {
+            var fs = new OverlayFileSystem(BuildTree());
+            using var host2 = new FileSystemHost(fs);
+            int status = host2.Mount(_tmp + "-mount", null, false, 0);
+            Assert.True(status >= 0, $"Mount failed: 0x{unchecked((uint)status):X8}");
+            string mounted = host2.MountPoint()!;
+
+            Assert.DoesNotContain(
+                "readme.txt",
+                Directory.GetFileSystemEntries(mounted).Select(Path.GetFileName)
+            );
+            Assert.False(File.Exists(mounted + "\\readme.txt"));
+            Assert.True(File.Exists(BaseDir + "\\readme.txt"));
+        }
     }
 }

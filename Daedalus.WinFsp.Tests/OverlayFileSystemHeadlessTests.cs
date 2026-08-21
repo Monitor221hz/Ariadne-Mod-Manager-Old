@@ -54,7 +54,11 @@ public class OverlayFileSystemHeadlessTests : IDisposable
         Root.LinkDirectory(BaseDir, "");
         Root.LinkDirectory(ModADir, "");
         Root.LinkDirectory(ModBDir, "");
-        Root.LinkDirectory(OverwriteDir, "", LinkFlags.Recursive | LinkFlags.CreateTarget);
+        Root.LinkDirectory(
+            OverwriteDir,
+            "",
+            LinkFlags.Recursive | LinkFlags.CreateTarget | LinkFlags.Whiteouts
+        );
         FS = new OverlayFileSystem(Root);
     }
 
@@ -217,24 +221,22 @@ public class OverlayFileSystemHeadlessTests : IDisposable
     }
 
     [SkippableFact]
-    public void Create_Existing_Throws_Collision()
+    public void Create_Existing_Returns_Collision()
     {
         SkipNonWindows();
-        var ex = Assert.Throws<IOException>(() =>
-            FS.Create(
-                "\\readme.txt",
-                (FileCreateOptions)0,
-                FileSystemRights.FullControl,
-                FileAttributes.Normal,
-                null,
-                0,
-                out _,
-                out _,
-                out _,
-                out _
-            )
+        int status = FS.Create(
+            "\\readme.txt",
+            (FileCreateOptions)0,
+            FileSystemRights.FullControl,
+            FileAttributes.Normal,
+            null,
+            0,
+            out _,
+            out _,
+            out _,
+            out _
         );
-        Assert.True(FS.ExceptionHandler(ex) < 0);
+        Assert.Equal(unchecked((int)0xC0000035), status); // STATUS_OBJECT_NAME_COLLISION
     }
 
     [SkippableFact]
@@ -326,6 +328,136 @@ public class OverlayFileSystemHeadlessTests : IDisposable
     }
 
     [SkippableFact]
+    public void CopyUp_Consumes_Stale_Marker()
+    {
+        SkipNonWindows();
+        Directory.CreateDirectory(Path.Combine(OverwriteDir, "meshes"));
+        string marker = Path.Combine(OverwriteDir, "meshes", "sword.nif.daehidden");
+        File.WriteAllText(marker, "");
+
+        var desc = OpenFile("\\meshes\\sword.nif", FileSystemRights.FullControl);
+        FS.Write(null!, desc, Encoding.UTF8.GetBytes("x"), 0, 1, false, false, out _, out _);
+        desc.Dispose();
+
+        Assert.False(File.Exists(marker));
+        Assert.True(File.Exists(Path.Combine(OverwriteDir, "meshes", "sword.nif")));
+    }
+
+    [SkippableFact]
+    public void Create_At_Hidden_Path_Overwrites_Physical_Remnant()
+    {
+        SkipNonWindows();
+        File.WriteAllText(Path.Combine(OverwriteDir, "ghost.txt"), "stale-content");
+        Assert.False(File.Exists(Path.Combine(OverwriteDir, "ghost.txt.daehidden")));
+
+        int status = FS.Create(
+            "\\ghost.txt",
+            (FileCreateOptions)0,
+            FileSystemRights.FullControl,
+            FileAttributes.Normal,
+            null,
+            0,
+            out var node,
+            out var desc,
+            out _,
+            out _
+        );
+        Assert.Equal(0, status);
+
+        FS.Close(node!, desc!);
+        desc!.Dispose();
+        Assert.Equal("", File.ReadAllText(Path.Combine(OverwriteDir, "ghost.txt")));
+    }
+
+    [SkippableFact]
+    public void Read_Beyond_End_Of_File_Returns_StatusEndOfFile()
+    {
+        SkipNonWindows();
+        var desc = OpenFile("\\readme.txt", FileSystemRights.FullControl);
+        Span<byte> buffer = stackalloc byte[16];
+        int status = FS.Read(null!, desc, buffer, 100, 10, out uint transferred);
+        Assert.Equal(unchecked((int)0xC0000011), status); // STATUS_END_OF_FILE
+        Assert.Equal(0u, transferred);
+        desc.Dispose();
+    }
+
+    [SkippableFact]
+    public void GetSecurity_Works_Without_ReadControl_On_Handle()
+    {
+        SkipNonWindows();
+        var desc = OpenFile(
+            "\\meshes\\sword.nif",
+            FileSystemRights.ReadData
+                | FileSystemRights.ReadAttributes
+                | FileSystemRights.Synchronize
+        );
+        byte[]? sd = null;
+        Assert.Equal(0, FS.GetSecurity(null!, desc, ref sd));
+        Assert.NotNull(sd);
+        Assert.NotEmpty(sd!);
+        desc.Dispose();
+    }
+
+    [SkippableFact]
+    public void Create_Consumes_Stale_Marker()
+    {
+        SkipNonWindows();
+        string marker = Path.Combine(OverwriteDir, "fresh.txt.daehidden");
+        File.WriteAllText(marker, "");
+
+        int status = FS.Create(
+            "\\fresh.txt",
+            (FileCreateOptions)0,
+            FileSystemRights.FullControl,
+            FileAttributes.Normal,
+            null,
+            0,
+            out var node,
+            out var desc,
+            out _,
+            out _
+        );
+        Assert.Equal(0, status);
+        Assert.False(File.Exists(marker));
+        FS.Close(node!, desc!);
+    }
+
+    [SkippableFact]
+    public void Delete_Then_Recreate_Keeps_File_Visible()
+    {
+        SkipNonWindows();
+        FS.Open(
+            "\\readme.txt",
+            (FileCreateOptions)0,
+            FileSystemRights.FullControl,
+            out var fsNode,
+            out var desc,
+            out _,
+            out _
+        );
+        FS.Cleanup(fsNode!, desc!, "\\readme.txt", CleanupFlags.Delete);
+        FS.Close(fsNode!, desc!);
+
+        int status = FS.Create(
+            "\\readme.txt",
+            (FileCreateOptions)0,
+            FileSystemRights.FullControl,
+            FileAttributes.Normal,
+            null,
+            0,
+            out var newNode,
+            out var newDesc,
+            out _,
+            out _
+        );
+        Assert.Equal(0, status);
+        FS.Close(newNode!, newDesc!);
+
+        Assert.False(File.Exists(Path.Combine(OverwriteDir, "readme.txt.daehidden")));
+        Assert.NotNull(Root.FindNode("readme.txt"));
+    }
+
+    [SkippableFact]
     public void Rename_Directory_Is_Refused()
     {
         SkipNonWindows();
@@ -339,10 +471,8 @@ public class OverlayFileSystemHeadlessTests : IDisposable
             out _
         );
         Assert.Equal(0, ok);
-        var ex = Assert.Throws<IOException>(() =>
-            FS.Rename(fsNode!, desc!, "\\textures", "\\textures2", false)
-        );
-        Assert.Equal(STATUS_NOT_SUPPORTED, FS.ExceptionHandler(ex));
+        int status = FS.Rename(fsNode!, desc!, "\\textures", "\\textures2", false);
+        Assert.Equal(STATUS_NOT_SUPPORTED, status);
     }
 
     [SkippableFact]
@@ -435,6 +565,34 @@ public class OverlayFileSystemHeadlessTests : IDisposable
 
     private static byte[]? _nullBytes = null;
 
+    [SkippableFact]
+    public void GetSecurityByName_MissingPath_Returns_NotFound_Without_Throwing()
+    {
+        SkipNonWindows();
+        byte[]? sd = null;
+        int status = FS.GetSecurityByName("\\no\\such\\path.dll", out _, ref sd);
+        Assert.Equal(unchecked((int)0xC0000034), status); // STATUS_OBJECT_NAME_NOT_FOUND
+        Assert.Null(sd);
+    }
+
+    [SkippableFact]
+    public void Open_MissingPath_Returns_NotFound_Without_Throwing()
+    {
+        SkipNonWindows();
+        int status = FS.Open(
+            "\\no\\such\\path.dll",
+            (FileCreateOptions)0,
+            FileSystemRights.FullControl,
+            out var node,
+            out var desc,
+            out _,
+            out _
+        );
+        Assert.Equal(unchecked((int)0xC0000034), status);
+        Assert.Null(node);
+        Assert.Null(desc);
+    }
+
     private FileSystemNode OpenNode(string name)
     {
         int status = FS.Open(
@@ -467,6 +625,26 @@ public class OverlayFileSystemHeadlessTests : IDisposable
 
         Assert.Contains("textures", names);
         Assert.Contains("meshes", names);
+        Assert.Contains("readme.txt", names);
+    }
+
+    [SkippableFact]
+    public void ReadDirectoryEntry_Returns_DotEntries_First_Like_NTFS()
+    {
+        SkipNonWindows();
+        var rootNode = OpenNode("\\");
+        var rootDesc = new FileSystemDescription(Root);
+        var names = new List<string>();
+        object? context = null;
+        while (
+            FS.ReadDirectoryEntry(rootNode, rootDesc, null, null, ref context, out var name, out _)
+        )
+        {
+            names.Add(name!);
+        }
+        Assert.Equal(".", names[0]);
+        Assert.Equal("..", names[1]);
+        Assert.Contains("textures", names);
         Assert.Contains("readme.txt", names);
     }
 
@@ -560,5 +738,34 @@ public class OverlayFileSystemHeadlessTests : IDisposable
             File.GetAttributes(Path.Combine(OverwriteDir, "virtual"))
                 .HasFlag(System.IO.FileAttributes.Hidden)
         );
+    }
+
+    [SkippableFact]
+    public void GetFileInfo_Survives_Backing_Deleted_After_Open()
+    {
+        SkipNonWindows();
+        var desc = OpenFile("\\meshes\\sword.nif", FileSystemRights.FullControl);
+        string physical = Path.Combine(ModADir, "meshes", "sword.nif");
+        File.Delete(physical);
+
+        int status = FS.GetFileInfo(null!, desc, out var info);
+        Assert.Equal(0, status);
+        Assert.True(info.FileSize > 0);
+        desc.Dispose();
+    }
+
+    [SkippableFact]
+    public void GetFileInfo_Works_With_SliverHandle()
+    {
+        SkipNonWindows();
+        // metadata from backing path not caller's handle access mask
+        var desc = OpenFile(
+            "\\meshes\\sword.nif",
+            FileSystemRights.ReadData | FileSystemRights.Synchronize
+        );
+        int status = FS.GetFileInfo(null!, desc, out var info);
+        Assert.Equal(0, status);
+        Assert.True(info.FileSize > 0);
+        desc.Dispose();
     }
 }

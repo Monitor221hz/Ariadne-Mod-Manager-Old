@@ -1,0 +1,64 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Daedalus.WinFsp.Demo",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/Daedalus.WinFsp.Demo/bin/Debug/net10.0/Daedalus.WinFsp.Demo.exe",
+            "args": [
+                "${input:mode}",
+                "${input:sourceDir}",
+                "${input:mountPoint}",
+                "${input:overwriteDir}"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "stopAtEntry": false
+        },
+        {
+            "name": "Daedalus.WinFsp.Demo (Release)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build-release",
+            "program": "${workspaceFolder}/Daedalus.WinFsp.Demo/bin/Release/net10.0/Daedalus.WinFsp.Demo.exe",
+            "args": [
+                "${input:mode}",
+                "${input:sourceDir}",
+                "${input:mountPoint}",
+                "${input:overwriteDir}"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "stopAtEntry": false
+        }
+    ],
+    "inputs": [
+        {
+            "id": "mode",
+            "type": "pickString",
+            "description": "Mount mode",
+            "options": ["overlay", "overlay-nocow", "passthrough"],
+            "default": "overlay"
+        },
+        {
+            "id": "sourceDir",
+            "type": "promptString",
+            "description": "Source directory (content to expose)",
+            "default": "E:/SteamLibrary/steamapps/common/Skyrim Special Edition"
+        },
+        {
+            "id": "mountPoint",
+            "type": "promptString",
+            "description": "Mount point (must be empty or nonexistent)",
+            "default": "E:/Empty"
+        },
+        {
+            "id": "overwriteDir",
+            "type": "promptString",
+            "description": "Overwrite directory (runtime writes land here)",
+            "default": "E:/Overwrite"
+        }
+    ]
+}

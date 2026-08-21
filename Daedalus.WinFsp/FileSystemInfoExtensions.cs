@@ -12,21 +12,22 @@ public static class FileSystemInfoExtensions
     )
     {
         var fileInfo = new FileInfo();
-        fileInfo.FileAttributes = (uint)fileSystemInfo.Attributes;
-        fileInfo.ReparseTag = 0;
-        fileInfo.FileSize = fileSystemInfo is SysFileInfo sysFileInfo
-            ? (ulong)(sysFileInfo.Length)
-            : 0;
+        fileSystemInfo.Refresh();
+        if (fileSystemInfo.Exists)
+        {
+            fileInfo.FileAttributes = (uint)fileSystemInfo.Attributes;
+            fileInfo.FileSize = fileSystemInfo is SysFileInfo sysFileInfo
+                ? (ulong)sysFileInfo.Length
+                : 0;
+            fileInfo.CreationTime = (ulong)fileSystemInfo.CreationTimeUtc.ToFileTimeUtc();
+            fileInfo.LastAccessTime = (ulong)fileSystemInfo.LastAccessTimeUtc.ToFileTimeUtc();
+            fileInfo.LastWriteTime = (ulong)fileSystemInfo.LastWriteTimeUtc.ToFileTimeUtc();
+        }
         fileInfo.AllocationSize =
             (fileInfo.FileSize + (ulong)allocationUnit - 1)
             / (ulong)allocationUnit
             * (ulong)allocationUnit;
-        fileInfo.CreationTime = (ulong)fileSystemInfo.CreationTimeUtc.ToFileTimeUtc();
-        fileInfo.LastAccessTime = (ulong)fileSystemInfo.LastAccessTimeUtc.ToFileTimeUtc();
-        fileInfo.LastWriteTime = (ulong)fileSystemInfo.LastWriteTimeUtc.ToFileTimeUtc();
         fileInfo.ChangeTime = fileInfo.LastWriteTime;
-        fileInfo.IndexNumber = 0;
-        fileInfo.HardLinks = 0;
         return fileInfo;
     }
 }

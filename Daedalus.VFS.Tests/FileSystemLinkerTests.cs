@@ -183,7 +183,7 @@ public class FileSystemLinkerTests : IDisposable
     }
 
     [Fact]
-    public void LinkDirectory_Whiteouts_Dont_Hide_Real_File_Beside_Marker()
+    public void LinkDirectory_Whiteouts_Marker_Wins_Even_Beside_Real_File()
     {
         string mod = ModDir("modA");
         string overwrite = ModDir("overwrite");
@@ -195,10 +195,7 @@ public class FileSystemLinkerTests : IDisposable
         root.LinkDirectory(mod, "", LinkFlags.Recursive);
         root.LinkDirectory(overwrite, "", LinkFlags.Recursive | LinkFlags.Whiteouts);
 
-        Assert.Equal(
-            Path.Combine(overwrite, "readme.txt"),
-            root.FindNode("readme.txt")!.Data.PhysicalPath
-        );
+        Assert.Null(root.FindNode("readme.txt"));
     }
 
     [Fact]
