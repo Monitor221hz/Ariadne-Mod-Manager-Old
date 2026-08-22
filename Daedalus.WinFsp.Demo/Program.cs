@@ -13,7 +13,9 @@ if (!string.IsNullOrEmpty(logPath))
 
 if (args.Length < 3)
 {
-    Console.WriteLine("usage: Daedalus.WinFsp.Demo <overlay|passthrough> <source-dir> <mount-point> [overwrite-dir]");
+    Console.WriteLine(
+        "usage: Daedalus.WinFsp.Demo <overlay|overlay-nocow|passthrough> <source-dir> <mount-point> [overwrite-dir] [process=dir ...]"
+    );
     return 1;
 }
 
@@ -45,6 +47,18 @@ if (Directory.Exists(mountPoint))
 }
 Directory.CreateDirectory(overwrite);
 
+var outputRules = new List<OutputRule>();
+foreach (var rule in args.Skip(4))
+{
+    int eq = rule.IndexOf('=');
+    if (eq <= 0)
+    {
+        Console.Error.WriteLine($"ignoring malformed rule: {rule}");
+        continue;
+    }
+    outputRules.Add(new OutputRule(rule[..eq], rule[(eq + 1)..]));
+}
+
 FileSystemHost host;
 switch (mode)
 {
@@ -60,7 +74,20 @@ switch (mode)
             "",
             LinkFlags.Recursive | LinkFlags.CreateTarget | LinkFlags.Whiteouts
         );
-        host = new FileSystemHost(new OverlayFileSystem(root, copyUpEnabled: mode == "overlay"));
+        foreach (var rule in outputRules)
+        {
+            Directory.CreateDirectory(rule.OutputDirectory);
+            root.LinkDirectory(rule.OutputDirectory, "", LinkFlags.Recursive | LinkFlags.Whiteouts);
+        }
+        host = new FileSystemHost(
+            new OverlayFileSystem(
+                root,
+                copyUpEnabled: mode == "overlay",
+                outputRules,
+                new ProcessTracker(),
+                mountPoint
+            )
+        );
         break;
     default:
         Console.Error.WriteLine($"unknown mode: {mode}");

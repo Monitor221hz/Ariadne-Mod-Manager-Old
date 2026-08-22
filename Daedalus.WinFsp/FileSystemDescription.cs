@@ -41,6 +41,8 @@ public class FileSystemDescription : IDisposable
     public FileStream? Stream { get; internal set; }
     public DirectoryInfo? DirectoryInfo { get; internal set; }
 
+    internal string? OutputTargetOverride;
+
     internal int _activeTransfers;
     internal FileStream? _retiredStream;
 

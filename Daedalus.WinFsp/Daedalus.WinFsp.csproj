@@ -14,6 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="System.Management" Version="9.0.0" />
     <PackageReference Include="winfsp.net" Version="2.2.26215" />
   </ItemGroup>
 

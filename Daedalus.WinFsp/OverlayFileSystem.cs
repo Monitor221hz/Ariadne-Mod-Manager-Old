@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Security.AccessControl;
 using Daedalus.VFS;
 using Fsp;
@@ -15,17 +16,51 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
     private readonly object _sync = new();
     private readonly string _createTargetRootPath;
     private readonly bool _copyUpEnabled;
+    private readonly IReadOnlyList<OutputRule> _outputRules;
+    private readonly Dictionary<string, string> _ruleByImagePath;
+    private readonly Dictionary<int, string> _ruleHit = new();
+    private readonly ProcessTracker? _processes;
+    private readonly string _physicalMountRoot;
     private readonly Dictionary<VirtualNode<BackedEntry>, FileSystemNode> _nodes = new(
         ReferenceEqualityComparer.Instance
     );
 
     public OverlayFileSystem(VirtualNode<BackedEntry> root)
-        : this(root, copyUpEnabled: true) { }
+        : this(root, copyUpEnabled: true, null, null, null) { }
 
     public OverlayFileSystem(VirtualNode<BackedEntry> root, bool copyUpEnabled)
+        : this(root, copyUpEnabled, null, null, null) { }
+
+    public OverlayFileSystem(
+        VirtualNode<BackedEntry> root,
+        bool copyUpEnabled,
+        IReadOnlyList<OutputRule>? outputRules,
+        ProcessTracker? processes,
+        string? physicalMountRoot
+    )
     {
         _root = root;
         _copyUpEnabled = copyUpEnabled;
+        _outputRules = outputRules ?? Array.Empty<OutputRule>();
+        _ruleByImagePath = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var rule in _outputRules)
+        {
+            _ruleByImagePath[Path.GetFullPath(rule.Image)] = rule.OutputDirectory;
+        }
+        _processes = processes ?? (_outputRules.Count > 0 ? new ProcessTracker() : null);
+
+        if (_processes != null)
+        {
+            foreach (var (pid, imagePath) in _processes.Snapshot())
+            {
+                ResolveRule(pid, imagePath);
+            }
+            _processes.ProcessStarted += ResolveRule;
+            _processes.ProcessStopped += pid => _ruleHit.Remove(pid);
+        }
+        _physicalMountRoot = physicalMountRoot is null
+            ? ""
+            : Path.GetFullPath(physicalMountRoot).TrimEnd('\\', '/') + Path.DirectorySeparatorChar;
         _createTargetRootPath = ComputeCreateTargetRootPath(root);
     }
 
@@ -97,7 +132,8 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
                 {
                     return STATUS_OBJECT_NAME_COLLISION;
                 }
-                var targetPath = GetCreateTargetPath(fileName);
+                int pid = _ruleByImagePath.Count > 0 ? GetOperationProcessId() : 0;
+                var targetPath = ResolveOutputTarget(fileName, pid);
                 if (!createOptions.HasFlag(FileCreateOptions.DirectoryFile))
                 {
                     var newFile = _root.LinkFile(fileName, targetPath);
@@ -153,6 +189,10 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
                     fileNode = Wrap(newFolder);
                 }
                 fileNode.AddOpen();
+                if (pid != 0 && TryResolveRuleTarget(pid, out string? ruleTarget))
+                {
+                    fileDesc.OutputTargetOverride = ruleTarget;
+                }
                 fileInfo = fileDesc.GetFileInfo();
                 return STATUS_SUCCESS;
             }
@@ -218,6 +258,13 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
                 }
                 fileNode = Wrap(node);
                 fileNode.AddOpen();
+                if (
+                    _ruleByImagePath.Count > 0
+                    && TryResolveRuleTarget(GetOperationProcessId(), out string? ruleTarget)
+                )
+                {
+                    fileDesc.OutputTargetOverride = ruleTarget;
+                }
                 fileInfo = fileDesc.GetFileInfo();
                 return STATUS_SUCCESS;
             }
@@ -240,8 +287,6 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
             var node = fileDesc.Owner;
             if (!fileDesc.IsFile)
             {
-                // placeholder directory: lazily materialize a physical folder in
-                // the create target the first time anything needs one
                 if (node.Data.PhysicalPath is null)
                 {
                     string targetDir = GetCreateTargetPath(node.GetPath());
@@ -265,7 +310,9 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
             }
 
             string virtualPath = node.GetPath();
-            string targetPhysical = GetCreateTargetPath(virtualPath);
+            string targetPhysical = fileDesc.OutputTargetOverride is string ruleTarget
+                ? Path.Join(ruleTarget.AsSpan(), virtualPath.AsSpan())
+                : GetCreateTargetPath(virtualPath);
             Debug.WriteLine($"CopyUp '{virtualPath}' -> '{targetPhysical}'");
             Directory.CreateDirectory(Path.GetDirectoryName(targetPhysical)!);
             File.Copy(physical, targetPhysical);
@@ -322,6 +369,43 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
     }
 
     private string GetCreateTargetRootPath() => _createTargetRootPath;
+
+    private string ResolveOutputTarget(string virtualPath, int originPid)
+    {
+        if (TryResolveRuleTarget(originPid, out string? ruleTarget))
+        {
+            return Path.Join(ruleTarget.AsSpan(), virtualPath.AsSpan().TrimStart(['\\', '/']));
+        }
+        return GetCreateTargetPath(virtualPath);
+    }
+
+    private bool TryResolveRuleTarget(int pid, [NotNullWhen(true)] out string? outputDir)
+    {
+        return _ruleHit.TryGetValue(pid, out outputDir);
+    }
+
+    private void ResolveRule(int pid, string imagePath)
+    {
+        if (
+            _physicalMountRoot.Length > 0
+            && imagePath.StartsWith(_physicalMountRoot, StringComparison.OrdinalIgnoreCase)
+        )
+        {
+            string virtualRemainder = imagePath[_physicalMountRoot.Length..];
+            var node = _root.FindNode(virtualRemainder);
+            if (node?.Data.PhysicalPath != null)
+            {
+                imagePath = node.Data.PhysicalPath;
+            }
+        }
+        if (_ruleByImagePath.TryGetValue(imagePath, out var outputDir))
+        {
+            lock (_sync)
+            {
+                _ruleHit[pid] = outputDir;
+            }
+        }
+    }
 
     private static string ComputeCreateTargetRootPath(VirtualNode<BackedEntry> root)
     {
