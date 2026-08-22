@@ -93,6 +93,102 @@ public class OverlayFileSystemMountedTests : IDisposable
     }
 
     [SkippableFact]
+    public void Mounted_OutputRule_Routes_Writes_To_Rule_Target()
+    {
+        RequireWinFsp();
+
+        string ruleTarget = _tmp + "\\ruletarget";
+        Directory.CreateDirectory(ruleTarget);
+        string selfPath =
+            System.Diagnostics.Process.GetCurrentProcess().MainModule!.FileName!;
+        var rules = new[] { new OutputRule(selfPath, ruleTarget) };
+        string mountPoint = _tmp + "-mount";
+
+        var fs = new OverlayFileSystem(
+            BuildTree(),
+            new OverlayFileSystemOptions
+            {
+                OutputRules = rules,
+                ProcessTracker = new ProcessTracker(),
+                PhysicalMountRoot = mountPoint,
+            }
+        );
+        using var host = new FileSystemHost(fs);
+        int status = host.Mount(mountPoint, null, false, 0);
+        Assert.True(status >= 0, $"Mount failed: 0x{unchecked((uint)status):X8}");
+        string mounted = host.MountPoint()!;
+
+        File.WriteAllText(mounted + "\\rule-created.txt", "wrote-through-rule");
+        File.WriteAllText(mounted + "\\config.ini", "edited-through-rule");
+
+        host.Unmount();
+
+        Assert.True(File.Exists(ruleTarget + "\\rule-created.txt"));
+        Assert.False(File.Exists(OverwriteDir + "\\rule-created.txt"));
+        Assert.True(File.Exists(ruleTarget + "\\config.ini"));
+        Assert.False(File.Exists(OverwriteDir + "\\config.ini"));
+        Assert.Equal("from-mod", File.ReadAllText(ModDir + "\\config.ini"));
+    }
+
+    [SkippableFact]
+    public void Mounted_Concurrent_CopyUps_Under_Write_Pressure()
+    {
+        RequireWinFsp();
+
+        Directory.CreateDirectory(ModDir + "\\stress");
+        for (int i = 0; i < 10; i++)
+        {
+            File.WriteAllText(ModDir + $"\\stress\\s{i:D3}.dat", $"stock-{i:D3}");
+        }
+
+        string mountPoint = _tmp + "-mount";
+        var fs = new OverlayFileSystem(BuildTree());
+        using var host = new FileSystemHost(fs);
+        int status = host.Mount(mountPoint, null, false, 0);
+        Assert.True(status >= 0, $"Mount failed: 0x{unchecked((uint)status):X8}");
+        string mounted = host.MountPoint()!;
+
+        var errors = new ConcurrentQueue<Exception>();
+        var tasks = new List<Task>();
+        for (int t = 0; t < 4; t++)
+        {
+            int worker = t;
+            tasks.Add(Task.Run(() =>
+            {
+                for (int round = 0; round < 25; round++)
+                {
+                    int fileIndex = (worker + round) % 10;
+                    string name = $"s{fileIndex:D3}.dat";
+                    try
+                    {
+                        File.WriteAllText(
+                            mounted + "\\stress\\" + name,
+                            $"edited-{worker}-{round}"
+                        );
+                    }
+                    catch (Exception ex)
+                    {
+                        errors.Enqueue(ex);
+                    }
+                }
+            }));
+        }
+
+        Assert.True(Task.WaitAll(tasks.ToArray(), TimeSpan.FromMinutes(2)));
+        Assert.Empty(errors);
+
+        host.Unmount();
+
+        for (int i = 0; i < 10; i++)
+        {
+            string modFile = ModDir + $"\\stress\\s{i:D3}.dat";
+            string sinkFile = OverwriteDir + $"\\stress\\s{i:D3}.dat";
+            Assert.Equal($"stock-{i:D3}", File.ReadAllText(modFile));
+            Assert.Matches(@"^edited-\d+-\d+$", File.ReadAllText(sinkFile));
+        }
+    }
+
+    [SkippableFact]
     public void Mounted_Reads_PriorityWinner_Through_Driver()
     {
         RequireWinFsp();

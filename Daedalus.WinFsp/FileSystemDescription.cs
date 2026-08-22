@@ -43,6 +43,13 @@ public class FileSystemDescription : IDisposable
 
     internal string? OutputTargetOverride;
 
+    private string? _redirectTarget;
+
+    internal bool RedirectsTo(string path) =>
+        string.Equals(_redirectTarget, path, StringComparison.OrdinalIgnoreCase);
+
+    internal void MarkRedirectsTo(string path) => _redirectTarget = path;
+
     internal int _activeTransfers;
     internal FileStream? _retiredStream;
 
@@ -181,7 +188,7 @@ public class FileSystemDescription : IDisposable
     {
         if (!IsFile && DirectoryInfo == null)
         {
-            // placeholder directory: report a bare directory-shaped info
+            // placeholder directory
             var fileInfo = new FileInfo
             {
                 FileAttributes = (uint)FileAttributes.Directory,

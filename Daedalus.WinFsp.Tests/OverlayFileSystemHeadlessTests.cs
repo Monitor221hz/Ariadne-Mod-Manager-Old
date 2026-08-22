@@ -70,7 +70,7 @@ public class OverlayFileSystemHeadlessTests : IDisposable
             Root,
             new OverlayFileSystemOptions
             {
-                OutputRules = new[] { new OutputRule("C:\\Tools\\fnis.exe", BaseDir) },
+                OutputRules = new[] { new OutputRule("C:\\Tools\\test.exe", BaseDir) },
                 PhysicalMountRoot = Path.Combine(_tmp, "mount"),
             }
         );
@@ -778,5 +778,36 @@ public class OverlayFileSystemHeadlessTests : IDisposable
         Assert.Equal(0, status);
         Assert.True(info.FileSize > 0);
         desc.Dispose();
+    }
+
+    [SkippableFact]
+    public void Concurrent_Writes_To_Same_File_CopyUp_Exactly_Once()
+    {
+        SkipNonWindows();
+        var descA = OpenFile("\\meshes\\sword.nif", FileSystemRights.FullControl);
+        var descB = OpenFile("\\meshes\\sword.nif", FileSystemRights.FullControl);
+        var payload = Encoding.UTF8.GetBytes("x");
+
+        var taskA = Task.Run(() =>
+        {
+            for (int i = 0; i < 100; i++)
+            {
+                FS.Write(null!, descA, payload, 0, 1, false, false, out _, out _);
+            }
+        });
+        var taskB = Task.Run(() =>
+        {
+            for (int i = 0; i < 100; i++)
+            {
+                FS.Write(null!, descB, payload, 0, 1, false, false, out _, out _);
+            }
+        });
+        Assert.True(Task.WaitAll(new[] { taskA, taskB }, TimeSpan.FromSeconds(30)));
+
+        string sink = Path.Combine(OverwriteDir, "meshes", "sword.nif");
+        Assert.True(File.Exists(sink));
+        descA.Dispose();
+        descB.Dispose();
+        Assert.Equal("modA-mesh", File.ReadAllText(Path.Combine(ModADir, "meshes", "sword.nif")));
     }
 }
