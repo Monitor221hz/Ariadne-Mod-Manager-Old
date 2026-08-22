@@ -16,6 +16,8 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
     private readonly object _sync = new();
     private readonly string _createTargetRootPath;
     private readonly bool _copyUpEnabled;
+    private readonly uint _fileInfoTimeout;
+    private readonly uint _dirInfoTimeout;
     private readonly IReadOnlyList<OutputRule> _outputRules;
     private readonly Dictionary<string, string> _ruleByImagePath;
     private readonly Dictionary<int, string> _ruleHit = new();
@@ -26,28 +28,27 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
     );
 
     public OverlayFileSystem(VirtualNode<BackedEntry> root)
-        : this(root, copyUpEnabled: true, null, null, null) { }
+        : this(root, new OverlayFileSystemOptions()) { }
 
-    public OverlayFileSystem(VirtualNode<BackedEntry> root, bool copyUpEnabled)
-        : this(root, copyUpEnabled, null, null, null) { }
-
-    public OverlayFileSystem(
-        VirtualNode<BackedEntry> root,
-        bool copyUpEnabled,
-        IReadOnlyList<OutputRule>? outputRules,
-        ProcessTracker? processes,
-        string? physicalMountRoot
-    )
+    public OverlayFileSystem(VirtualNode<BackedEntry> root, OverlayFileSystemOptions options)
     {
         _root = root;
-        _copyUpEnabled = copyUpEnabled;
-        _outputRules = outputRules ?? Array.Empty<OutputRule>();
+        _copyUpEnabled = options.CopyUpEnabled;
+        _fileInfoTimeout = options.FileInfoTimeout;
+        _dirInfoTimeout = options.DirInfoTimeout;
+        _outputRules = options.OutputRules ?? Array.Empty<OutputRule>();
         _ruleByImagePath = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var rule in _outputRules)
         {
             _ruleByImagePath[Path.GetFullPath(rule.Image)] = rule.OutputDirectory;
         }
-        _processes = processes ?? (_outputRules.Count > 0 ? new ProcessTracker() : null);
+        _processes =
+            options.ProcessTracker ?? (_outputRules.Count > 0 ? new ProcessTracker() : null);
+
+        _physicalMountRoot = options.PhysicalMountRoot is null
+            ? ""
+            : Path.GetFullPath(options.PhysicalMountRoot).TrimEnd('\\', '/')
+                + Path.DirectorySeparatorChar;
 
         if (_processes != null)
         {
@@ -58,9 +59,6 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
             _processes.ProcessStarted += ResolveRule;
             _processes.ProcessStopped += pid => _ruleHit.Remove(pid);
         }
-        _physicalMountRoot = physicalMountRoot is null
-            ? ""
-            : Path.GetFullPath(physicalMountRoot).TrimEnd('\\', '/') + Path.DirectorySeparatorChar;
         _createTargetRootPath = ComputeCreateTargetRootPath(root);
     }
 
@@ -82,7 +80,8 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
         host.SectorSize = ALLOCATION_UNIT;
         host.SectorsPerAllocationUnit = 1;
         host.MaxComponentLength = 255;
-        host.FileInfoTimeout = 1000;
+        host.FileInfoTimeout = _fileInfoTimeout;
+        host.DirInfoTimeout = _dirInfoTimeout;
         host.CaseSensitiveSearch = false;
         host.CasePreservedNames = true;
         host.UnicodeOnDisk = true;

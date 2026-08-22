@@ -62,6 +62,21 @@ public class OverlayFileSystemHeadlessTests : IDisposable
         FS = new OverlayFileSystem(Root);
     }
 
+    [SkippableFact]
+    public void Ctor_With_Rules_Tracker_MountRoot_Does_Not_Throw()
+    {
+        SkipNonWindows();
+        var fs = new OverlayFileSystem(
+            Root,
+            new OverlayFileSystemOptions
+            {
+                OutputRules = new[] { new OutputRule("C:\\Tools\\fnis.exe", BaseDir) },
+                PhysicalMountRoot = Path.Combine(_tmp, "mount"),
+            }
+        );
+        Assert.NotNull(fs);
+    }
+
     public void Dispose()
     {
         if (_tmp == null)

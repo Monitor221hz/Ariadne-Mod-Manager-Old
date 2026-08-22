@@ -82,10 +82,13 @@ switch (mode)
         host = new FileSystemHost(
             new OverlayFileSystem(
                 root,
-                copyUpEnabled: mode == "overlay",
-                outputRules,
-                new ProcessTracker(),
-                mountPoint
+                new OverlayFileSystemOptions
+                {
+                    CopyUpEnabled = mode == "overlay",
+                    OutputRules = outputRules,
+                    ProcessTracker = new ProcessTracker(),
+                    PhysicalMountRoot = mountPoint,
+                }
             )
         );
         break;
