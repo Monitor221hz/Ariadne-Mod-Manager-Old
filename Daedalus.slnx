@@ -1,8 +1,13 @@
 <Solution>
-  <Project Path="Daedalus.WinFsp.Demo/Daedalus.WinFsp.Demo.csproj" />
-  <Project Path="Daedalus.FUSE/Daedalus.FUSE.csproj" />
-  <Project Path="Daedalus.WinFsp/Daedalus.WinFsp.csproj" />
+  <Project Path="Daedalus.VFS.WinFsp.Demo/Daedalus.VFS.WinFsp.Demo.csproj" />
+  <Project Path="Daedalus.Contracts.Configs/Daedalus.Contracts.Configs.csproj" />
+  <Project Path="Daedalus.VFS.FUSE/Daedalus.VFS.FUSE.csproj" />
+  <Project Path="Daedalus.VFS.WinFsp/Daedalus.VFS.WinFsp.csproj" />
   <Project Path="Daedalus.VFS/Daedalus.VFS.csproj" />
+  <Project Path="Daedalus.Configs/Daedalus.Configs.csproj" />
+  <Project Path="Daedalus.ModManager.CLI/Daedalus.ModManager.CLI.csproj" />
+  <Project Path="Daedalus.Mods/Daedalus.Mods.csproj" />
+  <Project Path="Daedalus.VFS.Services/Daedalus.VFS.Services.csproj" />
   <Project Path="Daedalus.VFS.Tests/Daedalus.VFS.Tests.csproj" />
-  <Project Path="Daedalus.WinFsp.Tests/Daedalus.WinFsp.Tests.csproj" />
+  <Project Path="Daedalus.VFS.WinFsp.Tests/Daedalus.VFS.WinFsp.Tests.csproj" />
 </Solution>

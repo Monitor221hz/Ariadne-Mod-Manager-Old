@@ -2,8 +2,6 @@
 
 namespace Daedalus.VFS;
 
-// Derived from ModOrganizer2/usvfs/src/shared/directory_tree.h (GPLv3, Sebastian Herbord)
-
 public partial class VirtualNode<TNodeData>
 {
     private static ReadOnlySpan<char> Separators => "/\\";

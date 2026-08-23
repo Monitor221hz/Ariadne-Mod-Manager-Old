@@ -2,11 +2,11 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Daedalus.WinFsp.Demo",
+            "name": "Daedalus.VFS.WinFsp.Demo",
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/Daedalus.WinFsp.Demo/bin/Debug/net10.0/Daedalus.WinFsp.Demo.exe",
+            "program": "${workspaceFolder}/Daedalus.VFS.WinFsp.Demo/bin/Debug/net10.0/Daedalus.VFS.WinFsp.Demo.exe",
             "args": [
                 "${input:mode}",
                 "${input:sourceDir}",
@@ -18,11 +18,11 @@
             "stopAtEntry": false
         },
         {
-            "name": "Daedalus.WinFsp.Demo (Release)",
+            "name": "Daedalus.VFS.WinFsp.Demo (Release)",
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build-release",
-            "program": "${workspaceFolder}/Daedalus.WinFsp.Demo/bin/Release/net10.0/Daedalus.WinFsp.Demo.exe",
+            "program": "${workspaceFolder}/Daedalus.VFS.WinFsp.Demo/bin/Release/net10.0/Daedalus.VFS.WinFsp.Demo.exe",
             "args": [
                 "${input:mode}",
                 "${input:sourceDir}",

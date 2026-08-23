@@ -5,14 +5,14 @@
             "label": "build",
             "command": "dotnet",
             "type": "process",
-            "args": ["build", "${workspaceFolder}/Daedalus.WinFsp.Demo/Daedalus.WinFsp.Demo.csproj", "/property:GenerateFullPaths=true", "/consoleloggerparameters:NoSummary"],
+            "args": ["build", "${workspaceFolder}/Daedalus.VFS.WinFsp.Demo/Daedalus.VFS.WinFsp.Demo.csproj", "/property:GenerateFullPaths=true", "/consoleloggerparameters:NoSummary"],
             "problemMatcher": "$msCompile"
         },
         {
             "label": "build-release",
             "command": "dotnet",
             "type": "process",
-            "args": ["build", "${workspaceFolder}/Daedalus.WinFsp.Demo/Daedalus.WinFsp.Demo.csproj", "-c", "Release", "/property:GenerateFullPaths=true", "/consoleloggerparameters:NoSummary"],
+            "args": ["build", "${workspaceFolder}/Daedalus.VFS.WinFsp.Demo/Daedalus.VFS.WinFsp.Demo.csproj", "-c", "Release", "/property:GenerateFullPaths=true", "/consoleloggerparameters:NoSummary"],
             "problemMatcher": "$msCompile"
         }
     ]
