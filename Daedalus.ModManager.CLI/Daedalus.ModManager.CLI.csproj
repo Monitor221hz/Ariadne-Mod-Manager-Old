@@ -5,6 +5,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AssemblyName>DaedalusModManagerCLI</AssemblyName>
+    <RootNamespace>Daedalus.ModManager.CLI</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,7 +22,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Daedalus.Configs\Daedalus.Configs.csproj" />
+    <EmbeddedResource Include="Fonts\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Daedalus.Games\Daedalus.Games.csproj" />
+    <ProjectReference Include="..\Daedalus.ModManager\Daedalus.ModManager.csproj" />
     <ProjectReference Include="..\Daedalus.Mods\Daedalus.Mods.csproj" />
     <ProjectReference Include="..\Daedalus.VFS.Services\Daedalus.VFS.Services.csproj" />
   </ItemGroup>

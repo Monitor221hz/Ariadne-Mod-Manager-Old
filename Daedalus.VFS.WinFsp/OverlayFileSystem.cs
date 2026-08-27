@@ -132,7 +132,7 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
                 var targetPath = ResolveOutputTarget(fileName, pid);
                 if (!createOptions.HasFlag(FileCreateOptions.DirectoryFile))
                 {
-                    var newFile = _root.LinkFile(fileName, targetPath);
+                    var newFile = _root.LinkFile(targetPath, fileName);
                     FileSecurity? fileSecurity = null;
                     if (securityDescriptor != null)
                     {
@@ -359,7 +359,7 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
         {
             state.ReplacementPath = targetPhysical;
             SwapDescTo(fileDesc, targetPhysical);
-            _root.LinkFile(node.GetPath(), targetPhysical);
+            _root.LinkFile(targetPhysical, node.GetPath());
             state.Completed.Set();
         }
     }
@@ -945,7 +945,7 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
                 srcNode.RemoveFromParent();
                 _nodes.Remove(srcNode);
 
-                var destNode = _root.LinkFile(newFileName, targetPath);
+                var destNode = _root.LinkFile(targetPath, newFileName);
                 fileNode.Node = destNode;
                 fileDesc.Owner = destNode;
                 _nodes[destNode] = fileNode;

@@ -137,7 +137,7 @@ public class FileSystemLinkerTests : IDisposable
     public void LinkFile_Creates_Placeholder_Intermediates()
     {
         var root = NewRoot();
-        var node = root.LinkFile("textures\\dungeon\\wall.dds", "C:\\mods\\x\\wall.dds");
+        var node = root.LinkFile("C:\\mods\\x\\wall.dds", "textures\\dungeon\\wall.dds");
 
         Assert.Equal("C:\\mods\\x\\wall.dds", node.Data.PhysicalPath);
         Assert.True(root.FindNode("textures")!.IsDirectory);
@@ -148,9 +148,9 @@ public class FileSystemLinkerTests : IDisposable
     public void LinkFile_FailIfExists_Throws()
     {
         var root = NewRoot();
-        root.LinkFile("a.txt", "C:\\one\\a.txt");
+        root.LinkFile("C:\\one\\a.txt", "a.txt");
         Assert.Throws<IOException>(() =>
-            root.LinkFile("a.txt", "C:\\two\\a.txt", LinkFlags.FailIfExists)
+            root.LinkFile("C:\\two\\a.txt", "a.txt", LinkFlags.FailIfExists)
         );
     }
 

@@ -4,8 +4,8 @@ public static class FileSystemLinker
 {
     public static VirtualNode<BackedEntry> LinkFile(
         this VirtualNode<BackedEntry> root,
-        ReadOnlySpan<char> virtualPath,
         string physicalPath,
+        ReadOnlySpan<char> virtualPath,
         LinkFlags flags = LinkFlags.None
     )
     {

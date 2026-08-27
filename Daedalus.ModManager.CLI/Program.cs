@@ -21,21 +21,29 @@ internal class Program
     static void ConfigureServices(IServiceCollection services)
     {
         services.ConfigureVFS();
+        services.AddSingleton<IModDeploymentMethod, VirtualDeploymentMethod>();
         services.AddHostedService<Application>();
     }
 }
 
-public class Application(IVirtualFileSystemFactory vfsFactory, IHostApplicationLifetime lifetime)
-    : IHostedService
+public class Application(
+    IModDeploymentMethod modDeploymentMethod,
+    IHostApplicationLifetime lifetime
+) : IHostedService
 {
-    private readonly IVirtualFileSystemFactory _vfsFactory = vfsFactory;
+    private readonly IModDeploymentMethod _modDeploymentMethod = modDeploymentMethod;
     private readonly IHostApplicationLifetime _lifetime = lifetime;
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        AnsiConsole.MarkupLine("[green]✓ adfasodfasdf[/]");
-        await AnsiConsole.ConfirmAsync("Meep?", cancellationToken: cancellationToken);
         AnsiConsole.Clear();
+
+        using Stream fontStream = typeof(Application).Assembly.GetManifestResourceStream(
+            "Daedalus.ModManager.CLI.Fonts.Caligraphy.flf"
+        )!;
+        FigletFont font = FigletFont.Load(fontStream);
+        AnsiConsole.Write(new FigletText(font, "Daedalus").Color(Color.CornflowerBlue));
+
         _lifetime.StopApplication();
     }
 

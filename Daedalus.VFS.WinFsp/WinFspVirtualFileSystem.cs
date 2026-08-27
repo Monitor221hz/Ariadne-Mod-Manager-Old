@@ -20,6 +20,7 @@ public sealed class WinFspVirtualFileSystem : IVirtualFileSystem
                 }
             )
         );
+        _host.Mount(settings.MountPoint.FullName, null, false, 0);
     }
 
     public void Unmount()

@@ -1,0 +1,51 @@
+using Daedalus.Contracts.Games;
+
+namespace Daedalus.Games;
+
+public class GamePath : IGamePath
+{
+    public string Key { get; }
+    public string? BasedOn { get; set; }
+    public string DirectoryPath { get; set; }
+    public IReadOnlyList<string> Patterns { get; }
+    private bool _isAbsolute;
+    private string? _cachedAbsolutePath;
+
+    public GamePath(
+        string key,
+        string directoryPath,
+        IReadOnlyList<string> patterns,
+        string? basedOn = null
+    )
+    {
+        Key = key;
+        DirectoryPath = Environment.ExpandEnvironmentVariables(directoryPath);
+        _isAbsolute = Path.IsPathFullyQualified(DirectoryPath);
+        Patterns = patterns;
+        BasedOn = basedOn;
+    }
+
+    public string GetAbsolutePath(IInstalledGame game)
+    {
+        if (_isAbsolute)
+        {
+            return DirectoryPath;
+        }
+        if (_cachedAbsolutePath != null)
+        {
+            return _cachedAbsolutePath;
+        }
+        var gameConfig = game.Configuration;
+        if (BasedOn == null)
+        {
+            _cachedAbsolutePath = Path.Combine(game.InstallPath.FullName, DirectoryPath);
+            return _cachedAbsolutePath;
+        }
+        if (BasedOn != null && gameConfig.PathNameMap.TryGetValue(BasedOn, out var basedOnPath))
+        {
+            _cachedAbsolutePath = Path.Combine(basedOnPath.GetAbsolutePath(game), DirectoryPath);
+            return _cachedAbsolutePath;
+        }
+        return DirectoryPath;
+    }
+}
