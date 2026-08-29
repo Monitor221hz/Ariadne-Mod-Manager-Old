@@ -1,0 +1,43 @@
+{
+  "Name": "Skyrim Special Edition",
+  "Platforms": [
+    {
+      "Platform": "Windows",
+      "Executables": [
+        {
+          "File": "SkyrimSELauncher.exe",
+          "Arguments": []
+        },
+        {
+          "File": "SkyrimSE.exe",
+          "Arguments": []
+        }
+      ],
+      "DefaultIndex": 0
+    }
+  ],
+  "Vendors": {
+    "Steam": 489830,
+    "GOG": 0
+  },
+  "Root": {
+    "Key": "Root",
+    "DirectoryPath": "",
+    "Patterns": []
+  },
+  "Deployments": [
+    {
+      "Key": "AppData",
+      "DirectoryPath": "%LOCALAPPDATA%\\Skyrim Special Edition",
+      "Patterns": []
+    }
+  ],
+  "InstallTargets": [
+    {
+      "Key": "Data",
+      "DirectoryPath": "Data",
+      "Patterns": [],
+      "BasedOn": "Root"
+    }
+  ]
+}

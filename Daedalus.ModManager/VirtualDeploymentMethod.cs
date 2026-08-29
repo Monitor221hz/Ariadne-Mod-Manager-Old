@@ -59,7 +59,6 @@ public sealed class VirtualDeploymentMethod : IModDeploymentMethod
         var settings = new VirtualFileSystemSettings(true, mountDirectory, _outputRules);
         vfs.Mount(virtualRoot, settings);
         _vfsStack.Push(vfs);
-        virtualRootKeyMap.Add(deploymentPath.Key, virtualRoot);
 
         _gamePathDirectoryMap.Add(deploymentPath, mountDirectory);
         // deploymentPath.DeployedDirectory = mountDirectory;
@@ -67,21 +66,24 @@ public sealed class VirtualDeploymentMethod : IModDeploymentMethod
 
     private static bool TryGetVirtualRoot(
         IGamePath gamePath,
+        ISupportedGame configuration,
         Dictionary<string, VirtualNode<BackedEntry>> virtualRootKeyMap,
         [NotNullWhen(true)] out VirtualNode<BackedEntry>? virtualRoot
     )
     {
-        while (!virtualRootKeyMap.TryGetValue(gamePath.Key, out virtualRoot))
+        var current = gamePath;
+        HashSet<string> visitedKeys = new(StringComparer.OrdinalIgnoreCase) { current.Key };
+        while (!virtualRootKeyMap.TryGetValue(current.Key, out virtualRoot))
         {
             if (
-                gamePath.BasedOn == null
-                || !gamePath.BasedOn.Equals(gamePath.Key, StringComparison.OrdinalIgnoreCase)
-                || !virtualRootKeyMap.TryGetValue(gamePath.BasedOn, out var parentVirtualRoot)
+                current.BasedOn == null
+                || !visitedKeys.Add(current.BasedOn)
+                || !configuration.TryGetValue(current.BasedOn, out var parent)
             )
             {
                 return false;
             }
-            virtualRoot = parentVirtualRoot;
+            current = parent;
         }
         return true;
     }
@@ -112,7 +114,7 @@ public sealed class VirtualDeploymentMethod : IModDeploymentMethod
             {
                 continue;
             }
-            if (!TryGetVirtualRoot(gamePath, virtualRootKeyMap, out var virtualRoot))
+            if (!TryGetVirtualRoot(gamePath, configuration, virtualRootKeyMap, out var virtualRoot))
             {
                 continue;
             }

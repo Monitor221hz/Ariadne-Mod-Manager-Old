@@ -38,7 +38,8 @@ public class SupportedGame : ISupportedGame
         Root = root;
         Deployments = deployments;
         InstallTargets = installTargets;
-        _pathNameMap = Deployments.Concat(InstallTargets).ToDictionary(t => t.Key, t => t);
+        var paths = Deployments.Concat(InstallTargets).Prepend(root);
+        _pathNameMap = paths.ToDictionary(t => t.Key, t => t);
     }
 
     public bool ContainsKey(string key)
