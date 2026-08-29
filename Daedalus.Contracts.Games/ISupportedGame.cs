@@ -1,6 +1,6 @@
 namespace Daedalus.Contracts.Games;
 
-public interface ISupportedGame
+public interface ISupportedGame : IReadOnlyDictionary<string, IGamePath>
 {
     string Name { get; }
     IReadOnlyList<IPlatformConfiguration> Platforms { get; }
@@ -8,5 +8,4 @@ public interface ISupportedGame
     IGamePath Root { get; }
     IReadOnlyList<IGamePath> Deployments { get; }
     IReadOnlyList<IGamePath> InstallTargets { get; }
-    IReadOnlyDictionary<string, IGamePath> PathNameMap { get; }
 }

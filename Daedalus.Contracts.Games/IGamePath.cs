@@ -1,11 +1,10 @@
 namespace Daedalus.Contracts.Games;
 
-public interface IGamePath
+public interface IGamePath : IEqualityComparer<IGamePath>, IEquatable<IGamePath>
 {
     string Key { get; }
     string? BasedOn { get; }
-    string DirectoryPath { get; set; }
+    string DirectoryPath { get; }
     IReadOnlyList<string> Patterns { get; }
-
     string GetAbsolutePath(IInstalledGame game);
 }

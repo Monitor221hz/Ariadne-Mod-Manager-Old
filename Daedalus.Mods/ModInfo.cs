@@ -2,14 +2,6 @@ using Daedalus.Contracts.Mods;
 
 namespace Daedalus.Mods;
 
-public abstract class LoadOrderInfo : ILoadOrderInfo
-{
-    public IModInfo Origin { get; }
-    public List<FileInfo> Artifacts { get; }
-    public List<ILoadOrderInfo> Dependencies { get; }
-    public bool Active { get; set; }
-}
-
 public class ModInfo : IModInfo
 {
     public ulong ID { get; }

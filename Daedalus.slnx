@@ -4,8 +4,10 @@
   <Project Path="Daedalus.VFS.FUSE/Daedalus.VFS.FUSE.csproj" />
   <Project Path="Daedalus.VFS.WinFsp/Daedalus.VFS.WinFsp.csproj" />
   <Project Path="Daedalus.VFS/Daedalus.VFS.csproj" />
+  <Project Path="Daedalus.Contracts.ModManager/Daedalus.Contracts.ModManager.csproj" />
   <Project Path="Daedalus.Contracts.Mods/Daedalus.Contracts.Mods.csproj" />
   <Project Path="Daedalus.Games/Daedalus.Games.csproj" />
+  <Project Path="Daedalus.ModManager.Bethesda/Daedalus.ModManager.Bethesda.csproj" />
   <Project Path="Daedalus.ModManager.CLI/Daedalus.ModManager.CLI.csproj" />
   <Project Path="Daedalus.ModManager.GUI/Daedalus.ModManager.GUI.csproj" />
   <Project Path="Daedalus.ModManager/Daedalus.ModManager.csproj" />

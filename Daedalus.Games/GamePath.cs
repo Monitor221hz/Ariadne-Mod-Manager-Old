@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Daedalus.Contracts.Games;
 
 namespace Daedalus.Games;
@@ -6,7 +7,7 @@ public class GamePath : IGamePath
 {
     public string Key { get; }
     public string? BasedOn { get; set; }
-    public string DirectoryPath { get; set; }
+    public string DirectoryPath { get; }
     public IReadOnlyList<string> Patterns { get; }
     private bool _isAbsolute;
     private string? _cachedAbsolutePath;
@@ -41,11 +42,26 @@ public class GamePath : IGamePath
             _cachedAbsolutePath = Path.Combine(game.InstallPath.FullName, DirectoryPath);
             return _cachedAbsolutePath;
         }
-        if (BasedOn != null && gameConfig.PathNameMap.TryGetValue(BasedOn, out var basedOnPath))
+        if (BasedOn != null && gameConfig.TryGetValue(BasedOn, out var basedOnPath))
         {
             _cachedAbsolutePath = Path.Combine(basedOnPath.GetAbsolutePath(game), DirectoryPath);
             return _cachedAbsolutePath;
         }
         return DirectoryPath;
+    }
+
+    public bool Equals(IGamePath? x, IGamePath? y)
+    {
+        return x != null && y != null && x.Key.Equals(y.Key);
+    }
+
+    public int GetHashCode([DisallowNull] IGamePath obj)
+    {
+        return obj.Key.GetHashCode();
+    }
+
+    public bool Equals(IGamePath? other)
+    {
+        return Equals(this, other);
     }
 }

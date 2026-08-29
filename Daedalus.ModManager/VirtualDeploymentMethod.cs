@@ -1,4 +1,6 @@
-﻿using Daedalus.Contracts.Games;
+﻿using System.Diagnostics.CodeAnalysis;
+using Daedalus.Contracts.Games;
+using Daedalus.Contracts.ModManager;
 using Daedalus.Contracts.Mods;
 using Daedalus.VFS;
 
@@ -12,10 +14,85 @@ public sealed class VirtualDeploymentMethod : IModDeploymentMethod
     private List<OutputRule> _outputRules = new List<OutputRule>();
     public ModDeploymentFlags Flags => ModDeploymentFlags.EmptyMountPoints;
 
+    private Dictionary<IGamePath, DirectoryInfo> _gamePathDirectoryMap;
+
     public VirtualDeploymentMethod(IVirtualFileSystemFactory vfsFactory, IDeploymentPaths paths)
     {
         _vfsFactory = vfsFactory;
         _paths = paths;
+        _gamePathDirectoryMap = new();
+    }
+
+    private void DeployPath(
+        IInstalledGame game,
+        IGamePath deploymentPath,
+        Dictionary<string, VirtualNode<BackedEntry>> virtualRootKeyMap
+    )
+    {
+        var vfs = _vfsFactory.Create();
+        var sourcePath = game.LookupAbsolutePath(deploymentPath);
+        var virtualRoot = new VirtualNode<BackedEntry>("", NodeFlags.Directory, null, default);
+        virtualRoot.LinkDirectory(sourcePath, "");
+        virtualRoot.LinkDirectory(
+            _paths.OverwriteDirectory.FullName,
+            "",
+            LinkFlags.Recursive | LinkFlags.CreateTarget | LinkFlags.Whiteouts
+        );
+        foreach (var rule in _outputRules)
+        {
+            Directory.CreateDirectory(rule.OutputDirectory);
+            virtualRoot.LinkDirectory(
+                rule.OutputDirectory,
+                "",
+                LinkFlags.Recursive | LinkFlags.Whiteouts
+            );
+        }
+        virtualRootKeyMap.Add(deploymentPath.Key, virtualRoot);
+        var mountDirectory = new DirectoryInfo(
+            Path.Join(_paths.StagingDirectory.FullName, deploymentPath.Key)
+        );
+        if (mountDirectory.Exists)
+        {
+            mountDirectory.Delete(true);
+        }
+        mountDirectory.Create();
+        var settings = new VirtualFileSystemSettings(true, mountDirectory, _outputRules);
+        vfs.Mount(virtualRoot, settings);
+        _vfsStack.Push(vfs);
+        virtualRootKeyMap.Add(deploymentPath.Key, virtualRoot);
+
+        _gamePathDirectoryMap.Add(deploymentPath, mountDirectory);
+        // deploymentPath.DeployedDirectory = mountDirectory;
+    }
+
+    private static bool TryGetVirtualRoot(
+        IGamePath gamePath,
+        Dictionary<string, VirtualNode<BackedEntry>> virtualRootKeyMap,
+        [NotNullWhen(true)] out VirtualNode<BackedEntry>? virtualRoot
+    )
+    {
+        while (!virtualRootKeyMap.TryGetValue(gamePath.Key, out virtualRoot))
+        {
+            if (
+                gamePath.BasedOn == null
+                || !gamePath.BasedOn.Equals(gamePath.Key, StringComparison.OrdinalIgnoreCase)
+                || !virtualRootKeyMap.TryGetValue(gamePath.BasedOn, out var parentVirtualRoot)
+            )
+            {
+                return false;
+            }
+            virtualRoot = parentVirtualRoot;
+        }
+        return true;
+    }
+
+    public bool TryGetDeployedPath(
+        IInstalledGame game,
+        IGamePath path,
+        out DirectoryInfo? directoryInfo
+    )
+    {
+        return _gamePathDirectoryMap.TryGetValue(path, out directoryInfo);
     }
 
     public void Deploy(IInstalledGame game, IReadOnlyList<IModInfo> mods)
@@ -23,66 +100,23 @@ public sealed class VirtualDeploymentMethod : IModDeploymentMethod
         var modOrder = mods.OrderBy(m => m.Priority);
         var configuration = game.Configuration;
         Dictionary<string, VirtualNode<BackedEntry>> virtualRootKeyMap = new();
+        DeployPath(game, configuration.Root, virtualRootKeyMap);
         foreach (var deploymentPath in configuration.Deployments)
         {
-            var vfs = _vfsFactory.Create();
-            var sourcePath = game.LookupAbsolutePath(deploymentPath);
-            var virtualRoot = new VirtualNode<BackedEntry>("", NodeFlags.Directory, null, default);
-            virtualRoot.LinkDirectory(sourcePath, "");
-            virtualRoot.LinkDirectory(
-                _paths.OverwriteDirectory.FullName,
-                "",
-                LinkFlags.Recursive | LinkFlags.CreateTarget | LinkFlags.Whiteouts
-            );
-            foreach (var rule in _outputRules)
-            {
-                Directory.CreateDirectory(rule.OutputDirectory);
-                virtualRoot.LinkDirectory(
-                    rule.OutputDirectory,
-                    "",
-                    LinkFlags.Recursive | LinkFlags.Whiteouts
-                );
-            }
-            virtualRootKeyMap.Add(deploymentPath.Key, virtualRoot);
-            var settings = new VirtualFileSystemSettings(
-                true,
-                _paths.StagingDirectory,
-                _outputRules
-            );
-            vfs.Mount(virtualRoot, settings);
-            _vfsStack.Push(vfs);
-            virtualRootKeyMap.Add(deploymentPath.Key, virtualRoot);
+            DeployPath(game, deploymentPath, virtualRootKeyMap);
         }
-
         foreach (var mod in modOrder)
         {
             mod.Directory.Refresh();
-            if (
-                !mod.Directory.Exists
-                || !configuration.PathNameMap.TryGetValue(mod.Target, out var gamePath)
-            )
+            if (!mod.Directory.Exists || !configuration.TryGetValue(mod.Target, out var gamePath))
             {
                 continue;
             }
-            VirtualNode<BackedEntry>? virtualRoot = null;
-            while (!virtualRootKeyMap.TryGetValue(gamePath.Key, out virtualRoot))
-            {
-                if (
-                    gamePath.BasedOn == null
-                    || !configuration.PathNameMap.TryGetValue(
-                        gamePath.BasedOn,
-                        out var parentGamePath
-                    )
-                )
-                {
-                    break;
-                }
-                gamePath = parentGamePath;
-            }
-            if (virtualRoot == null)
+            if (!TryGetVirtualRoot(gamePath, virtualRootKeyMap, out var virtualRoot))
             {
                 continue;
             }
+
             foreach (
                 var fileSysInfo in mod.Directory.EnumerateFileSystemInfos(
                     "*",

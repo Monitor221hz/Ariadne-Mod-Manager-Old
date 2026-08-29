@@ -1,4 +1,5 @@
-﻿using Daedalus.VFS;
+﻿using Daedalus.Contracts.ModManager;
+using Daedalus.VFS;
 using Daedalus.VFS.Services;
 using Daedalus.VFS.WinFsp;
 using Microsoft.Extensions.DependencyInjection;

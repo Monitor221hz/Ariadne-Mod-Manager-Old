@@ -1,4 +1,4 @@
-namespace Daedalus.ModManager;
+namespace Daedalus.Contracts.ModManager;
 
 [Flags]
 public enum ModDeploymentFlags
