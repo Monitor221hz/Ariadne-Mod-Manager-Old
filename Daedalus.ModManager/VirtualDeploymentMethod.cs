@@ -26,13 +26,14 @@ public sealed class VirtualDeploymentMethod : IModDeploymentMethod
     private void DeployPath(
         IInstalledGame game,
         IGamePath deploymentPath,
-        Dictionary<string, VirtualNode<BackedEntry>> virtualRootKeyMap
+        Dictionary<string, VirtualNode<BackedEntry>> virtualRootKeyMap,
+        bool inPlace
     )
     {
         var vfs = _vfsFactory.Create();
         var sourcePath = game.LookupAbsolutePath(deploymentPath);
         var virtualRoot = new VirtualNode<BackedEntry>("", NodeFlags.Directory, null, default);
-        virtualRoot.LinkDirectory(sourcePath, "");
+
         virtualRoot.LinkDirectory(
             _paths.OverwriteDirectory.FullName,
             "",
@@ -48,18 +49,28 @@ public sealed class VirtualDeploymentMethod : IModDeploymentMethod
             );
         }
         virtualRootKeyMap.Add(deploymentPath.Key, virtualRoot);
-        var mountDirectory = new DirectoryInfo(
-            Path.Join(_paths.StagingDirectory.FullName, deploymentPath.Key)
-        );
-        if (mountDirectory.Exists)
+
+        DirectoryInfo mountDirectory;
+        if (!inPlace)
         {
-            mountDirectory.Delete(true);
+            mountDirectory = new DirectoryInfo(
+                Path.Join(_paths.StagingDirectory.FullName, deploymentPath.Key)
+            );
+            if (mountDirectory.Exists)
+            {
+                mountDirectory.Delete(true);
+            }
+            mountDirectory.Create();
+            virtualRoot.LinkDirectory(sourcePath, "");
         }
-        mountDirectory.Create();
+        else
+        {
+            mountDirectory = new DirectoryInfo(sourcePath); // responsibility of caller to ensure empty mount dir with WinFsp
+        }
+
         var settings = new VirtualFileSystemSettings(true, mountDirectory, _outputRules);
         vfs.Mount(virtualRoot, settings);
         _vfsStack.Push(vfs);
-
         _gamePathDirectoryMap.Add(deploymentPath, mountDirectory);
         // deploymentPath.DeployedDirectory = mountDirectory;
     }
@@ -102,10 +113,10 @@ public sealed class VirtualDeploymentMethod : IModDeploymentMethod
         var modOrder = mods.OrderBy(m => m.Priority);
         var configuration = game.Configuration;
         Dictionary<string, VirtualNode<BackedEntry>> virtualRootKeyMap = new();
-        DeployPath(game, configuration.Root, virtualRootKeyMap);
+        DeployPath(game, configuration.Root, virtualRootKeyMap, false);
         foreach (var deploymentPath in configuration.Deployments)
         {
-            DeployPath(game, deploymentPath, virtualRootKeyMap);
+            DeployPath(game, deploymentPath, virtualRootKeyMap, true);
         }
         foreach (var mod in modOrder)
         {

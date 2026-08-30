@@ -25,6 +25,9 @@ public static partial class MapperExtensions
 
     public static partial VendorInfoRecord Record(this VendorInfo vendor);
 
+    [MapperIgnoreSource(nameof(SupportedGame.Keys))]
+    [MapperIgnoreSource(nameof(SupportedGame.Values))]
+    [MapperIgnoreSource(nameof(SupportedGame.Count))]
     public static partial SupportedGameRecord Record(this SupportedGame game);
 
     private static IExecutable MapToIExecutable(ExecutableRecord record) => Map(record);

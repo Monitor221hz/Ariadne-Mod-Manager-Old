@@ -12,7 +12,6 @@ public class SupportedGame : ISupportedGame
     public IGamePath Root { get; }
     public IReadOnlyList<IGamePath> Deployments { get; }
     public IReadOnlyList<IGamePath> InstallTargets { get; }
-
     public IEnumerable<string> Keys => _pathNameMap.Keys;
 
     public IEnumerable<IGamePath> Values => _pathNameMap.Values;

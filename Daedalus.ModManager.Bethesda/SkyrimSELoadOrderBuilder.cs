@@ -18,8 +18,11 @@ public class SkyrimSELoadOrderBuilder : ILoadOrderBuilder
     )
     {
         var configuration = game.Configuration;
-        var appData = game.LookupAbsolutePath(configuration["AppData"]);
-        var pluginsTxtPath = Path.Combine(appData, "plugins.txt");
+        if (!deploymentMethod.TryGetDeployedPath(game, configuration["AppData"], out var appData))
+        {
+            return;
+        }
+        var pluginsTxtPath = Path.Combine(appData.FullName, "plugins.txt");
         var listings = new List<LoadOrderListing>();
         foreach (var lo in loadOrderInfos)
         {
