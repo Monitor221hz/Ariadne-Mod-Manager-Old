@@ -26,7 +26,7 @@ public class SupportedGameTests
         var game = CreateGame();
 
         Assert.Equal("Test Game", game.Name);
-        Assert.Equal(123, game.Vendors.Steam);
+        Assert.Equal(123u, game.Vendors.Steam);
         Assert.Equal(456, game.Vendors.GOG);
         Assert.Equal("Root", game.Root.Key);
         Assert.Single(game.Deployments);
@@ -97,8 +97,8 @@ public class SupportedGameTests
         var a = new GamePath("Data", "Data", []);
         var b = new GamePath("Data", "Other", []);
 
-        Assert.Throws<ArgumentException>(
-            () => new SupportedGame("Test Game", [], new VendorInfo(0, 0), root, [a], [b])
+        Assert.Throws<ArgumentException>(() =>
+            new SupportedGame("Test Game", [], new VendorInfo(0, 0), root, [a], [b])
         );
     }
 }

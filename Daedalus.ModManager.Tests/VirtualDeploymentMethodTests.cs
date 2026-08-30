@@ -26,14 +26,7 @@ public class VirtualDeploymentMethodTests : IDisposable
         var root = new GamePath("Root", "", []);
         var appData = new GamePath("AppData", _appDataDir.FullName, []);
         var data = new GamePath("Data", "Data", [], basedOn: "Root");
-        _config = new SupportedGame(
-            "Test Game",
-            [],
-            new VendorInfo(0, 0),
-            root,
-            [appData],
-            [data]
-        );
+        _config = new SupportedGame("Test Game", [], new VendorInfo(0, 0), root, [appData], [data]);
     }
 
     public void Dispose() => _temp.Dispose();
@@ -50,18 +43,22 @@ public class VirtualDeploymentMethodTests : IDisposable
     }
 
     [Fact]
-    public void Deploy_MountsRootAndEachDeploymentIntoStaging()
+    public void Deploy_MountsRootIntoStagingAndDeploymentsInPlace()
     {
         var game = CreateGame();
 
         using var method = CreateMethod();
         method.Deploy(game, []);
 
-        // one VFS mounted for Root + one for the AppData deployment
         Assert.Equal(2, _factory.Created.Count);
-        Assert.True(Directory.Exists(Path.Combine(_stagingDir.FullName, "Root")));
-        Assert.True(Directory.Exists(Path.Combine(_stagingDir.FullName, "AppData")));
         Assert.All(_factory.Created, vfs => Assert.NotNull(vfs.MountedRoot));
+
+        var rootMount = Path.Combine(_stagingDir.FullName, "Root");
+        Assert.True(Directory.Exists(rootMount));
+        Assert.Equal(rootMount, _factory.Created[0].Settings!.MountPoint.FullName);
+
+        Assert.False(Directory.Exists(Path.Combine(_stagingDir.FullName, "AppData")));
+        Assert.Equal(_appDataDir.FullName, _factory.Created[1].Settings!.MountPoint.FullName);
     }
 
     [Fact]
@@ -78,7 +75,7 @@ public class VirtualDeploymentMethodTests : IDisposable
         Assert.True(foundRoot);
         Assert.True(foundAppData);
         Assert.Equal(Path.Combine(_stagingDir.FullName, "Root"), rootDir!.FullName);
-        Assert.Equal(Path.Combine(_stagingDir.FullName, "AppData"), appDataDir!.FullName);
+        Assert.Equal(_appDataDir.FullName, appDataDir!.FullName);
     }
 
     [Fact]
@@ -103,7 +100,6 @@ public class VirtualDeploymentMethodTests : IDisposable
         using var method = CreateMethod();
         method.Deploy(game, [mod]);
 
-        // AppData is mounted second (Root is deployed first)
         var appDataVfs = _factory.Created[1];
         Assert.NotNull(appDataVfs.MountedRoot);
         var expectedVirtualPath = Path.Join(_appDataDir.FullName, "plugins.txt");
@@ -115,7 +111,6 @@ public class VirtualDeploymentMethodTests : IDisposable
     [Fact]
     public void Deploy_LinksModFilesThroughBasedOnChainIntoRootVirtualRoot()
     {
-        // "Data" is an install target based on "Root"; its files deploy through Root's mount
         var game = CreateGame();
         var mod = CreateMod("ModC", "Data", out var modDir);
         var modFile = Path.Combine(modDir.FullName, "meshes.txt");

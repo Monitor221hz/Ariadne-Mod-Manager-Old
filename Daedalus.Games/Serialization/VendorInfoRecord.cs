@@ -1,3 +1,3 @@
 namespace Daedalus.Games.Serialization;
 
-public sealed record class VendorInfoRecord(int Steam, int GOG);
+public sealed record class VendorInfoRecord(uint Steam, int GOG);
