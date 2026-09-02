@@ -9,7 +9,7 @@ public static class VFSServiceExtensions
     {
         if (OperatingSystem.IsWindows())
         {
-            services.AddSingleton<IVirtualFileSystem, WinFspVirtualFileSystem>();
+            services.AddTransient<IVirtualFileSystem, WinFspVirtualFileSystem>();
         }
         else if (OperatingSystem.IsLinux())
         {

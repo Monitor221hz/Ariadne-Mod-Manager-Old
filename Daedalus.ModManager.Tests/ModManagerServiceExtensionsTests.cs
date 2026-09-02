@@ -1,5 +1,8 @@
+using Daedalus.Contracts.Games;
 using Daedalus.Contracts.ModManager;
 using Daedalus.Contracts.Mods;
+using Daedalus.Mods;
+using Daedalus.VFS;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -7,39 +10,89 @@ namespace Daedalus.ModManager.Tests;
 
 public class ModManagerServiceExtensionsTests
 {
+    private static ModProfile CreateProfile(string name) =>
+        new(
+            name,
+            new ModList([], []),
+            new Version(1, 0),
+            new DirectoryInfo(Path.Combine("C:", "Daedalus", "Profiles", name))
+        );
+
     [Fact]
-    public void AddModManager_RegistersSingletons()
+    public void AddModManager_RegistersFullStack()
     {
         using var provider = new ServiceCollection().AddModManager().BuildServiceProvider();
 
-        var paths = provider.GetRequiredService<IModManagerPaths>();
+        Assert.NotNull(provider.GetRequiredService<IModManagerPaths>());
+        Assert.NotNull(provider.GetRequiredService<IDeploymentPathsFactory>());
+        Assert.NotNull(provider.GetRequiredService<IModProfileSerializer>());
+        Assert.NotNull(provider.GetRequiredService<IModInfoSerializer>());
+        Assert.NotNull(provider.GetRequiredService<IGameCatalog>());
+        Assert.NotNull(provider.GetRequiredService<IGameLocator>());
+        Assert.NotNull(provider.GetRequiredService<IInstalledGameSerializer>());
+        Assert.NotNull(provider.GetRequiredService<IVirtualFileSystemFactory>());
+    }
+
+    [Fact]
+    public void AddModManager_StatelessServicesAreSingletons()
+    {
+        using var provider = new ServiceCollection().AddModManager().BuildServiceProvider();
+
+        Assert.Same(
+            provider.GetRequiredService<IModManagerPaths>(),
+            provider.GetRequiredService<IModManagerPaths>()
+        );
         Assert.Equal(
             new DirectoryInfo(AppContext.BaseDirectory).FullName,
-            paths.AssemblyFolder.FullName
+            provider.GetRequiredService<IModManagerPaths>().AssemblyFolder.FullName
         );
-        Assert.Same(paths, provider.GetRequiredService<IModManagerPaths>());
-
-        var factory = provider.GetRequiredService<IDeploymentPathsFactory>();
-        Assert.Same(factory, provider.GetRequiredService<IDeploymentPathsFactory>());
-
+        Assert.Same(
+            provider.GetRequiredService<IDeploymentPathsFactory>(),
+            provider.GetRequiredService<IDeploymentPathsFactory>()
+        );
         Assert.Same(
             provider.GetRequiredService<IModProfileSerializer>(),
             provider.GetRequiredService<IModProfileSerializer>()
         );
-        Assert.Same(
-            provider.GetRequiredService<IModInfoSerializer>(),
-            provider.GetRequiredService<IModInfoSerializer>()
-        );
     }
 
     [Fact]
-    public void AddModManager_DoesNotRegisterGlobalDeploymentPaths()
+    public void AddModManager_DoesNotRegisterGlobalDeploymentPathsOrMethod()
     {
-        // Overwrite is profile-scoped: IDeploymentPaths must be created per profile
-        // through IDeploymentPathsFactory, never resolved globally.
         using var provider = new ServiceCollection().AddModManager().BuildServiceProvider();
 
         Assert.Null(provider.GetService<IDeploymentPaths>());
         Assert.Null(provider.GetService<IModDeploymentMethod>());
+    }
+
+    [Fact]
+    public void AddModManager_DeploymentMethodFactoryYieldsFreshInstancePerProfile()
+    {
+        using var provider = new ServiceCollection().AddModManager().BuildServiceProvider();
+        var factory = provider.GetRequiredService<IModDeploymentMethodFactory>();
+        Assert.Same(factory, provider.GetRequiredService<IModDeploymentMethodFactory>());
+
+        using var first = factory.Create(CreateProfile("Main"));
+        using var second = factory.Create(CreateProfile("Main"));
+        using var otherProfile = factory.Create(CreateProfile("Second"));
+
+        Assert.NotSame(first, second);
+        Assert.NotSame(first, otherProfile);
+    }
+
+    [Fact]
+    public void AddModManager_VirtualFileSystemsAreTransient()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+        using var provider = new ServiceCollection().AddModManager().BuildServiceProvider();
+        var factory = provider.GetRequiredService<IVirtualFileSystemFactory>();
+
+        using var a = factory.Create();
+        using var b = factory.Create();
+
+        Assert.NotSame(a, b);
     }
 }

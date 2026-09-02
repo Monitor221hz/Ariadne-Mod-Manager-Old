@@ -15,7 +15,9 @@
     <ProjectReference Include="..\Daedalus.Contracts.Games\Daedalus.Contracts.Games.csproj" />
     <ProjectReference Include="..\Daedalus.Contracts.ModManager\Daedalus.Contracts.ModManager.csproj" />
     <ProjectReference Include="..\Daedalus.Contracts.Mods\Daedalus.Contracts.Mods.csproj" />
+    <ProjectReference Include="..\Daedalus.Games\Daedalus.Games.csproj" />
     <ProjectReference Include="..\Daedalus.Mods\Daedalus.Mods.csproj" />
+    <ProjectReference Include="..\Daedalus.VFS.Services\Daedalus.VFS.Services.csproj" />
     <ProjectReference Include="..\Daedalus.VFS\Daedalus.VFS.csproj" />
   </ItemGroup>
 

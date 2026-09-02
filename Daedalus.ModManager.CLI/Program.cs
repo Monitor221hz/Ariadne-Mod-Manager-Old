@@ -1,8 +1,4 @@
-﻿using Daedalus.Contracts.ModManager;
-using Daedalus.ModManager;
-using Daedalus.VFS;
-using Daedalus.VFS.Services;
-using Daedalus.VFS.WinFsp;
+﻿using Daedalus.ModManager;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Spectre.Console;
@@ -23,18 +19,12 @@ internal class Program
     static void ConfigureServices(IServiceCollection services)
     {
         services.AddModManager();
-        services.ConfigureVFS();
-        services.AddSingleton<IModDeploymentMethod, VirtualDeploymentMethod>();
         services.AddHostedService<Application>();
     }
 }
 
-public class Application(
-    IModDeploymentMethod modDeploymentMethod,
-    IHostApplicationLifetime lifetime
-) : IHostedService
+public class Application(IHostApplicationLifetime lifetime) : IHostedService
 {
-    private readonly IModDeploymentMethod _modDeploymentMethod = modDeploymentMethod;
     private readonly IHostApplicationLifetime _lifetime = lifetime;
 
     public async Task StartAsync(CancellationToken cancellationToken)

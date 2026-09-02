@@ -3,6 +3,7 @@ using Daedalus.Contracts.ModManager;
 using Daedalus.Contracts.Mods;
 using Daedalus.Games;
 using Daedalus.Mods;
+using Daedalus.VFS;
 using Mutagen.Bethesda;
 using Mutagen.Bethesda.Plugins;
 using Mutagen.Bethesda.Skyrim;
@@ -214,6 +215,8 @@ public class SkyrimSELoadOrderBuilderTests : IDisposable
         public void Revert(IInstalledGame game) { }
 
         public void Dispose() { }
+
+        public void SetOutputRules(List<OutputRule> outputRules) { }
     }
 
     private sealed class LoadOrderInfoStub(IModInfo origin) : ILoadOrderInfo
