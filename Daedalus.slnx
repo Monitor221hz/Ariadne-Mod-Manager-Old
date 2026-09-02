@@ -15,6 +15,7 @@
   <Project Path="Daedalus.ModManager/Daedalus.ModManager.csproj" />
   <Project Path="Daedalus.ModManager.Tests/Daedalus.ModManager.Tests.csproj" />
   <Project Path="Daedalus.Mods/Daedalus.Mods.csproj" />
+  <Project Path="Daedalus.Mods.Tests/Daedalus.Mods.Tests.csproj" />
   <Project Path="Daedalus.VFS.Services/Daedalus.VFS.Services.csproj" />
   <Project Path="Daedalus.VFS.Tests/Daedalus.VFS.Tests.csproj" />
   <Project Path="Daedalus.VFS.WinFsp.Tests/Daedalus.VFS.WinFsp.Tests.csproj" />

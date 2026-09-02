@@ -8,12 +8,14 @@
 
   <ItemGroup>
     <PackageReference Include="GameFinder" Version="4.9.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Daedalus.Contracts.Games\Daedalus.Contracts.Games.csproj" />
     <ProjectReference Include="..\Daedalus.Contracts.ModManager\Daedalus.Contracts.ModManager.csproj" />
     <ProjectReference Include="..\Daedalus.Contracts.Mods\Daedalus.Contracts.Mods.csproj" />
+    <ProjectReference Include="..\Daedalus.Mods\Daedalus.Mods.csproj" />
     <ProjectReference Include="..\Daedalus.VFS\Daedalus.VFS.csproj" />
   </ItemGroup>
 

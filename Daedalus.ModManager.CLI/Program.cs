@@ -1,4 +1,5 @@
 ﻿using Daedalus.Contracts.ModManager;
+using Daedalus.ModManager;
 using Daedalus.VFS;
 using Daedalus.VFS.Services;
 using Daedalus.VFS.WinFsp;
@@ -21,6 +22,7 @@ internal class Program
 
     static void ConfigureServices(IServiceCollection services)
     {
+        services.AddModManager();
         services.ConfigureVFS();
         services.AddSingleton<IModDeploymentMethod, VirtualDeploymentMethod>();
         services.AddHostedService<Application>();

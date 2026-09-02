@@ -6,7 +6,6 @@ public class ModManagerPaths : IModManagerPaths, IDiskInitializable
 {
     public DirectoryInfo AssemblyFolder { get; }
     public DirectoryInfo StagingFolder { get; }
-
     public DirectoryInfo ModsFolder { get; }
 
     public ModManagerPaths(
@@ -19,6 +18,9 @@ public class ModManagerPaths : IModManagerPaths, IDiskInitializable
         StagingFolder = stagingFolder;
         ModsFolder = modsFolder;
     }
+
+    public ModManagerPaths()
+        : this(new DirectoryInfo(AppContext.BaseDirectory)) { }
 
     public ModManagerPaths(DirectoryInfo assemblyFolder)
     {
