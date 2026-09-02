@@ -23,6 +23,11 @@ public sealed class VirtualDeploymentMethod : IModDeploymentMethod
         _gamePathDirectoryMap = new();
     }
 
+    public void SetOutputRules(List<OutputRule> outputRules)
+    {
+        _outputRules = outputRules;
+    }
+
     private void DeployPath(
         IInstalledGame game,
         IGamePath deploymentPath,
@@ -102,7 +107,7 @@ public sealed class VirtualDeploymentMethod : IModDeploymentMethod
     public bool TryGetDeployedPath(
         IInstalledGame game,
         IGamePath path,
-        out DirectoryInfo? directoryInfo
+        [NotNullWhen(true)] out DirectoryInfo? directoryInfo
     )
     {
         return _gamePathDirectoryMap.TryGetValue(path, out directoryInfo);
