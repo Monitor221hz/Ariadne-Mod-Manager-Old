@@ -2,43 +2,27 @@ using Daedalus.Contracts.ModManager;
 
 namespace Daedalus.ModManager;
 
-public class ModManagerPaths : IModManagerPaths, IDiskInitializable
+public class ModManagerPaths : IModManagerPaths
 {
+    private readonly IInstanceService _instances;
+
+    public ModManagerPaths(DirectoryInfo assemblyFolder, IInstanceService instances)
+    {
+        AssemblyFolder = assemblyFolder;
+        _instances = instances;
+    }
+
     public DirectoryInfo AssemblyFolder { get; }
-    public DirectoryInfo StagingFolder { get; }
-    public DirectoryInfo ModsFolder { get; }
 
-    public ModManagerPaths(
-        DirectoryInfo assemblyFolder,
-        DirectoryInfo stagingFolder,
-        DirectoryInfo modsFolder
-    )
-    {
-        AssemblyFolder = assemblyFolder;
-        StagingFolder = stagingFolder;
-        ModsFolder = modsFolder;
-    }
+    public DirectoryInfo InstanceFolder =>
+        _instances.CurrentFolder
+        ?? throw new InvalidOperationException(
+            "No active instance. Create or select an instance first."
+        );
 
-    public ModManagerPaths()
-        : this(new DirectoryInfo(AppContext.BaseDirectory)) { }
+    public DirectoryInfo StagingFolder => Child("Staging");
+    public DirectoryInfo ModsFolder => Child("Mods");
+    public DirectoryInfo ProfilesFolder => Child("Profiles");
 
-    public ModManagerPaths(DirectoryInfo assemblyFolder)
-    {
-        AssemblyFolder = assemblyFolder;
-        StagingFolder = new DirectoryInfo(Path.Join(assemblyFolder.FullName, "Staging"));
-        ModsFolder = new DirectoryInfo(Path.Join(assemblyFolder.FullName, "Mods"));
-    }
-
-    public void InitializeDisk()
-    {
-        if (StagingFolder.Exists)
-        {
-            StagingFolder.Delete(true);
-        }
-        StagingFolder.Create();
-        if (!ModsFolder.Exists)
-        {
-            ModsFolder.Create();
-        }
-    }
+    private DirectoryInfo Child(string name) => new(Path.Join(InstanceFolder.FullName, name));
 }

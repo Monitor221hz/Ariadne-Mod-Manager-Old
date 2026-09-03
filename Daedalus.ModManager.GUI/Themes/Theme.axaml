@@ -1,0 +1,132 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    
+    <FontFamily x:Key="ContentFont">avares://Avalonia.Fonts.Inter/Assets#Inter</FontFamily>
+    <x:Double x:Key="UiFontSize">14</x:Double>
+    <x:Double x:Key="UiFontSizeSmall">12</x:Double>
+
+    <SolidColorBrush x:Key="DaedalusPageBrush" Color="{DynamicResource BgMantle}" />
+    <SolidColorBrush x:Key="DaedalusSurfaceBrush" Color="{DynamicResource BgMantle}" />
+    <SolidColorBrush x:Key="DaedalusToolbarBackground" Color="{DynamicResource BgDarker}" />
+    <SolidColorBrush x:Key="DaedalusToolbarBorder" Color="{DynamicResource BorderColor}" />
+    <SolidColorBrush x:Key="FgBaseBrush" Color="{DynamicResource FgBase}" />
+    <SolidColorBrush x:Key="FgMutedBrush" Color="{DynamicResource FgMuted}" />
+    <SolidColorBrush x:Key="FgDimmedBrush" Color="{DynamicResource FgDimmed}" />
+    <SolidColorBrush x:Key="FgBrightBrush" Color="{DynamicResource FgBright}" />
+    <SolidColorBrush x:Key="AccentBrush" Color="{DynamicResource AccentPrimary}" />
+    <SolidColorBrush x:Key="AccentSoftBrush" Color="{DynamicResource AccentSoft}" />
+    <SolidColorBrush x:Key="AccentPrimaryFaintBrush" Color="{DynamicResource AccentPrimary}" Opacity="0.12" />
+    <SolidColorBrush x:Key="SelectionBrush" Color="{DynamicResource BgSelection}" />
+    <SolidColorBrush x:Key="HoverBrush" Color="{DynamicResource BgHover}" />
+    <SolidColorBrush x:Key="ActiveListBrush" Color="{DynamicResource BgActiveList}" />
+    <SolidColorBrush x:Key="BorderActiveBrush" Color="{DynamicResource BorderColor}" />
+
+    <!-- TreeDataGrid theme resource overrides -->
+    <SolidColorBrush x:Key="TreeDataGridSelectedCellBackgroundBrush" Color="Transparent" />
+    <SolidColorBrush x:Key="TreeDataGridRowBackgroundSelected" Color="{DynamicResource BgActiveList}" />
+    <SolidColorBrush x:Key="TreeDataGridRowBackgroundSelectedPointerOver" Color="{DynamicResource BgActiveList}" />
+    <SolidColorBrush x:Key="TreeDataGridRowBorderBrushSelected" Color="{DynamicResource AccentPrimary}" />
+
+    <SolidColorBrush x:Key="GlassPanelBrush" Color="{DynamicResource GlassPanel}" />
+
+    <!-- Menu / flyout tokens -->
+    <SolidColorBrush x:Key="MenuFlyoutPresenterBackground" Color="{DynamicResource GlassPanel}" />
+    <SolidColorBrush x:Key="MenuFlyoutPresenterBorderBrush" Color="{DynamicResource BorderColor}" />
+    <SolidColorBrush x:Key="FlyoutPresenterBackground" Color="{DynamicResource GlassPanel}" />
+    <SolidColorBrush x:Key="FlyoutPresenterBorderBrush" Color="{DynamicResource BorderColor}" />
+    <SolidColorBrush x:Key="MenuFlyoutItemBackgroundPointerOver" Color="{DynamicResource BgHover}" />
+    <SolidColorBrush x:Key="MenuFlyoutItemSelectedGlyphColor" Color="{DynamicResource AccentPrimary}" />
+
+    <ControlTheme x:Key="{x:Type MenuFlyoutPresenter}"
+                  TargetType="MenuFlyoutPresenter"
+                  BasedOn="{StaticResource {x:Type MenuFlyoutPresenter}}">
+        <Setter Property="Background" Value="{DynamicResource GlassPanelBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource GlassBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="4" />
+    </ControlTheme>
+
+    <ControlTheme x:Key="{x:Type Menu}"
+                  TargetType="Menu"
+                  BasedOn="{StaticResource {x:Type Menu}}">
+        <Setter Property="Background" Value="{DynamicResource DaedalusToolbarBackground}" />
+        <Setter Property="Foreground" Value="{DynamicResource FgBaseBrush}" />
+        <Setter Property="FontFamily" Value="{DynamicResource ContentFont}" />
+        <Setter Property="FontSize" Value="{DynamicResource UiFontSize}" />
+    </ControlTheme>
+
+    <ControlTheme x:Key="{x:Type MenuItem}"
+                  TargetType="MenuItem"
+                  BasedOn="{StaticResource {x:Type MenuItem}}">
+        <Setter Property="Foreground" Value="{DynamicResource FgBaseBrush}" />
+        <Setter Property="FontFamily" Value="{DynamicResource ContentFont}" />
+        <Setter Property="FontSize" Value="{DynamicResource UiFontSize}" />
+        <Setter Property="Padding" Value="10,6" />
+        <Setter Property="CornerRadius" Value="4" />
+        <Style Selector="^:pointerover">
+            <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+        </Style>
+        <Style Selector="^:selected">
+            <Setter Property="Background" Value="{DynamicResource ActiveListBrush}" />
+        </Style>
+        <Style Selector="^:disabled">
+            <Setter Property="Foreground" Value="{DynamicResource FgDimmedBrush}" />
+        </Style>
+    </ControlTheme>
+
+    <!-- TreeDataGrid ControlThemes -->
+    <ControlTheme x:Key="{x:Type TreeDataGrid}"
+                  TargetType="TreeDataGrid"
+                  BasedOn="{StaticResource {x:Type TreeDataGrid}}">
+        <Setter Property="Background" Value="{DynamicResource DaedalusPageBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="FontFamily" Value="{DynamicResource ContentFont}" />
+        <Setter Property="FontSize" Value="{DynamicResource UiFontSize}" />
+        <Setter Property="Foreground" Value="{DynamicResource FgBaseBrush}" />
+    </ControlTheme>
+
+    <ControlTheme x:Key="{x:Type TreeDataGridColumnHeader}"
+                  TargetType="TreeDataGridColumnHeader"
+                  BasedOn="{StaticResource {x:Type TreeDataGridColumnHeader}}">
+        <Setter Property="Background" Value="{DynamicResource DaedalusToolbarBackground}" />
+        <Setter Property="Foreground" Value="{DynamicResource FgMutedBrush}" />
+        <Setter Property="FontFamily" Value="{DynamicResource ContentFont}" />
+        <Setter Property="FontSize" Value="{DynamicResource UiFontSizeSmall}" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="Padding" Value="8,7" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="BorderBrush" Value="{DynamicResource DaedalusToolbarBorderBrush}" />
+    </ControlTheme>
+
+    <ControlTheme x:Key="{x:Type TreeDataGridRow}"
+                  TargetType="TreeDataGridRow"
+                  BasedOn="{StaticResource {x:Type TreeDataGridRow}}">
+        <Setter Property="MinHeight" Value="34" />
+        <Setter Property="Foreground" Value="{DynamicResource FgMutedBrush}" />
+        <Style Selector="^:pointerover /template/ Border#RowBorder">
+            <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+        </Style>
+        <Style Selector="^:selected">
+            <Setter Property="Background" Value="{DynamicResource ActiveListBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="BorderThickness" Value="3,0,0,0" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Foreground" Value="{DynamicResource FgBrightBrush}" />
+        </Style>
+    </ControlTheme>
+
+    <ControlTheme x:Key="{x:Type TreeDataGridCell}"
+                  TargetType="TreeDataGridCell"
+                  BasedOn="{StaticResource {x:Type TreeDataGridCell}}">
+        <Setter Property="Padding" Value="6,7" />
+        <Setter Property="Foreground" Value="{DynamicResource FgMutedBrush}" />
+    </ControlTheme>
+
+    <ControlTheme x:Key="{x:Type TreeDataGridTextCell}"
+                  TargetType="TreeDataGridTextCell"
+                  BasedOn="{StaticResource {x:Type TreeDataGridTextCell}}">
+        <Setter Property="Padding" Value="8,6,8,6" />
+    </ControlTheme>
+
+</ResourceDictionary>

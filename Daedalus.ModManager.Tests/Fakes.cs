@@ -1,5 +1,7 @@
 using Daedalus.Contracts.Games;
 using Daedalus.Contracts.ModManager;
+using Daedalus.Games;
+using Daedalus.Games.Serialization;
 using Daedalus.VFS;
 
 namespace Daedalus.ModManager.Tests;
@@ -38,6 +40,28 @@ public sealed class TestDeploymentPaths(string overwriteDir, string stagingDir) 
 {
     public DirectoryInfo OverwriteDirectory { get; } = new(overwriteDir);
     public DirectoryInfo StagingDirectory { get; } = new(stagingDir);
+}
+
+public static class TestAssets
+{
+    public static ISupportedGame SupportedGame { get; } =
+        new SupportedGame(
+            "Test Game",
+            [],
+            new VendorInfo(489830, 0),
+            new GamePath("Root", "", []),
+            [],
+            []
+        );
+
+    public static InstalledGame GameAt(DirectoryInfo installDir)
+    {
+        installDir.Create();
+        return new InstalledGame(installDir, SupportedGame);
+    }
+
+    public static InstanceService CreateInstanceService(FileInfo configFile) =>
+        new(new InstanceStore(configFile), new InstalledGameSerializer(), new GameCatalog([]));
 }
 
 public sealed class TempDirectory : IDisposable

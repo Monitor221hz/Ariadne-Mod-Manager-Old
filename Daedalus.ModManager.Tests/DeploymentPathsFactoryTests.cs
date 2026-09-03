@@ -3,38 +3,54 @@ using Xunit;
 
 namespace Daedalus.ModManager.Tests;
 
-public class DeploymentPathsFactoryTests
+public class DeploymentPathsFactoryTests : IDisposable
 {
-    [Fact]
-    public void Create_UsesProfileOverwriteFolder_NotManagerGlobal()
+    private readonly TempDirectory _temp = new();
+
+    public void Dispose() => _temp.Dispose();
+
+    private ModManagerPaths CreatePaths()
     {
-        var paths = new ModManagerPaths(new DirectoryInfo(Path.Combine("C:", "Daedalus")));
-        var sut = new DeploymentPathsFactory(paths);
-        var profile = new ModProfile(
-            "Main",
+        var service = TestAssets.CreateInstanceService(
+            new FileInfo(_temp.Combine("instances.json"))
+        );
+        service.Create(
+            "test",
+            new DirectoryInfo(_temp.Combine("instance")),
+            TestAssets.GameAt(new DirectoryInfo(_temp.Combine("game")))
+        );
+        return new ModManagerPaths(new DirectoryInfo(_temp.Path), service);
+    }
+
+    private ModProfile CreateProfile(string name) =>
+        new(
+            name,
             new ModList([], []),
             new Version(1, 0),
-            new DirectoryInfo(Path.Combine("C:", "Daedalus", "Profiles", "Main"))
+            new DirectoryInfo(_temp.Combine("instance", "Profiles", name))
         );
+
+    [Fact]
+    public void Create_UsesProfileOverwriteFolder_AndInstanceStaging()
+    {
+        var paths = CreatePaths();
+        var sut = new DeploymentPathsFactory(paths);
+        var profile = CreateProfile("Main");
 
         var deploymentPaths = sut.Create(profile);
 
         Assert.Equal(profile.OverwriteFolder.FullName, deploymentPaths.OverwriteDirectory.FullName);
         Assert.Equal(paths.StagingFolder.FullName, deploymentPaths.StagingDirectory.FullName);
-        Assert.NotEqual(
-            Path.Combine(paths.AssemblyFolder.FullName, "Overwrite"),
-            deploymentPaths.OverwriteDirectory.FullName
-        );
+    }
 
-        var otherProfile = new ModProfile(
-            "Second",
-            new ModList([], []),
-            new Version(1, 0),
-            new DirectoryInfo(Path.Combine("C:", "Daedalus", "Profiles", "Second"))
-        );
-        Assert.NotEqual(
-            deploymentPaths.OverwriteDirectory.FullName,
-            sut.Create(otherProfile).OverwriteDirectory.FullName
-        );
+    [Fact]
+    public void Create_OverwriteDiffersPerProfile()
+    {
+        var sut = new DeploymentPathsFactory(CreatePaths());
+
+        var first = sut.Create(CreateProfile("Main")).OverwriteDirectory.FullName;
+        var second = sut.Create(CreateProfile("Second")).OverwriteDirectory.FullName;
+
+        Assert.NotEqual(first, second);
     }
 }

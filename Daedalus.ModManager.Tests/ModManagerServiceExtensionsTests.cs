@@ -68,7 +68,20 @@ public class ModManagerServiceExtensionsTests
     [Fact]
     public void AddModManager_DeploymentMethodFactoryYieldsFreshInstancePerProfile()
     {
-        using var provider = new ServiceCollection().AddModManager().BuildServiceProvider();
+        using var temp = new TempDirectory();
+        var services = new ServiceCollection().AddModManager();
+        services.AddSingleton<IInstanceStore>(_ => new InstanceStore(
+            new FileInfo(Path.Combine(temp.Path, "instances.json"))
+        ));
+        using var provider = services.BuildServiceProvider();
+        provider
+            .GetRequiredService<IInstanceService>()
+            .Create(
+                "test",
+                new DirectoryInfo(Path.Combine(temp.Path, "instance")),
+                TestAssets.GameAt(new DirectoryInfo(Path.Combine(temp.Path, "game")))
+            );
+
         var factory = provider.GetRequiredService<IModDeploymentMethodFactory>();
         Assert.Same(factory, provider.GetRequiredService<IModDeploymentMethodFactory>());
 

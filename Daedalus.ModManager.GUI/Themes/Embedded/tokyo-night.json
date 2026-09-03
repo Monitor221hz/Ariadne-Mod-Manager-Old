@@ -1,0 +1,23 @@
+{
+  "Id": "tokyo-night",
+  "Name": "Tokyo Night",
+  "Variant": "Dark",
+  "Base": "#FF1A1B26",
+  "Mantle": "#FF16161E",
+  "Darker": "#FF101014",
+  "Elevated": "#FF202330",
+  "Selection": "#40515C7E",
+  "Hover": "#FF1C1D29",
+  "ActiveList": "#FF29355A",
+  "FgBase": "#FFA9B1D6",
+  "FgMuted": "#FF787C99",
+  "FgDimmed": "#FF545C7E",
+  "FgBright": "#FFC0CAF5",
+  "AccentPrimary": "#FF3D59A1",
+  "AccentSoft": "#FF7DCFFF",
+  "Border": "#FF101014",
+  "GlassPanel": "#E616161E",
+  "GlassBorder": "#1FA9B1D6",
+  "ToolbarBorder": "#66101014",
+  "CardShadow": "0 8 40 0 #88000000"
+}

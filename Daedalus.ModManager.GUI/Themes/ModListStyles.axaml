@@ -1,0 +1,27 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Style Selector="TreeDataGridExpanderCell /template/ ToggleButton">
+        <Setter Property="Foreground" Value="Transparent" />
+    </Style>
+    <Style Selector="TreeDataGridExpanderCell /template/ ToggleButton /template/ Path#ChevronPath">
+        <Setter Property="Data"            Value="M 9,6 L 15,12 9,18" />
+        <Setter Property="Fill"            Value="Transparent" />
+        <Setter Property="Stroke"          Value="{DynamicResource FgDimmedBrush}" />
+        <Setter Property="StrokeThickness" Value="1.00" />
+        <Setter Property="StrokeLineCap"   Value="Round" />
+    </Style>
+    <Style Selector="TreeDataGridExpanderCell /template/ ToggleButton:checked /template/ Path#ChevronPath">
+        <Setter Property="Data"            Value="M 6,9 L 12,15 18,9" />
+        <Setter Property="Fill"            Value="Transparent" />
+        <Setter Property="Stroke"          Value="{DynamicResource AccentBrush}" />
+        <Setter Property="StrokeThickness" Value="1.5" />
+        <Setter Property="StrokeLineCap"   Value="Round" />
+    </Style>
+
+    <Style Selector="Menu Separator">
+        <Setter Property="Background" Value="{DynamicResource BorderActiveBrush}" />
+        <Setter Property="Margin" Value="4,2" />
+    </Style>
+
+</Styles>

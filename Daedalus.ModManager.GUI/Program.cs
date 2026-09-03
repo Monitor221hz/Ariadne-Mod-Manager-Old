@@ -1,6 +1,9 @@
-﻿using Avalonia;
+﻿using System;
+using Avalonia;
+using Daedalus.ModManager;
+using Daedalus.ModManager.Bethesda;
+using Microsoft.Extensions.DependencyInjection;
 using ReactiveUI.Avalonia;
-using System;
 
 namespace Daedalus.ModManager.GUI;
 
@@ -10,12 +13,20 @@ sealed class Program
     // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
     // yet and stuff might break.
     [STAThread]
-    public static void Main(string[] args) => BuildAvaloniaApp()
-        .StartWithClassicDesktopLifetime(args);
+    public static void Main(string[] args)
+    {
+        var services = new ServiceCollection();
+        services.AddModManager(typeof(SkyrimSELoadOrderBuilder).Assembly);
+        services.AddSingleton<ViewModels.MainViewModel>();
+        App.Services = services.BuildServiceProvider();
+
+        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+    }
 
     // Avalonia configuration, don't remove; also used by visual designer.
-    public static AppBuilder BuildAvaloniaApp()
-        => AppBuilder.Configure<App>()
+    public static AppBuilder BuildAvaloniaApp() =>
+        AppBuilder
+            .Configure<App>()
             .UsePlatformDetect()
 #if DEBUG
             .WithDeveloperTools()

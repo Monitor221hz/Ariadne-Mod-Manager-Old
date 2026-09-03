@@ -3,11 +3,14 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Daedalus.ModManager.GUI.ViewModels;
 using Daedalus.ModManager.GUI.Views;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Daedalus.ModManager.GUI;
 
 public partial class App : Application
 {
+    public static ServiceProvider Services { get; set; } = null!;
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -17,10 +20,12 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new MainWindow
-            {
-                DataContext = new MainViewModel(),
-            };
+            AppTheme.Initialize();
+            AppTheme.Apply(AppTheme.LoadSaved().Id);
+            desktop.Exit += (_, _) => Services.Dispose();
+            var mainViewModel = Services.GetRequiredService<MainViewModel>();
+            desktop.MainWindow = new MainWindow { DataContext = mainViewModel };
+            mainViewModel.InitializeCommand.Execute().Subscribe();
         }
 
         base.OnFrameworkInitializationCompleted();

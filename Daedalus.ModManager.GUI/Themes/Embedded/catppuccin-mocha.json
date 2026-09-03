@@ -1,0 +1,23 @@
+{
+  "Id": "catppuccin-mocha",
+  "Name": "Catppuccin Mocha",
+  "Variant": "Dark",
+  "Base": "#FF1E1E2E",
+  "Mantle": "#FF181825",
+  "Darker": "#FF11111B",
+  "Elevated": "#FF313244",
+  "Selection": "#40CBA6F7",
+  "Hover": "#FF45475A",
+  "ActiveList": "#FF585B70",
+  "FgBase": "#FFCDD6F4",
+  "FgMuted": "#FFBAC2DE",
+  "FgDimmed": "#FF9399B2",
+  "FgBright": "#FFF5E0DC",
+  "AccentPrimary": "#FFCBA6F7",
+  "AccentSoft": "#FFF5C2E7",
+  "Border": "#FF313244",
+  "GlassPanel": "#E6313244",
+  "GlassBorder": "#33FFFFFF",
+  "ToolbarBorder": "#40313244",
+  "CardShadow": "0 8 40 0 #88000000"
+}

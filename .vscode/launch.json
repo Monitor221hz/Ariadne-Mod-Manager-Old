@@ -2,6 +2,17 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Daedalus GUI (Mortex)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build-gui",
+            "program": "${workspaceFolder}/Daedalus.ModManager.GUI/bin/Debug/net10.0/Mortex.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}/Daedalus.ModManager.GUI/bin/Debug/net10.0",
+            "console": "internalConsole",
+            "stopAtEntry": false
+        },
+        {
             "name": "Daedalus.VFS.WinFsp.Demo",
             "type": "coreclr",
             "request": "launch",

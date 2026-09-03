@@ -19,7 +19,14 @@ public static class ModManagerServiceExtensions
         services.AddMods();
         services.AddGames(gameModules);
         services.ConfigureVFS();
-        services.AddSingleton<IModManagerPaths>(_ => new ModManagerPaths());
+        services.AddSingleton<IInstanceStore>(_ => new InstanceStore(
+            new FileInfo(Path.Join(AppContext.BaseDirectory, "instances.json"))
+        ));
+        services.AddSingleton<IInstanceService, InstanceService>();
+        services.AddSingleton<IModManagerPaths>(sp => new ModManagerPaths(
+            new DirectoryInfo(AppContext.BaseDirectory),
+            sp.GetRequiredService<IInstanceService>()
+        ));
         services.AddSingleton<IDeploymentPathsFactory, DeploymentPathsFactory>();
         services.AddSingleton<IModProfileSerializer, ModProfileSerializer>();
         services.AddSingleton<Func<IModProfile, IModDeploymentMethod>>(sp =>

@@ -52,7 +52,15 @@ public class ModProfileSerializerTests : IDisposable
 
     public ModProfileSerializerTests()
     {
-        _paths = new ModManagerPaths(new DirectoryInfo(_temp.Path));
+        var service = TestAssets.CreateInstanceService(
+            new FileInfo(System.IO.Path.Combine(_temp.Path, "instances.json"))
+        );
+        service.Create(
+            "test",
+            new DirectoryInfo(System.IO.Path.Combine(_temp.Path, "instance")),
+            TestAssets.GameAt(new DirectoryInfo(System.IO.Path.Combine(_temp.Path, "game")))
+        );
+        _paths = new ModManagerPaths(new DirectoryInfo(_temp.Path), service);
     }
 
     public void Dispose() => _temp.Dispose();
@@ -108,12 +116,12 @@ public class ModProfileSerializerTests : IDisposable
         var file = new FileInfo(
             System.IO.Path.Combine(ProfileFolder.FullName, ModProfileSerializer.FileName)
         );
-        Assert.True(file.Exists); // Save creates a missing profile folder
+        Assert.True(file.Exists);
 
         var json = File.ReadAllText(file.FullName);
         Assert.Contains("TestModA", json);
         Assert.Contains("TestModB", json);
-        Assert.Contains("#80123456", json); // group color as ARGB hex
+        Assert.Contains("#80123456", json);
         Assert.DoesNotContain("ProfileFolder", json);
     }
 

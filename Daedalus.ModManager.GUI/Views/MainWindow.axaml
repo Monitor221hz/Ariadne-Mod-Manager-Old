@@ -3,11 +3,13 @@
         xmlns:vm="using:Daedalus.ModManager.GUI.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="640"
         x:Class="Daedalus.ModManager.GUI.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Icon="/Assets/avalonia-logo.ico"
-        Title="Daedalus.ModManager.GUI">
+        Title="Daedalus"
+        Background="{DynamicResource DaedalusPageBrush}"
+        Width="1000" Height="640" MinWidth="720" MinHeight="480">
 
     <Design.DataContext>
         <!-- This only sets the DataContext for the previewer in an IDE,
@@ -15,8 +17,44 @@
         <vm:MainViewModel />
     </Design.DataContext>
 
-    <TextBox Text="{Binding Greeting}"
-             HorizontalAlignment="Center"
-             VerticalAlignment="Center" />
+    <Grid>
+        <DockPanel>
+            <Menu DockPanel.Dock="Top"
+                  BorderBrush="{DynamicResource DaedalusToolbarBorder}"
+                  BorderThickness="0,0,0,1">
+                <MenuItem Header="_File">
+                    <MenuItem x:Name="SwitchInstanceItem" Header="_Switch Instance" />
+                    <MenuItem x:Name="RemoveInstanceItem" Header="_Remove Instance…" />
+                    <Separator />
+                    <MenuItem Header="E_xit" Command="{Binding ExitCommand}" />
+                </MenuItem>
+                <MenuItem x:Name="ThemeItem" Header="_Theme" />
+            </Menu>
 
+            <ContentControl Content="{Binding CurrentViewModel}" />
+        </DockPanel>
+
+        <Border IsVisible="{Binding DeletePromptVisible}"
+                Background="{DynamicResource DaedalusToolbarBackground}"
+                BorderBrush="{DynamicResource DaedalusToolbarBorder}"
+                BoxShadow="{DynamicResource GlassCardShadow}"
+                BorderThickness="1"
+                Padding="16"
+                CornerRadius="8"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Top"
+                Margin="0,64,0,0">
+            <StackPanel Spacing="12" MinWidth="360">
+                <TextBlock FontWeight="SemiBold"
+                           Text="{Binding PendingDeleteName, StringFormat='Remove instance: {0} ?'}" />
+                <TextBlock Text="The instance registration is scrubbed either way. Choose whether its folder is also deleted from disk."
+                           TextWrapping="Wrap" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Content="Registry only" Command="{Binding RemoveRegistryOnlyCommand}" />
+                    <Button Content="Delete folder" Command="{Binding RemoveAndDeleteCommand}" />
+                    <Button Content="Cancel" Command="{Binding CancelDeleteCommand}" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
 </Window>

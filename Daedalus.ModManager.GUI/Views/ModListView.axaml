@@ -1,0 +1,30 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Daedalus.ModManager.GUI.ViewModels"
+             x:Class="Daedalus.ModManager.GUI.Views.ModListView"
+             x:DataType="vm:ModListViewModel">
+
+    <DockPanel>
+        <Border DockPanel.Dock="Top"
+                Background="{DynamicResource DaedalusToolbarBackground}"
+                BorderBrush="{DynamicResource DaedalusToolbarBorder}"
+                BorderThickness="0,0,0,1"
+                Padding="12,8">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="+ New Mod" Command="{Binding CreateModCommand}" />
+                <TextBlock VerticalAlignment="Center"
+                           FontWeight="SemiBold"
+                           Text="Profile:" />
+                <ComboBox MinWidth="160"
+                          VerticalAlignment="Center"
+                          ItemsSource="{Binding ProfileNames}"
+                          SelectedItem="{Binding SelectedProfileName}" />
+                <TextBlock VerticalAlignment="Center"
+                           Foreground="{DynamicResource FgDimmedBrush}"
+                           Text="{Binding CurrentGameText, TargetNullValue='', StringFormat='({0})'}" />
+            </StackPanel>
+        </Border>
+
+        <TreeDataGrid Source="{Binding ModsSource}" />
+    </DockPanel>
+</UserControl>
