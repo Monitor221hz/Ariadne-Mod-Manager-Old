@@ -26,7 +26,7 @@ public class ModManagerServiceExtensionsTests
         Assert.NotNull(provider.GetRequiredService<IModManagerPaths>());
         Assert.NotNull(provider.GetRequiredService<IDeploymentPathsFactory>());
         Assert.NotNull(provider.GetRequiredService<IModProfileSerializer>());
-        Assert.NotNull(provider.GetRequiredService<IModInfoSerializer>());
+        Assert.NotNull(provider.GetRequiredService<ILibraryModSerializer>());
         Assert.NotNull(provider.GetRequiredService<IGameCatalog>());
         Assert.NotNull(provider.GetRequiredService<IGameLocator>());
         Assert.NotNull(provider.GetRequiredService<IInstalledGameSerializer>());

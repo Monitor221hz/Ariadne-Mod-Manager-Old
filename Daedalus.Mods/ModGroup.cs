@@ -7,39 +7,39 @@ namespace Daedalus.Mods;
 public class ModGroup : IModGroup
 {
     public string Name { get; }
-    private readonly List<IModInfo> _mods;
+    private readonly List<ILibraryMod> _mods;
     public Color HeaderColor { get; set; }
 
     public int Count => _mods.Count;
 
     public bool IsReadOnly => false;
 
-    public IModInfo this[int index]
+    public ILibraryMod this[int index]
     {
         get => _mods[index];
         set => _mods[index] = value;
     }
 
-    public ModGroup(string name, List<IModInfo> mods, Color headerColor)
+    public ModGroup(string name, List<ILibraryMod> mods, Color headerColor)
     {
         Name = name;
         _mods = mods;
         HeaderColor = headerColor;
     }
 
-    public ModGroup(string name, List<IModInfo> mods)
+    public ModGroup(string name, List<ILibraryMod> mods)
     {
         Name = name;
         _mods = mods;
         HeaderColor = Color.FromArgb(255, 0, 0, 0);
     }
 
-    public int IndexOf(IModInfo item)
+    public int IndexOf(ILibraryMod item)
     {
         return _mods.IndexOf(item);
     }
 
-    public void Insert(int index, IModInfo item)
+    public void Insert(int index, ILibraryMod item)
     {
         _mods.Insert(index, item);
     }
@@ -49,7 +49,7 @@ public class ModGroup : IModGroup
         _mods.RemoveAt(index);
     }
 
-    public void Add(IModInfo item)
+    public void Add(ILibraryMod item)
     {
         _mods.Add(item);
     }
@@ -59,22 +59,22 @@ public class ModGroup : IModGroup
         _mods.Clear();
     }
 
-    public bool Contains(IModInfo item)
+    public bool Contains(ILibraryMod item)
     {
         return _mods.Contains(item);
     }
 
-    public void CopyTo(IModInfo[] array, int arrayIndex)
+    public void CopyTo(ILibraryMod[] array, int arrayIndex)
     {
         _mods.CopyTo(array, arrayIndex);
     }
 
-    public bool Remove(IModInfo item)
+    public bool Remove(ILibraryMod item)
     {
         return _mods.Remove(item);
     }
 
-    public IEnumerator<IModInfo> GetEnumerator()
+    public IEnumerator<ILibraryMod> GetEnumerator()
     {
         return _mods.GetEnumerator();
     }

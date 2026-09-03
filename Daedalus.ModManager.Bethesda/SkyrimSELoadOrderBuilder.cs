@@ -36,23 +36,23 @@ public class SkyrimSELoadOrderBuilder : ILoadOrderBuilder
         LoadOrder.Write(pluginsTxtPath, GameRelease.SkyrimSE, loadOrder, true);
     }
 
-    public IEnumerable<ILoadOrderInfo> Fetch(IInstalledGame game, IReadOnlyList<IModInfo> mods)
+    public IEnumerable<ILoadOrderInfo> Fetch(IInstalledGame game, IReadOnlyList<ILibraryMod> mods)
     {
         Dictionary<ModKey, BethesdaPluginInfoStub> _depLookupMap = new();
         foreach (var mod in mods)
         {
-            var files = mod.Directory.GetFiles();
-            foreach (var file in files)
+            foreach (var node in mod.Content.Children)
             {
-                switch (file.Extension.ToLowerInvariant())
+                if (node.IsDirectory)
                 {
-                    case ".esp":
-                    case ".esm":
-                    case ".esl":
-                        break;
-                    default:
-                        continue;
+                    continue;
                 }
+                var extension = Path.GetExtension(node.Name).ToLowerInvariant();
+                if (extension is not (".esp" or ".esm" or ".esl"))
+                {
+                    continue;
+                }
+                var file = new FileInfo(node.Data!.AbsolutePath);
                 using var modPlugin = SkyrimMod.CreateFromBinaryOverlay(
                     file.FullName,
                     SkyrimRelease.SkyrimSE
@@ -62,7 +62,13 @@ public class SkyrimSELoadOrderBuilder : ILoadOrderBuilder
                     modPlugin.ModHeader.MasterReferences.Select(s => s.Master).ToList()
                 )
                 {
-                    pluginInfo = new BethesdaPluginInfo(modPlugin.ModKey, mod, [file], [], false),
+                    pluginInfo = new BethesdaPluginInfo(
+                        modPlugin.ModKey,
+                        mod.Info,
+                        [file],
+                        [],
+                        false
+                    ),
                 };
                 _depLookupMap.Add(modPlugin.ModKey, stub);
             }

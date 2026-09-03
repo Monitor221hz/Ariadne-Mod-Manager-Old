@@ -1,22 +1,91 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:converters="using:Daedalus.ModManager.GUI.Converters"
+        xmlns:conv="using:Avalonia.Controls.Converters"
+        xmlns:vm="using:Daedalus.ModManager.GUI.ViewModels"
+        xmlns:xlang="using:System"
+        x:DataType="xlang:Object">
 
-    <Style Selector="TreeDataGridExpanderCell /template/ ToggleButton">
-        <Setter Property="Foreground" Value="Transparent" />
-    </Style>
-    <Style Selector="TreeDataGridExpanderCell /template/ ToggleButton /template/ Path#ChevronPath">
-        <Setter Property="Data"            Value="M 9,6 L 15,12 9,18" />
-        <Setter Property="Fill"            Value="Transparent" />
-        <Setter Property="Stroke"          Value="{DynamicResource FgDimmedBrush}" />
-        <Setter Property="StrokeThickness" Value="1.00" />
-        <Setter Property="StrokeLineCap"   Value="Round" />
-    </Style>
-    <Style Selector="TreeDataGridExpanderCell /template/ ToggleButton:checked /template/ Path#ChevronPath">
-        <Setter Property="Data"            Value="M 6,9 L 12,15 18,9" />
-        <Setter Property="Fill"            Value="Transparent" />
-        <Setter Property="Stroke"          Value="{DynamicResource AccentBrush}" />
-        <Setter Property="StrokeThickness" Value="1.5" />
-        <Setter Property="StrokeLineCap"   Value="Round" />
+    <Styles.Resources>
+        <ResourceDictionary>
+            <converters:NodeChevronGeometryConverter x:Key="NodeChevronGeometry" />
+            <converters:GroupBandBrushConverter x:Key="GroupBandBrush" />
+            <converters:NodeChevronSizeConverter x:Key="NodeChevronSize" />
+
+            <ControlTheme x:Key="DaedalusExpanderToggle" TargetType="ToggleButton">
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Foreground" Value="{DynamicResource FgDimmedBrush}" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid Background="Transparent">
+                    <Border Width="22" Height="22">
+                        <Path x:Name="ChevronPath"
+                              Fill="Transparent"
+                              Stroke="{TemplateBinding Foreground}"
+                              StrokeThickness="2"
+                              StrokeLineCap="Round"
+                              StrokeJoin="Round"
+                              Stretch="Uniform"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"
+                          Width="{Binding Path=DataContext, Converter={StaticResource NodeChevronSize}, RelativeSource={RelativeSource TemplatedParent}}"
+                          Height="{Binding Path=DataContext, Converter={StaticResource NodeChevronSize}, RelativeSource={RelativeSource TemplatedParent}}">
+                            <Path.Data>
+                                <MultiBinding Converter="{StaticResource NodeChevronGeometry}">
+                                    <Binding Path="DataContext" RelativeSource="{RelativeSource TemplatedParent}" />
+                                    <Binding Path="IsChecked" RelativeSource="{RelativeSource TemplatedParent}" />
+                                </MultiBinding>
+                            </Path.Data>
+                        </Path>
+                    </Border>
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+        <Style Selector="^:checked /template/ Path#ChevronPath">
+            <Setter Property="Stroke" Value="{DynamicResource AccentBrush}" />
+        </Style>
+        <Style Selector="^:checked">
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+        </Style>
+    </ControlTheme>
+
+    <ControlTheme x:Key="{x:Type TreeDataGridExpanderCell}"
+                  TargetType="TreeDataGridExpanderCell"
+                  BasedOn="{StaticResource {x:Type TreeDataGridExpanderCell}}">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border x:Name="CellBorder"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        Padding="{TemplateBinding Indent, Converter={x:Static conv:IndentConverter.Instance}}">
+                    <DockPanel>
+                        <Border DockPanel.Dock="Left"
+                                Margin="12 0 8 0">
+                            <ToggleButton Theme="{StaticResource DaedalusExpanderToggle}"
+                                          Focusable="False"
+                                          IsChecked="{TemplateBinding IsExpanded, Mode=TwoWay}" />
+                        </Border>
+                        <Border Background="{Binding Path=DataContext, Converter={StaticResource GroupBandBrush}, RelativeSource={RelativeSource TemplatedParent}}"
+                                HorizontalAlignment="Stretch">
+                            <Decorator Name="PART_Content" />
+                        </Border>
+                    </DockPanel>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </ControlTheme>
+        </ResourceDictionary>
+    </Styles.Resources>
+
+    <Style Selector="TreeDataGridTextCell">
+        <Setter Property="Background" Value="{Binding Converter={StaticResource GroupBandBrush}}" />
     </Style>
 
     <Style Selector="Menu Separator">

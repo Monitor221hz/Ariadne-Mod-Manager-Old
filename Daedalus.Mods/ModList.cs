@@ -4,11 +4,11 @@ using Daedalus.Contracts.Mods;
 
 namespace Daedalus.Mods;
 
-public partial class ModList : IList<IModInfo>, IModList
+public partial class ModList : IList<ILibraryMod>, IModList
 {
-    private readonly List<IModInfo> _looseMods;
+    private readonly List<ILibraryMod> _looseMods;
     private readonly List<IModGroup> _modGroups;
-    public IList<IModInfo> LooseMods => _looseMods;
+    public IList<ILibraryMod> LooseMods => _looseMods;
     public IList<IModGroup> ModGroups => _modGroups;
 
     public int Count
@@ -26,7 +26,7 @@ public partial class ModList : IList<IModInfo>, IModList
 
     public bool IsReadOnly => false;
 
-    public ModList(List<IModInfo> looseMods, List<IModGroup> groupedMods)
+    public ModList(List<ILibraryMod> looseMods, List<IModGroup> groupedMods)
     {
         _looseMods = looseMods;
         _modGroups = groupedMods;
@@ -50,7 +50,7 @@ public partial class ModList : IList<IModInfo>, IModList
         throw new ArgumentOutOfRangeException("index");
     }
 
-    private IModInfo GetAt(int index)
+    private ILibraryMod GetAt(int index)
     {
         if (IsLoose(index))
         {
@@ -59,7 +59,7 @@ public partial class ModList : IList<IModInfo>, IModList
         return GroupOf(index - _looseMods.Count, out int localIndex)[localIndex];
     }
 
-    private void SetAt(int index, IModInfo value)
+    private void SetAt(int index, ILibraryMod value)
     {
         if (IsLoose(index))
         {
@@ -69,13 +69,13 @@ public partial class ModList : IList<IModInfo>, IModList
         GroupOf(index - _looseMods.Count, out int localIndex)[localIndex] = value;
     }
 
-    public IModInfo this[int index]
+    public ILibraryMod this[int index]
     {
         get => GetAt(index);
         set => SetAt(index, value);
     }
 
-    public int IndexOf(IModInfo item)
+    public int IndexOf(ILibraryMod item)
     {
         int index = _looseMods.IndexOf(item);
         if (index != -1)
@@ -95,7 +95,7 @@ public partial class ModList : IList<IModInfo>, IModList
         return -1;
     }
 
-    public void Insert(int index, IModInfo item)
+    public void Insert(int index, ILibraryMod item)
     {
         if (index < 0 || index > Count)
         {
@@ -131,7 +131,7 @@ public partial class ModList : IList<IModInfo>, IModList
         GroupOf(index - _looseMods.Count, out int localIndex).RemoveAt(localIndex);
     }
 
-    public void Add(IModInfo item)
+    public void Add(ILibraryMod item)
     {
         _looseMods.Add(item);
     }
@@ -142,7 +142,7 @@ public partial class ModList : IList<IModInfo>, IModList
         _modGroups.Clear();
     }
 
-    public bool Contains(IModInfo item)
+    public bool Contains(ILibraryMod item)
     {
         if (_looseMods.Contains(item))
         {
@@ -158,7 +158,7 @@ public partial class ModList : IList<IModInfo>, IModList
         return false;
     }
 
-    public void CopyTo(IModInfo[] array, int arrayIndex)
+    public void CopyTo(ILibraryMod[] array, int arrayIndex)
     {
         _looseMods.CopyTo(array, arrayIndex);
         arrayIndex += _looseMods.Count;
@@ -169,7 +169,7 @@ public partial class ModList : IList<IModInfo>, IModList
         }
     }
 
-    public bool Remove(IModInfo item)
+    public bool Remove(ILibraryMod item)
     {
         if (_looseMods.Remove(item))
         {
@@ -188,7 +188,7 @@ public partial class ModList : IList<IModInfo>, IModList
 
     public ModListEnumerator GetEnumerator() => new(this);
 
-    IEnumerator<IModInfo> IEnumerable<IModInfo>.GetEnumerator() => GetEnumerator();
+    IEnumerator<ILibraryMod> IEnumerable<ILibraryMod>.GetEnumerator() => GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }

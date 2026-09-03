@@ -5,20 +5,18 @@ namespace Daedalus.Mods.Tests;
 
 public class ModListTests
 {
-    private sealed class FakeMod(string name) : IModInfo
+    private sealed class FakeMod(string name) : ILibraryMod
     {
-        public ulong ID => 0;
-        public string Name { get; } = name;
+        public IModInfo Info { get; } = new ModInfo(0, name, SourceType.Local, "1.0", [], "", 0);
         public DirectoryInfo Directory => new(".");
-        public SourceType IDSource => SourceType.Local;
-        public string Version => "1.0";
-        public List<string> Categories { get; } = [];
-        public string Target { get; set; } = "";
-        public uint Priority { get; set; }
+        public Daedalus.VFS.VirtualNode<ModFileEntry> Content { get; } =
+            new("", Daedalus.VFS.NodeFlags.Directory, null, default);
+
+        public void RefreshContent() { }
     }
 
     // loose [A,B], g1 [C,D,E], g2 [] (empty), g3 [F]
-    private static ModList NewList(out List<IModInfo> loose, out List<IModGroup> groups)
+    private static ModList NewList(out List<ILibraryMod> loose, out List<IModGroup> groups)
     {
         loose = [new FakeMod("A"), new FakeMod("B")];
         groups =
@@ -45,7 +43,7 @@ public class ModListTests
 
         Assert.Equal(
             new[] { "A", "B", "C", "D", "E", "F" },
-            Enumerable.Range(0, list.Count).Select(i => list[i].Name)
+            Enumerable.Range(0, list.Count).Select(i => list[i].Info.Name)
         );
     }
 
@@ -100,9 +98,9 @@ public class ModListTests
 
         list.Insert(3, new FakeMod("X")); // before D, inside g1
 
-        Assert.Equal(new[] { "A", "B", "C", "X", "D", "E", "F" }, list.Select(m => m.Name));
+        Assert.Equal(new[] { "A", "B", "C", "X", "D", "E", "F" }, list.Select(m => m.Info.Name));
         Assert.Equal(2, loose.Count);
-        Assert.Equal("X", groups[0][1].Name);
+        Assert.Equal("X", groups[0][1].Info.Name);
     }
 
     [Fact]
@@ -113,7 +111,7 @@ public class ModListTests
 
         list.Insert(5, y); // F's position: start of g3, past empty g2
 
-        Assert.Equal(new[] { "A", "B", "C", "D", "E", "Y", "F" }, list.Select(m => m.Name));
+        Assert.Equal(new[] { "A", "B", "C", "D", "E", "Y", "F" }, list.Select(m => m.Info.Name));
         Assert.Equal(2, loose.Count);
         Assert.Same(y, groups[2][0]);
     }
@@ -149,8 +147,8 @@ public class ModListTests
         list.RemoveAt(2); // D from g1
 
         Assert.Single(loose);
-        Assert.Equal(new[] { "C", "E" }, groups[0].Select(m => m.Name));
-        Assert.Equal(new[] { "B", "C", "E", "F" }, list.Select(m => m.Name));
+        Assert.Equal(new[] { "C", "E" }, groups[0].Select(m => m.Info.Name));
+        Assert.Equal(new[] { "B", "C", "E", "F" }, list.Select(m => m.Info.Name));
     }
 
     [Fact]
@@ -177,7 +175,7 @@ public class ModListTests
         Assert.True(list.Remove(loose[0]));
         Assert.True(list.Remove(groups[2][0]));
         Assert.False(list.Remove(new FakeMod("X")));
-        Assert.Equal(new[] { "B", "C", "D", "E" }, list.Select(m => m.Name));
+        Assert.Equal(new[] { "B", "C", "D", "E" }, list.Select(m => m.Info.Name));
     }
 
     [Fact]
@@ -185,8 +183,8 @@ public class ModListTests
     {
         var list = NewList(out _, out _);
 
-        var first = list.Select(m => m.Name).ToArray();
-        var second = list.Select(m => m.Name).ToArray();
+        var first = list.Select(m => m.Info.Name).ToArray();
+        var second = list.Select(m => m.Info.Name).ToArray();
 
         Assert.Equal(new[] { "A", "B", "C", "D", "E", "F" }, first);
         Assert.Equal(first, second);
@@ -196,11 +194,11 @@ public class ModListTests
     public void CopyTo_CopiesFlattenedOrder()
     {
         var list = NewList(out _, out _);
-        var array = new IModInfo[list.Count];
+        var array = new ILibraryMod[list.Count];
 
         list.CopyTo(array, 0);
 
-        Assert.Equal(list.Select(m => m.Name), array.Select(m => m.Name));
+        Assert.Equal(list.Select(m => m.Info.Name), array.Select(m => m.Info.Name));
     }
 
     [Fact]

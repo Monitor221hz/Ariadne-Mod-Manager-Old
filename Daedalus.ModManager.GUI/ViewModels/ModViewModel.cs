@@ -6,18 +6,17 @@ namespace Daedalus.ModManager.GUI.ViewModels;
 
 public class ModViewModel : ViewModelBase
 {
-    private readonly IModInfo _mod;
+    private readonly ILibraryMod _mod;
     private string _target;
     private uint _priority;
 
-    public IModInfo Model => _mod;
+    public ILibraryMod Model => _mod;
 
-    public ulong ID => _mod.ID;
-    public string Name => _mod.Name;
-    public string Version => _mod.Version;
-    public SourceType IDSource => _mod.IDSource;
-    public string DirectoryPath => _mod.Directory.FullName;
-    public IReadOnlyList<string> Categories => _mod.Categories;
+    public ulong ID => _mod.Info.ID;
+    public string Name => _mod.Info.Name;
+    public string Version => _mod.Info.Version;
+    public SourceType IDSource => _mod.Info.IDSource;
+    public IReadOnlyList<string> Categories => _mod.Info.Categories;
 
     public string Target
     {
@@ -25,7 +24,7 @@ public class ModViewModel : ViewModelBase
         set
         {
             this.RaiseAndSetIfChanged(ref _target, value);
-            _mod.Target = value;
+            _mod.Info.Target = value;
         }
     }
 
@@ -35,14 +34,14 @@ public class ModViewModel : ViewModelBase
         set
         {
             this.RaiseAndSetIfChanged(ref _priority, value);
-            _mod.Priority = value;
+            _mod.Info.Priority = value;
         }
     }
 
-    public ModViewModel(IModInfo mod)
+    public ModViewModel(ILibraryMod mod)
     {
         _mod = mod;
-        _target = mod.Target;
-        _priority = mod.Priority;
+        _target = mod.Info.Target;
+        _priority = mod.Info.Priority;
     }
 }

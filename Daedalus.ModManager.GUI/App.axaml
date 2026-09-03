@@ -1,8 +1,10 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:views="using:Daedalus.ModManager.GUI.Views"
+             xmlns:vm="using:Daedalus.ModManager.GUI.ViewModels"
+             xmlns:converters="using:Daedalus.ModManager.GUI.Converters"
              x:Class="Daedalus.ModManager.GUI.App"
-             RequestedThemeVariant="Default">
+             RequestedThemeVariant="Light">
 
     <Application.DataTemplates>
         <views:ViewLocator />
@@ -10,6 +12,7 @@
 
     <Application.Resources>
         <ResourceDictionary>
+            <converters:BandContrastForegroundConverter x:Key="BandContrastForeground" />
             <ResourceDictionary.MergedDictionaries>
                 <ResourceInclude Source="avares://Mortex/Themes/Theme.axaml" />
             </ResourceDictionary.MergedDictionaries>

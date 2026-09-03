@@ -36,10 +36,14 @@ public class VirtualDeploymentMethodTests : IDisposable
     private VirtualDeploymentMethod CreateMethod() =>
         new(_factory, new TestDeploymentPaths(_overwriteDir.FullName, _stagingDir.FullName));
 
-    private ModInfo CreateMod(string name, string target, out DirectoryInfo modDir)
+    private LibraryMod CreateMod(string name, string target, out DirectoryInfo modDir)
     {
         modDir = Directory.CreateDirectory(_temp.Combine("mods", name));
-        return new ModInfo(1, name, modDir, SourceType.Local, "1.0", [], target);
+        return new LibraryMod(
+            new ModInfo(1, name, SourceType.Local, "1.0", [], target, 0),
+            modDir,
+            []
+        );
     }
 
     [Fact]
@@ -149,7 +153,11 @@ public class VirtualDeploymentMethodTests : IDisposable
     {
         var game = CreateGame();
         var missing = new DirectoryInfo(_temp.Combine("mods", "ghost"));
-        var mod = new ModInfo(2, "Ghost", missing, SourceType.Local, "1.0", [], "Root");
+        var mod = new LibraryMod(
+            new ModInfo(2, "Ghost", SourceType.Local, "1.0", [], "Root", 0),
+            missing,
+            []
+        );
 
         using var method = CreateMethod();
 

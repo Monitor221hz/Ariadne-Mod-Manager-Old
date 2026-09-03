@@ -5,7 +5,7 @@ namespace Daedalus.Contracts.ModManager;
 
 public interface ILoadOrderBuilder
 {
-    IEnumerable<ILoadOrderInfo> Fetch(IInstalledGame game, IReadOnlyList<IModInfo> mods);
+    IEnumerable<ILoadOrderInfo> Fetch(IInstalledGame game, IReadOnlyList<ILibraryMod> mods);
     void Deploy(
         IInstalledGame game,
         IModDeploymentMethod deploymentMethod,

@@ -57,10 +57,14 @@ public class SkyrimSELoadOrderBuilderTests : IDisposable
 
     public void Dispose() => _temp.Dispose();
 
-    private ModInfo CreateMod(string name, out DirectoryInfo modDir)
+    private LibraryMod CreateMod(string name, out DirectoryInfo modDir)
     {
         modDir = Directory.CreateDirectory(_temp.Combine("mods", name));
-        return new ModInfo(1, name, modDir, SourceType.Local, "1.0", [], "Data");
+        return new LibraryMod(
+            new ModInfo(1, name, SourceType.Local, "1.0", [], "Data", 0),
+            modDir,
+            []
+        );
     }
 
     private static FileInfo WritePlugin(DirectoryInfo dir, string fileName)
@@ -110,8 +114,8 @@ public class SkyrimSELoadOrderBuilderTests : IDisposable
         var baseInfo = Assert.Single(results, r => ((IModKeyed)r).ModKey.FileName == "Base.esm");
         var depInfo = Assert.Single(results, r => ((IModKeyed)r).ModKey == depKey);
 
-        Assert.Same(modA, baseInfo.Origin);
-        Assert.Same(modB, depInfo.Origin);
+        Assert.Same(modA.Info, baseInfo.Origin);
+        Assert.Same(modB.Info, depInfo.Origin);
         Assert.Equal(baseFile.FullName, Assert.Single(baseInfo.Artifacts).FullName);
         Assert.Equal(depFile.FullName, Assert.Single(depInfo.Artifacts).FullName);
         Assert.False(baseInfo.Active);
@@ -210,7 +214,7 @@ public class SkyrimSELoadOrderBuilderTests : IDisposable
     {
         public ModDeploymentFlags Flags => ModDeploymentFlags.EmptyMountPoints;
 
-        public void Deploy(IInstalledGame game, IReadOnlyList<IModInfo> mods) { }
+        public void Deploy(IInstalledGame game, IReadOnlyList<ILibraryMod> mods) { }
 
         public void Revert(IInstalledGame game) { }
 
@@ -219,9 +223,9 @@ public class SkyrimSELoadOrderBuilderTests : IDisposable
         public void SetOutputRules(List<OutputRule> outputRules) { }
     }
 
-    private sealed class LoadOrderInfoStub(IModInfo origin) : ILoadOrderInfo
+    private sealed class LoadOrderInfoStub(ILibraryMod origin) : ILoadOrderInfo
     {
-        public IModInfo Origin { get; } = origin;
+        public IModInfo Origin { get; } = origin.Info;
         public IReadOnlyList<FileInfo> Artifacts { get; } = [];
         public IReadOnlyList<ILoadOrderInfo> Dependencies { get; } = [];
         public bool Active { get; set; }

@@ -4,7 +4,6 @@ public interface IModInfo
 {
     ulong ID { get; }
     string Name { get; }
-    DirectoryInfo Directory { get; }
     SourceType IDSource { get; }
     string Version { get; }
     List<string> Categories { get; }

@@ -16,7 +16,7 @@ namespace Daedalus.ModManager.GUI.ViewModels;
 public class MainViewModel : ViewModelBase
 {
     private readonly IModProfileSerializer? _profileSerializer;
-    private readonly IModInfoSerializer? _modSerializer;
+    private readonly ILibraryModSerializer? _modSerializer;
     private readonly IModManagerPaths? _paths;
     private readonly IInstanceService? _instances;
     private readonly IGameCatalog? _catalog;
@@ -69,7 +69,7 @@ public class MainViewModel : ViewModelBase
 
     public MainViewModel(
         IModProfileSerializer profileSerializer,
-        IModInfoSerializer modSerializer,
+        ILibraryModSerializer modSerializer,
         IModManagerPaths paths,
         IInstanceService instances,
         IGameCatalog catalog,

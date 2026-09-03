@@ -11,8 +11,8 @@ public abstract class TreeNodeViewModel : ViewModelBase
     public virtual string? VersionText => null;
     public virtual string SizeText => "";
 
-    public virtual IEnumerable<TreeNodeViewModel> Children => Enumerable.Empty<TreeNodeViewModel>();
-    public virtual bool HasChildren => false;
+    private static readonly IReadOnlyList<TreeNodeViewModel> NoChildren = [];
 
-    public virtual void Unload() { }
+    public virtual IEnumerable<TreeNodeViewModel> Children => NoChildren;
+    public virtual bool HasChildren => false;
 }

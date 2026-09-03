@@ -11,8 +11,8 @@ public class ModsServiceExtensionsTests
     {
         using var provider = new ServiceCollection().AddMods().BuildServiceProvider();
 
-        var first = provider.GetRequiredService<IModInfoSerializer>();
-        var second = provider.GetRequiredService<IModInfoSerializer>();
+        var first = provider.GetRequiredService<ILibraryModSerializer>();
+        var second = provider.GetRequiredService<ILibraryModSerializer>();
 
         Assert.NotNull(first);
         Assert.Same(first, second);

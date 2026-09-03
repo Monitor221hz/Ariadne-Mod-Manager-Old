@@ -11,7 +11,15 @@
                 BorderThickness="0,0,0,1"
                 Padding="12,8">
             <StackPanel Orientation="Horizontal" Spacing="8">
-                <Button Content="+ New Mod" Command="{Binding CreateModCommand}" />
+                <Button ToolTip.Tip="Create">
+                    <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                            <MenuItem Header="Create Empty Mod" Command="{Binding CreateModCommand}" />
+                            <MenuItem Header="Create New Group" Command="{Binding CreateGroupCommand}" />
+                        </MenuFlyout>
+                    </Button.Flyout>
+                    <LucideIcon Kind="Plus" Size="16" />
+                </Button>
                 <TextBlock VerticalAlignment="Center"
                            FontWeight="SemiBold"
                            Text="Profile:" />
@@ -25,6 +33,6 @@
             </StackPanel>
         </Border>
 
-        <TreeDataGrid Source="{Binding ModsSource}" />
+        <TreeDataGrid Source="{Binding ModsSource}" AutoDragDropRows="True" />
     </DockPanel>
 </UserControl>

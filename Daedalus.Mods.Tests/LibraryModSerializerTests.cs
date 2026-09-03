@@ -4,7 +4,7 @@ using Xunit;
 
 namespace Daedalus.Mods.Tests;
 
-public class ModInfoSerializerTests : IDisposable
+public class LibraryModSerializerTests : IDisposable
 {
     private sealed class TempDirectory : IDisposable
     {
@@ -31,35 +31,36 @@ public class ModInfoSerializerTests : IDisposable
 
     private DirectoryInfo ModFolder(string name) => new(System.IO.Path.Combine(_temp.Path, name));
 
-    private ModInfo CreateMod(string folder) =>
+    private LibraryMod CreateMod(string folder) =>
         new(
-            1001,
-            "Mod A",
+            new ModInfo(
+                1001,
+                "Mod A",
+                SourceType.NexusMods,
+                "2.1.0",
+                ["Textures", "Gameplay"],
+                "Data",
+                7
+            ),
             ModFolder(folder),
-            SourceType.NexusMods,
-            "2.1.0",
-            ["Textures", "Gameplay"],
-            "Data"
-        )
-        {
-            Priority = 7,
-        };
+            []
+        );
 
     [Fact]
     public void Save_WritesMetaJsonIntoModFolder()
     {
         var mod = CreateMod("TestMod");
-        new ModInfoSerializer().Save(mod);
+        new LibraryModSerializer([]).Save(mod);
 
         var file = new FileInfo(
-            System.IO.Path.Combine(mod.Directory.FullName, ModInfoSerializer.FileName)
+            System.IO.Path.Combine(mod.Directory.FullName, LibraryModSerializer.FileName)
         );
         Assert.True(file.Exists);
 
         var json = File.ReadAllText(file.FullName);
         Assert.DoesNotContain("Directory", json);
         Assert.DoesNotContain("ProfileFolder", json);
-        Assert.Contains("NexusMods", json); // enum as string
+        Assert.Contains("NexusMods", json);
         Assert.Contains("\"Priority\": 7", json);
     }
 
@@ -67,7 +68,7 @@ public class ModInfoSerializerTests : IDisposable
     public void Save_CreatesMissingModFolder()
     {
         var mod = CreateMod("New/NewMod");
-        new ModInfoSerializer().Save(mod);
+        new LibraryModSerializer([]).Save(mod);
 
         Assert.True(Directory.Exists(mod.Directory.FullName));
     }
@@ -75,26 +76,26 @@ public class ModInfoSerializerTests : IDisposable
     [Fact]
     public void Load_RoundTripsAllFields_AndDerivesDirectoryFromFileLocation()
     {
-        var sut = new ModInfoSerializer();
+        var sut = new LibraryModSerializer([]);
         var mod = CreateMod("TestMod");
         sut.Save(mod);
 
         var loaded = sut.Load(ModFolder("TestMod"));
 
-        Assert.Equal(mod.ID, loaded.ID);
-        Assert.Equal(mod.Name, loaded.Name);
-        Assert.Equal(mod.IDSource, loaded.IDSource);
-        Assert.Equal(mod.Version, loaded.Version);
-        Assert.Equal(mod.Categories, loaded.Categories);
-        Assert.Equal(mod.Target, loaded.Target);
-        Assert.Equal(mod.Priority, loaded.Priority);
+        Assert.Equal(mod.Info.ID, loaded.Info.ID);
+        Assert.Equal(mod.Info.Name, loaded.Info.Name);
+        Assert.Equal(mod.Info.IDSource, loaded.Info.IDSource);
+        Assert.Equal(mod.Info.Version, loaded.Info.Version);
+        Assert.Equal(mod.Info.Categories, loaded.Info.Categories);
+        Assert.Equal(mod.Info.Target, loaded.Info.Target);
+        Assert.Equal(mod.Info.Priority, loaded.Info.Priority);
         Assert.Equal(ModFolder("TestMod").FullName, loaded.Directory.FullName);
     }
 
     [Fact]
     public void Load_FromMetaFilePath_DerivesParentFolder()
     {
-        var sut = new ModInfoSerializer();
+        var sut = new LibraryModSerializer([]);
         var mod = CreateMod("Nested/TestMod");
         sut.Save(mod);
 
@@ -108,7 +109,7 @@ public class ModInfoSerializerTests : IDisposable
     [Fact]
     public void Load_MissingMetaFile_Throws()
     {
-        var sut = new ModInfoSerializer();
+        var sut = new LibraryModSerializer([]);
         var folder = ModFolder("Missing");
         folder.Create();
 

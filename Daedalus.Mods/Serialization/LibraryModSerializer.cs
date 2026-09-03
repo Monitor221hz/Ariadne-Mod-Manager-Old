@@ -3,7 +3,8 @@ using Daedalus.Contracts.Mods;
 
 namespace Daedalus.Mods.Serialization;
 
-public sealed class ModInfoSerializer : IModInfoSerializer
+public sealed class LibraryModSerializer(IReadOnlyList<IArchiveReader> archiveReaders)
+    : ILibraryModSerializer
 {
     public const string FileName = "meta.json";
 
@@ -15,7 +16,7 @@ public sealed class ModInfoSerializer : IModInfoSerializer
         WriteIndented = true,
     };
 
-    public IModInfo Load(FileInfo metaFile)
+    public ILibraryMod Load(FileInfo metaFile)
     {
         var record =
             JsonSerializer.Deserialize<ModInfoRecord>(
@@ -30,33 +31,34 @@ public sealed class ModInfoSerializer : IModInfoSerializer
             ?? throw new InvalidOperationException(
                 $"Mod metadata file \"{metaFile.FullName}\" has no parent directory."
             );
-        return new ModInfo(
-            record.ID,
-            record.Name,
+        return new LibraryMod(
+            new ModInfo(
+                record.ID,
+                record.Name,
+                record.IDSource,
+                record.Version,
+                record.Categories,
+                record.Target,
+                record.Priority
+            ),
             directory,
-            record.IDSource,
-            record.Version,
-            record.Categories,
-            record.Target
-        )
-        {
-            Priority = record.Priority,
-        };
+            archiveReaders
+        );
     }
 
-    public IModInfo Load(DirectoryInfo modFolder) =>
+    public ILibraryMod Load(DirectoryInfo modFolder) =>
         Load(new FileInfo(Path.Join(modFolder.FullName, FileName)));
 
-    public void Save(IModInfo mod)
+    public void Save(ILibraryMod mod)
     {
         var record = new ModInfoRecord(
-            mod.ID,
-            mod.Name,
-            mod.IDSource,
-            mod.Version,
-            mod.Categories,
-            mod.Target,
-            mod.Priority
+            mod.Info.ID,
+            mod.Info.Name,
+            mod.Info.IDSource,
+            mod.Info.Version,
+            mod.Info.Categories,
+            mod.Info.Target,
+            mod.Info.Priority
         );
         mod.Directory.Refresh();
         if (!mod.Directory.Exists)

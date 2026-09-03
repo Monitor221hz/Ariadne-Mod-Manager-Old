@@ -113,9 +113,9 @@ public sealed class VirtualDeploymentMethod : IModDeploymentMethod
         return _gamePathDirectoryMap.TryGetValue(path, out directoryInfo);
     }
 
-    public void Deploy(IInstalledGame game, IReadOnlyList<IModInfo> mods)
+    public void Deploy(IInstalledGame game, IReadOnlyList<ILibraryMod> mods)
     {
-        var modOrder = mods.OrderBy(m => m.Priority);
+        var modOrder = mods.OrderBy(m => m.Info.Priority);
         var configuration = game.Configuration;
         Dictionary<string, VirtualNode<BackedEntry>> virtualRootKeyMap = new();
         DeployPath(game, configuration.Root, virtualRootKeyMap, false);
@@ -126,7 +126,10 @@ public sealed class VirtualDeploymentMethod : IModDeploymentMethod
         foreach (var mod in modOrder)
         {
             mod.Directory.Refresh();
-            if (!mod.Directory.Exists || !configuration.TryGetValue(mod.Target, out var gamePath))
+            if (
+                !mod.Directory.Exists
+                || !configuration.TryGetValue(mod.Info.Target, out var gamePath)
+            )
             {
                 continue;
             }
@@ -135,30 +138,20 @@ public sealed class VirtualDeploymentMethod : IModDeploymentMethod
                 continue;
             }
 
-            foreach (
-                var fileSysInfo in mod.Directory.EnumerateFileSystemInfos(
-                    "*",
-                    SearchOption.TopDirectoryOnly
-                )
-            )
+            foreach (var content in mod.Content.Children)
             {
-                var relativePath = Path.GetRelativePath(
-                    mod.Directory.FullName,
-                    fileSysInfo.FullName
-                );
-                var fullPath = Path.Join(game.LookupAbsolutePath(gamePath), relativePath);
-                switch (fileSysInfo)
+                var fullPath = Path.Join(game.LookupAbsolutePath(gamePath), content.Name);
+                if (content.IsDirectory)
                 {
-                    case FileInfo file:
-                        virtualRoot.LinkFile(file.FullName, fullPath);
-                        break;
-                    case DirectoryInfo dir:
-                        virtualRoot.LinkDirectory(
-                            dir.FullName,
-                            fullPath,
-                            LinkFlags.Recursive | LinkFlags.Whiteouts
-                        );
-                        break;
+                    virtualRoot.LinkDirectory(
+                        content.Data!.AbsolutePath,
+                        fullPath,
+                        LinkFlags.Recursive | LinkFlags.Whiteouts
+                    );
+                }
+                else
+                {
+                    virtualRoot.LinkFile(content.Data!.AbsolutePath, fullPath);
                 }
             }
         }

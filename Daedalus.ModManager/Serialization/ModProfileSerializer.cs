@@ -10,7 +10,7 @@ public sealed class ModProfileSerializer : IModProfileSerializer
 {
     public const string FileName = "profile.json";
 
-    private readonly IModInfoSerializer _modInfoSerializer;
+    private readonly ILibraryModSerializer _libraryModSerializer;
     private readonly IModManagerPaths _paths;
 
     private static readonly JsonSerializerOptions SerializerOptions = new()
@@ -21,9 +21,9 @@ public sealed class ModProfileSerializer : IModProfileSerializer
         WriteIndented = true,
     };
 
-    public ModProfileSerializer(IModInfoSerializer modInfoSerializer, IModManagerPaths paths)
+    public ModProfileSerializer(ILibraryModSerializer libraryModSerializer, IModManagerPaths paths)
     {
-        _modInfoSerializer = modInfoSerializer;
+        _libraryModSerializer = libraryModSerializer;
         _paths = paths;
     }
 
@@ -43,14 +43,11 @@ public sealed class ModProfileSerializer : IModProfileSerializer
                 $"Profile file \"{profileFile.FullName}\" has no parent directory."
             );
 
-        List<IModInfo> looseMods = record
-            .ModList.LooseMods.Select(LoadMod)
-            .Cast<IModInfo>()
-            .ToList();
+        List<ILibraryMod> looseMods = record.ModList.LooseMods.Select(LoadMod).ToList();
         List<IModGroup> groups = record
             .ModList.ModGroups.Select(group => new ModGroup(
                 group.Name,
-                group.Mods.Select(LoadMod).Cast<IModInfo>().ToList(),
+                group.Mods.Select(LoadMod).ToList(),
                 group.HeaderColor
             ))
             .Cast<IModGroup>()
@@ -94,10 +91,10 @@ public sealed class ModProfileSerializer : IModProfileSerializer
         );
     }
 
-    private static string ModFolderName(IModInfo mod) => mod.Directory.Name;
+    private static string ModFolderName(ILibraryMod mod) => mod.Directory.Name;
 
-    private IModInfo LoadMod(string modFolderName) =>
-        _modInfoSerializer.Load(
+    private ILibraryMod LoadMod(string modFolderName) =>
+        _libraryModSerializer.Load(
             new DirectoryInfo(Path.Join(_paths.ModsFolder.FullName, modFolderName))
         );
 }

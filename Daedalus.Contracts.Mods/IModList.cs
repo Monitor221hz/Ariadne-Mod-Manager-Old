@@ -2,8 +2,8 @@ using Daedalus.Contracts.Mods;
 
 namespace Daedalus.Contracts.Mods;
 
-public interface IModList : IList<IModInfo>
+public interface IModList : IList<ILibraryMod>
 {
-    IList<IModInfo> LooseMods { get; }
+    IList<ILibraryMod> LooseMods { get; }
     IList<IModGroup> ModGroups { get; }
 }

@@ -1,0 +1,11 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Daedalus.ModManager.GUI.ViewModels"
+             x:Class="Daedalus.ModManager.GUI.Views.ModEntryNodeView"
+             x:DataType="vm:ModEntryNodeViewModel">
+
+    <TextBlock Text="{Binding DisplayName}"
+               Foreground="{DynamicResource FgBaseBrush}"
+               VerticalAlignment="Center"
+               Margin="0,3" />
+</UserControl>

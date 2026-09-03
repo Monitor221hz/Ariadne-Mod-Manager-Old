@@ -8,7 +8,7 @@ namespace Daedalus.Contracts.ModManager;
 public interface IModDeploymentMethod : IDisposable
 {
     void SetOutputRules(List<OutputRule> outputRules);
-    void Deploy(IInstalledGame game, IReadOnlyList<IModInfo> mods);
+    void Deploy(IInstalledGame game, IReadOnlyList<ILibraryMod> mods);
     void Revert(IInstalledGame game);
     bool TryGetDeployedPath(
         IInstalledGame game,

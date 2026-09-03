@@ -5,13 +5,13 @@ namespace Daedalus.Mods;
 
 public partial class ModList
 {
-    public struct ModListEnumerator : IEnumerator<IModInfo>
+    public struct ModListEnumerator : IEnumerator<ILibraryMod>
     {
         private readonly ModList _list;
         private int _looseIndex;
         private int _groupIndex;
         private int _modIndex;
-        private IModInfo? _current;
+        private ILibraryMod? _current;
 
         internal ModListEnumerator(ModList list)
         {
@@ -22,7 +22,7 @@ public partial class ModList
             _current = null;
         }
 
-        public readonly IModInfo Current => _current!;
+        public readonly ILibraryMod Current => _current!;
 
         readonly object IEnumerator.Current => Current;
 

@@ -8,10 +8,12 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+    <PackageReference Include="SharpCompress" Version="0.50.4" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Daedalus.Contracts.Mods\Daedalus.Contracts.Mods.csproj" />
+    <ProjectReference Include="..\Daedalus.VFS\Daedalus.VFS.csproj" />
   </ItemGroup>
 
 
