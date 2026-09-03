@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Reactive;
@@ -9,7 +11,6 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Models.TreeDataGrid;
-using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Templates;
 using Daedalus.Contracts.ModManager;
 using Daedalus.Contracts.Mods;
@@ -22,10 +23,13 @@ namespace Daedalus.ModManager.GUI.ViewModels;
 
 public sealed class ModListViewModel : ViewModelBase
 {
+    private static readonly TimeSpan DragSyncDelay = TimeSpan.FromMilliseconds(300);
+
     private readonly IModProfileSerializer _profileSerializer;
     private readonly ILibraryModSerializer _modSerializer;
     private readonly IModManagerPaths _paths;
     private readonly IInstanceService _instances;
+    private readonly SynchronizationContext? _uiContext = SynchronizationContext.Current;
 
     private ProfileViewModel? _activeProfile;
     private ModListGridSource? _modsSource;
@@ -34,7 +38,12 @@ public sealed class ModListViewModel : ViewModelBase
     private bool _suppressProfileSwitch;
     private ObservableCollection<TreeNodeViewModel>? _dragRoots;
     private IDisposable? _dragSyncSubscription;
-    private readonly SynchronizationContext? _uiContext = SynchronizationContext.Current;
+
+    public ReactiveCommand<Unit, Unit> InitializeCommand { get; }
+    public ReactiveCommand<Unit, Unit> CreateModCommand { get; }
+    public ReactiveCommand<Unit, Unit> CreateGroupCommand { get; }
+
+    public ObservableCollection<string> ProfileNames { get; } = [];
 
     public ProfileViewModel? ActiveProfile
     {
@@ -48,8 +57,6 @@ public sealed class ModListViewModel : ViewModelBase
         private set => this.RaiseAndSetIfChanged(ref _modsSource, value);
     }
 
-    public ObservableCollection<string> ProfileNames { get; } = [];
-
     public string? SelectedProfileName
     {
         get => _selectedProfileName;
@@ -58,7 +65,7 @@ public sealed class ModListViewModel : ViewModelBase
             this.RaiseAndSetIfChanged(ref _selectedProfileName, value);
             if (value is not null && !_suppressProfileSwitch && value != ActiveProfile?.Name)
             {
-                LoadProfileByName(value);
+                LoadProfile(value);
             }
         }
     }
@@ -68,10 +75,6 @@ public sealed class ModListViewModel : ViewModelBase
         get => _currentGameText;
         private set => this.RaiseAndSetIfChanged(ref _currentGameText, value);
     }
-
-    public ReactiveCommand<Unit, Unit> InitializeCommand { get; }
-    public ReactiveCommand<Unit, Unit> CreateModCommand { get; }
-    public ReactiveCommand<Unit, Unit> CreateGroupCommand { get; }
 
     public ModListViewModel(
         IModProfileSerializer profileSerializer,
@@ -88,61 +91,8 @@ public sealed class ModListViewModel : ViewModelBase
         InitializeCommand = ReactiveCommand.CreateFromTask(InitializeAsync);
         var hasActiveProfile = this.WhenAnyValue(x => x.ActiveProfile)
             .Select(profile => profile is not null);
-        CreateModCommand = ReactiveCommand.CreateFromTask(CreateEmptyModAsync, hasActiveProfile);
+        CreateModCommand = ReactiveCommand.CreateFromTask(CreateEmptyMod, hasActiveProfile);
         CreateGroupCommand = ReactiveCommand.Create(CreateGroup, hasActiveProfile);
-    }
-
-    private static double RelativeLuminance(byte r, byte g, byte b)
-    {
-        static double Linear(double c) =>
-            c <= 0.03928 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4);
-        return 0.2126 * Linear(r / 255.0) + 0.7152 * Linear(g / 255.0) + 0.0722 * Linear(b / 255.0);
-    }
-
-    private static System.Drawing.Color RandomHeaderColor()
-    {
-        for (var attempt = 0; attempt < 32; attempt++)
-        {
-            var hue = Random.Shared.NextDouble() * 360.0;
-            var s = 0.5 + Random.Shared.NextDouble() * 0.25;
-            var v = 0.45 + Random.Shared.NextDouble() * 0.2;
-            var x = v * s * (1 - Math.Abs((hue / 60) % 2 - 1));
-            var c = v * s;
-            var m = v - c;
-            var (r, g, b) = hue switch
-            {
-                < 60 => (c, x, 0.0),
-                < 120 => (x, c, 0.0),
-                < 180 => (0.0, c, x),
-                < 240 => (0.0, x, c),
-                < 300 => (x, 0.0, c),
-                _ => (c, 0.0, x),
-            };
-            var color = System.Drawing.Color.FromArgb(
-                255,
-                (int)((r + m) * 255),
-                (int)((g + m) * 255),
-                (int)((b + m) * 255)
-            );
-            if (RelativeLuminance(color.R, color.G, color.B) <= 0.17)
-            {
-                return color;
-            }
-        }
-        return System.Drawing.Color.FromArgb(255, 69, 71, 90);
-    }
-
-    private void CreateGroup()
-    {
-        var name = "New Group";
-        var suffix = 2;
-        while (ActiveProfile!.Model.ModList.ModGroups.Any(group => group.Name == name))
-        {
-            name = $"New Group {suffix++}";
-        }
-        ActiveProfile.AddGroup(new ModGroup(name, [], RandomHeaderColor()));
-        _profileSerializer.Save(ActiveProfile.Model);
-        ModsSource = BuildGridSource(ActiveProfile.Model.ModList);
     }
 
     private Task InitializeAsync() =>
@@ -190,6 +140,26 @@ public sealed class ModListViewModel : ViewModelBase
         return profile;
     }
 
+    private void LoadProfile(string name)
+    {
+        var profileFolder = new DirectoryInfo(Path.Join(_paths.ProfilesFolder.FullName, name));
+        var profile = _profileSerializer.Load(profileFolder);
+        NormalizePriorities(profile);
+        ActiveProfile = new ProfileViewModel(profile);
+        ModsSource = BuildGridSource(profile.ModList);
+    }
+
+    private static void NormalizePriorities(IModProfile profile)
+    {
+        var modList = profile.ModList;
+        ModOrderSync.ApplyOrder(
+            modList.LooseMods.ToList(),
+            modList.ModGroups.ToList(),
+            modList.ModGroups.Select(group => (IReadOnlyList<ILibraryMod>)group.ToList()).ToList(),
+            modList
+        );
+    }
+
     private void RefreshProfileNames()
     {
         ProfileNames.Clear();
@@ -223,31 +193,10 @@ public sealed class ModListViewModel : ViewModelBase
         }
     }
 
-    private static void NormalizePriorities(IModProfile profile)
-    {
-        var modList = profile.ModList;
-        ModOrderSync.ApplyOrder(
-            modList.LooseMods.ToList(),
-            modList.ModGroups.ToList(),
-            modList.ModGroups.Select(group => (IReadOnlyList<ILibraryMod>)group.ToList()).ToList(),
-            modList
-        );
-    }
-
-    private void LoadProfileByName(string name)
-    {
-        var profileFolder = new DirectoryInfo(Path.Join(_paths.ProfilesFolder.FullName, name));
-        var profile = _profileSerializer.Load(profileFolder);
-        NormalizePriorities(profile);
-        ActiveProfile = new ProfileViewModel(profile);
-        ModsSource = BuildGridSource(profile.ModList);
-    }
-
-    private Task CreateEmptyModAsync() =>
+    private Task CreateEmptyMod() =>
         Task.Run(() =>
         {
-            var modsFolder = _paths.ModsFolder;
-            var folder = UniqueModFolder(modsFolder);
+            var folder = UniqueModFolder(_paths.ModsFolder);
             var mod = new LibraryMod(
                 new ModInfo(
                     0,
@@ -272,6 +221,20 @@ public sealed class ModListViewModel : ViewModelBase
             });
         });
 
+    private void CreateGroup()
+    {
+        var baseName = "New Group";
+        var name = baseName;
+        var suffix = 2;
+        while (ActiveProfile!.Model.ModList.ModGroups.Any(group => group.Name == name))
+        {
+            name = $"{baseName} {suffix++}";
+        }
+        ActiveProfile.AddGroup(new ModGroup(name, [], RandomHeaderColor()));
+        _profileSerializer.Save(ActiveProfile.Model);
+        ModsSource = BuildGridSource(ActiveProfile.Model.ModList);
+    }
+
     private static DirectoryInfo UniqueModFolder(DirectoryInfo modsFolder)
     {
         var candidate = new DirectoryInfo(Path.Join(modsFolder.FullName, "New Mod"));
@@ -282,87 +245,31 @@ public sealed class ModListViewModel : ViewModelBase
         return candidate;
     }
 
-    private static ObservableCollection<TreeNodeViewModel> BuildRoots(IModList modList) =>
-        new(
-            modList
-                .LooseMods.Select(mod =>
-                    (TreeNodeViewModel)new ModEntryNodeViewModel((ILibraryMod)mod)
-                )
-                .Concat(modList.ModGroups.Select(group => new GroupHeaderNodeViewModel(group)))
-        );
+    // wcag
 
-    private void HookDragSync(ObservableCollection<TreeNodeViewModel> roots)
+    private static System.Drawing.Color RandomHeaderColor()
     {
-        _dragRoots = roots;
-        _dragSyncSubscription?.Dispose();
-
-        IObservable<System.Reactive.EventPattern<System.Collections.Specialized.NotifyCollectionChangedEventArgs>> Stream(
-            ObservableCollection<TreeNodeViewModel> collection
-        ) =>
-            Observable.FromEventPattern<
-                System.Collections.Specialized.NotifyCollectionChangedEventHandler,
-                System.Collections.Specialized.NotifyCollectionChangedEventArgs
-            >(
-                handler => collection.CollectionChanged += handler,
-                handler => collection.CollectionChanged -= handler
+        for (var attempt = 0; attempt < 32; attempt++)
+        {
+            var color = System.Drawing.Color.FromArgb(
+                255,
+                Random.Shared.Next(40, 100),
+                Random.Shared.Next(40, 140),
+                Random.Shared.Next(40, 160)
             );
-
-        var changes = roots
-            .OfType<GroupHeaderNodeViewModel>()
-            .Select(group => Stream(group.ObservableChildren))
-            .Aggregate(Stream(roots), (merged, stream) => merged.Merge(stream));
-
-        _dragSyncSubscription = changes
-            .Throttle(TimeSpan.FromMilliseconds(300))
-            .ObserveOn(_uiContext ?? SynchronizationContext.Current ?? new SynchronizationContext())
-            .Subscribe(_ => SyncDomainFromTree());
-    }
-
-    private void SyncDomainFromTree()
-    {
-        if (ActiveProfile is null || _dragRoots is null)
-        {
-            return;
-        }
-
-        var looseMods = _dragRoots
-            .OfType<ModEntryNodeViewModel>()
-            .Select(node => node.Model)
-            .ToList();
-        var groups = _dragRoots.OfType<GroupHeaderNodeViewModel>().ToList();
-        var groupMembers = groups
-            .Select(node =>
-                (IReadOnlyList<ILibraryMod>)
-                    node
-                        .ObservableChildren.OfType<ModEntryNodeViewModel>()
-                        .Select(child => child.Model)
-                        .ToList()
-            )
-            .ToList();
-
-        ModOrderSync.ApplyOrder(
-            looseMods,
-            groups.Select(g => g.Group).ToList(),
-            groupMembers,
-            ActiveProfile.Model.ModList
-        );
-        _profileSerializer.Save(ActiveProfile.Model);
-
-        void RefreshNodes(IEnumerable<TreeNodeViewModel> nodes)
-        {
-            foreach (var node in nodes)
+            if (RelativeLuminance(color.R, color.G, color.B) <= 0.17)
             {
-                if (node is ModEntryNodeViewModel mod)
-                {
-                    mod.RefreshFromModel();
-                }
-                else if (node is GroupHeaderNodeViewModel group)
-                {
-                    RefreshNodes(group.ObservableChildren);
-                }
+                return color;
             }
         }
-        RefreshNodes(_dragRoots);
+        return System.Drawing.Color.FromArgb(255, 69, 71, 90);
+    }
+
+    private static double RelativeLuminance(byte r, byte g, byte b)
+    {
+        static double Linear(double c) =>
+            c <= 0.03928 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4);
+        return 0.2126 * Linear(r / 255.0) + 0.7152 * Linear(g / 255.0) + 0.0722 * Linear(b / 255.0);
     }
 
     private ModListGridSource BuildGridSource(IModList modList)
@@ -377,7 +284,7 @@ public sealed class ModListViewModel : ViewModelBase
                     new TemplateColumn<TreeNodeViewModel>(
                         "Name",
                         new NodeCellTemplate(),
-                        width: new GridLength(3, Avalonia.Controls.GridUnitType.Star)
+                        width: new GridLength(3, GridUnitType.Star)
                     ),
                     node => node.Children,
                     node => node.HasChildren
@@ -410,6 +317,90 @@ public sealed class ModListViewModel : ViewModelBase
         }
 
         return gridSource;
+    }
+
+    private static ObservableCollection<TreeNodeViewModel> BuildRoots(IModList modList) =>
+        new(
+            modList
+                .LooseMods.Select(mod => (TreeNodeViewModel)new ModEntryNodeViewModel(mod))
+                .Concat(modList.ModGroups.Select(group => new GroupHeaderNodeViewModel(group)))
+        );
+
+    private void HookDragSync(ObservableCollection<TreeNodeViewModel> roots)
+    {
+        _dragRoots = roots;
+        _dragSyncSubscription?.Dispose();
+
+        var streams = roots
+            .OfType<GroupHeaderNodeViewModel>()
+            .Select(group => StreamOf(group.ObservableChildren))
+            .Append(StreamOf(roots));
+
+        _dragSyncSubscription = Observable
+            .Merge(streams)
+            .Throttle(DragSyncDelay)
+            .ObserveOn(_uiContext ?? SynchronizationContext.Current!)
+            .Subscribe(_ => SyncDomainFromTree());
+
+        static IObservable<EventPattern<NotifyCollectionChangedEventArgs>> StreamOf(
+            ObservableCollection<TreeNodeViewModel> collection
+        ) =>
+            Observable.FromEventPattern<
+                NotifyCollectionChangedEventHandler,
+                NotifyCollectionChangedEventArgs
+            >(
+                handler => collection.CollectionChanged += handler,
+                handler => collection.CollectionChanged -= handler
+            );
+    }
+
+    private void SyncDomainFromTree()
+    {
+        if (ActiveProfile is null || _dragRoots is null)
+        {
+            return;
+        }
+
+        var looseMods = _dragRoots
+            .OfType<ModEntryNodeViewModel>()
+            .Select(node => node.Model)
+            .ToList();
+        var groupNodes = _dragRoots.OfType<GroupHeaderNodeViewModel>().ToList();
+        var groupMembers = groupNodes
+            .Select(node =>
+                (IReadOnlyList<ILibraryMod>)
+                    node
+                        .ObservableChildren.OfType<ModEntryNodeViewModel>()
+                        .Select(child => child.Model)
+                        .ToList()
+            )
+            .ToList();
+
+        ModOrderSync.ApplyOrder(
+            looseMods,
+            groupNodes.Select(group => group.Group).ToList(),
+            groupMembers,
+            ActiveProfile.Model.ModList
+        );
+        _profileSerializer.Save(ActiveProfile.Model);
+
+        RefreshPriorities(_dragRoots);
+    }
+
+    private static void RefreshPriorities(IEnumerable<TreeNodeViewModel> nodes)
+    {
+        foreach (var node in nodes)
+        {
+            switch (node)
+            {
+                case ModEntryNodeViewModel mod:
+                    mod.RefreshFromModel();
+                    break;
+                case GroupHeaderNodeViewModel group:
+                    RefreshPriorities(group.ObservableChildren);
+                    break;
+            }
+        }
     }
 
     private sealed class NodeCellTemplate : IDataTemplate

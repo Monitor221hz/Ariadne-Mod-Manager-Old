@@ -46,7 +46,6 @@ public class GameServiceExtensionsTests : IDisposable
     {
         var looseDir = new DirectoryInfo(_temp.Path);
         using var provider = new ServiceCollection().AddGames([], looseDir).BuildServiceProvider();
-        // Config appears only after registration: a factory-registered catalog must pick it up.
         File.WriteAllText(
             System.IO.Path.Combine(_temp.Path, "LooseGame.json"),
             """

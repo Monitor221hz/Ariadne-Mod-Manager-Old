@@ -17,15 +17,6 @@ public sealed class FileLeafNodeViewModel : TreeNodeViewModel
     public FileLeafNodeViewModel(VirtualNode<ModFileEntry> node)
     {
         _node = node;
-        SizeText = FormatSize(node.Data!.Size);
+        SizeText = DiskSize.Format(node.Data!.Size);
     }
-
-    private static string FormatSize(long bytes) =>
-        bytes switch
-        {
-            < 1L << 10 => $"{bytes} B",
-            < 1L << 20 => $"{bytes / (1.0 * (1 << 10)):0.#} KB",
-            < 1L << 30 => $"{bytes / (1.0 * (1 << 20)):0.#} MB",
-            _ => $"{bytes / (1.0 * (1 << 30)):0.#} GB",
-        };
 }
