@@ -9,7 +9,8 @@ public sealed class LibraryMod : ILibraryMod
     private VirtualNode<ModFileEntry>? _content;
 
     public IModInfo Info { get; }
-    public DirectoryInfo Directory { get; }
+    public DirectoryInfo Directory { get; private set; }
+    public string Name => Directory.Name;
 
     public LibraryMod(
         IModInfo info,
@@ -25,6 +26,39 @@ public sealed class LibraryMod : ILibraryMod
     public VirtualNode<ModFileEntry> Content => _content ??= BuildContentTree();
 
     public void RefreshContent() => _content = BuildContentTree();
+
+    public void RenameTo(string newName)
+    {
+        if (string.IsNullOrWhiteSpace(newName))
+        {
+            throw new ArgumentException("Mod name must not be empty.", nameof(newName));
+        }
+        newName = newName.Trim();
+        if (newName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+        {
+            throw new ArgumentException(
+                $"\"{newName}\" contains invalid path characters.",
+                nameof(newName)
+            );
+        }
+        if (newName == Directory.Name)
+        {
+            return;
+        }
+
+        var parent =
+            Directory.Parent
+            ?? throw new InvalidOperationException($"Mod \"{Name}\" has no parent folder.");
+        var destinationPath = Path.Join(parent.FullName, newName);
+        if (System.IO.Directory.Exists(destinationPath) || File.Exists(destinationPath))
+        {
+            throw new InvalidOperationException($"A mod named \"{newName}\" already exists.");
+        }
+
+        Directory.MoveTo(destinationPath);
+        Directory = new DirectoryInfo(destinationPath);
+        _content = null;
+    }
 
     private VirtualNode<ModFileEntry> BuildContentTree()
     {
@@ -70,13 +104,7 @@ public sealed class LibraryMod : ILibraryMod
                 {
                     child.SetChild(archiveEntry);
                 }
-                child.Data = new ModFileEntry(
-                    file.Name,
-                    ModEntryKind.Archive,
-                    file.FullName,
-                    file.Length,
-                    new DateTimeOffset(file.LastWriteTimeUtc)
-                );
+                child.Data = data;
             }
         }
     }

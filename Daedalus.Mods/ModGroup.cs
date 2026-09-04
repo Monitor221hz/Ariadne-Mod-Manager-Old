@@ -6,7 +6,7 @@ namespace Daedalus.Mods;
 
 public class ModGroup : IModGroup
 {
-    public string Name { get; }
+    public string Name { get; set; }
     private readonly List<ILibraryMod> _mods;
     public Color HeaderColor { get; set; }
 

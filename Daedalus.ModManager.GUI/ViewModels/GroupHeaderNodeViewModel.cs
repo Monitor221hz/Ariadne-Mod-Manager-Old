@@ -10,23 +10,44 @@ namespace Daedalus.ModManager.GUI.ViewModels;
 public sealed class GroupHeaderNodeViewModel : TreeNodeViewModel
 {
     private readonly ObservableCollection<TreeNodeViewModel> _children;
-
-    public override string DisplayName { get; }
+    private string _sizeText;
+    private string _displayName;
+    public override string DisplayName
+    {
+        get => _displayName;
+        set => this.RaiseAndSetIfChanged(ref _displayName, value);
+    }
     public IBrush SeparatorBrush { get; }
     public IModGroup Group { get; }
     public override IEnumerable<TreeNodeViewModel> Children => _children;
     public override bool HasChildren => _children.Count > 0;
     public ObservableCollection<TreeNodeViewModel> ObservableChildren => _children;
 
+    public override string SizeText
+    {
+        get => _sizeText;
+        set => this.RaiseAndSetIfChanged(ref _sizeText, value);
+    }
+
+    public override long SizeBytes => Children.Sum(c => c.SizeBytes);
+    public override bool RenameAllowed => true;
+
     public GroupHeaderNodeViewModel(IModGroup group)
     {
         Group = group;
-        DisplayName = group.Name;
+        _displayName = group.Name;
         var color = group.HeaderColor;
         SeparatorBrush = new SolidColorBrush(Color.FromArgb(color.A, color.R, color.G, color.B));
         _children = new ObservableCollection<TreeNodeViewModel>(
             group.Select(mod => new ModEntryNodeViewModel((ILibraryMod)mod))
         );
         _children.CollectionChanged += (_, _) => this.RaisePropertyChanged(nameof(HasChildren));
+        _sizeText = DiskSize.Format(SizeBytes);
+    }
+
+    protected override string ApplyRename(string name)
+    {
+        Group.Name = name;
+        return name;
     }
 }

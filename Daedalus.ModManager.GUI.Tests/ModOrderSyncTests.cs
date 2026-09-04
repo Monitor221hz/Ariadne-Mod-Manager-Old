@@ -8,13 +8,15 @@ public class ModOrderSyncTests
 {
     private sealed class FakeMod(string name, uint priority = 0) : ILibraryMod
     {
-        public IModInfo Info { get; } =
-            new ModInfo(0, name, SourceType.Local, "1.0", [], "", priority);
+        public IModInfo Info { get; } = new ModInfo(0, SourceType.Local, "1.0", [], "", priority);
+        public string Name { get; } = name;
         public DirectoryInfo Directory => new(".");
         public Daedalus.VFS.VirtualNode<ModFileEntry> Content { get; } =
             new("", Daedalus.VFS.NodeFlags.Directory, null, default);
 
         public void RefreshContent() { }
+
+        public void RenameTo(string newName) { }
     }
 
     private static ModGroup Group(string name, params ILibraryMod[] mods) =>

@@ -4,8 +4,14 @@
              x:Class="Daedalus.ModManager.GUI.Views.FileLeafNodeView"
              x:DataType="vm:FileLeafNodeViewModel">
 
-    <TextBlock Text="{Binding DisplayName}"
-               Foreground="{DynamicResource FgMutedBrush}"
-               VerticalAlignment="Center"
-               Margin="0,3" />
+    <MaskedTextBox Text="{Binding DisplayName}"
+              Classes="transparent"
+              Foreground="{DynamicResource FgMutedBrush}"
+              VerticalAlignment="Center"
+              Margin="0,3"
+              Background="Transparent" BorderThickness="0"
+              IsReadOnly="True"
+              Focusable="False"
+              Cursor="Arrow"
+              CaretBrush="Transparent"/>
 </UserControl>

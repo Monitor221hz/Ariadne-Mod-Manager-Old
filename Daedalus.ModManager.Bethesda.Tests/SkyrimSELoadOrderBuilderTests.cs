@@ -60,11 +60,7 @@ public class SkyrimSELoadOrderBuilderTests : IDisposable
     private LibraryMod CreateMod(string name, out DirectoryInfo modDir)
     {
         modDir = Directory.CreateDirectory(_temp.Combine("mods", name));
-        return new LibraryMod(
-            new ModInfo(1, name, SourceType.Local, "1.0", [], "Data", 0),
-            modDir,
-            []
-        );
+        return new LibraryMod(new ModInfo(1, SourceType.Local, "1.0", [], "Data", 0), modDir, []);
     }
 
     private static FileInfo WritePlugin(DirectoryInfo dir, string fileName)

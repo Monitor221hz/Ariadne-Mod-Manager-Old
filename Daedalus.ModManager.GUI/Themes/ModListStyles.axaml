@@ -93,4 +93,57 @@
         <Setter Property="Margin" Value="4,2" />
     </Style>
 
+
+    <Style Selector="TextBox.transparent:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="Cursor" Value="Arrow" />
+    </Style>
+
+    <Style Selector="TextBox.transparent /template/ Border#PART_BorderElement">
+        <Setter Property="Cursor" Value="Arrow" />
+    </Style>
+
+    <Style Selector="TextBox.transparent:focus /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+
+    <Style Selector="TextBox.transparent">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="SelectionBrush" Value="{DynamicResource BgSelection}"/>
+        <Setter Property="Cursor" Value="Arrow" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+    <Style Selector="TextBox.transparent /template/ TextPresenter#PART_TextPresenter">
+        <Setter Property="Cursor" Value="Arrow" />
+        <Setter Property="CaretBrush" Value="Transparent" />
+    </Style>
+
+    <Style Selector="TextBox.transparent /template/ ScrollViewer#PART_ScrollViewer /template/ ScrollContentPresenter#PART_ContentPresenter">
+        <Setter Property="Cursor" Value="Arrow" />
+    </Style>
+
+    <Style Selector="TextBox.transparent /template/ TextBlock#PART_Placeholder">
+        <Setter Property="Cursor" Value="Arrow" />
+    </Style>
+
+    <Style Selector="TextBox.transparent /template/ Border#PART_BorderElement">
+        <Setter Property="Cursor" Value="Arrow" />
+    </Style>
+
+    <Style Selector="TreeDataGridRow /template/ Border#RowBorder">
+        <Setter Property="Cursor" Value="Arrow" />
+    </Style>
+
+    <Style Selector="TreeDataGridExpanderCell">
+        <Setter Property="Cursor" Value="Arrow" />
+    </Style>
+
+    <Style Selector="TreeDataGridTextCell">
+        <Setter Property="Cursor" Value="Arrow" />
+    </Style>
+
 </Styles>

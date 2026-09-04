@@ -204,6 +204,14 @@ public class MainViewModel : ViewModelBase
         await InitializeAsync();
     }
 
+    public void SaveActiveInstance()
+    {
+        if (CurrentViewModel is ModListViewModel workspace)
+        {
+            workspace.SaveActiveProfile();
+        }
+    }
+
     private static void Quit()
     {
         if (

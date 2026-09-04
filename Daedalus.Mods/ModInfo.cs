@@ -5,7 +5,6 @@ namespace Daedalus.Mods;
 public sealed class ModInfo : IModInfo
 {
     public ulong ID { get; }
-    public string Name { get; }
     public SourceType IDSource { get; }
     public string Version { get; }
     public List<string> Categories { get; }
@@ -14,7 +13,6 @@ public sealed class ModInfo : IModInfo
 
     public ModInfo(
         ulong id,
-        string name,
         SourceType idSource,
         string version,
         List<string> categories,
@@ -23,7 +21,6 @@ public sealed class ModInfo : IModInfo
     )
     {
         ID = id;
-        Name = name;
         IDSource = idSource;
         Version = version;
         Categories = categories;

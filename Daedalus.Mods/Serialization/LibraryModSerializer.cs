@@ -34,7 +34,6 @@ public sealed class LibraryModSerializer(IReadOnlyList<IArchiveReader> archiveRe
         return new LibraryMod(
             new ModInfo(
                 record.ID,
-                record.Name,
                 record.IDSource,
                 record.Version,
                 record.Categories,
@@ -53,7 +52,6 @@ public sealed class LibraryModSerializer(IReadOnlyList<IArchiveReader> archiveRe
     {
         var record = new ModInfoRecord(
             mod.Info.ID,
-            mod.Info.Name,
             mod.Info.IDSource,
             mod.Info.Version,
             mod.Info.Categories,

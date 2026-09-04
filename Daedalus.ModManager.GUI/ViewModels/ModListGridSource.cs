@@ -67,6 +67,14 @@ public sealed class ModListGridSource : ITreeDataGridSource<TreeNodeViewModel>, 
     public bool SortBy(IColumn column, ListSortDirection direction) =>
         _inner.SortBy(column, direction);
 
+    public void ClearSort()
+    {
+        foreach (var column in _inner.Columns)
+        {
+            _inner.ClearSort(column);
+        }
+    }
+
     public IEnumerable<object>? GetModelChildren(object model) =>
         ((ITreeDataGridSource)_inner).GetModelChildren(model);
 
@@ -81,6 +89,10 @@ public sealed class ModListGridSource : ITreeDataGridSource<TreeNodeViewModel>, 
         DragDropEffects effects
     )
     {
+        if (IsSorted)
+        {
+            return;
+        }
         var dragged = indexes
             .Select(index => TryGetModel(index, out var model) ? model : null)
             .ToList();

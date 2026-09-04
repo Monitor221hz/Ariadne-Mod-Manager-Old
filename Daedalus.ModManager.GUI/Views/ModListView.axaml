@@ -27,6 +27,11 @@
                           VerticalAlignment="Center"
                           ItemsSource="{Binding ProfileNames}"
                           SelectedItem="{Binding SelectedProfileName}" />
+                <Button IsVisible="{Binding SortActive}"
+                        Command="{Binding ClearSortCommand}"
+                        ToolTip.Tip="Column sorting hides the drag &amp; drop order; clear to restore it">
+                    <TextBlock Text="Clear Sort" />
+                </Button>
                 <TextBlock VerticalAlignment="Center"
                            Foreground="{DynamicResource FgDimmedBrush}"
                            Text="{Binding CurrentGameText, TargetNullValue='', StringFormat='({0})'}" />

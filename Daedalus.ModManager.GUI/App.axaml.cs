@@ -1,3 +1,5 @@
+using System;
+using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
@@ -22,8 +24,19 @@ public partial class App : Application
         {
             AppTheme.Initialize();
             AppTheme.Apply(AppTheme.LoadSaved().Id);
-            desktop.Exit += (_, _) => Services.Dispose();
             var mainViewModel = Services.GetRequiredService<MainViewModel>();
+            desktop.Exit += (_, _) =>
+            {
+                try
+                {
+                    mainViewModel.SaveActiveInstance();
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine(ex);
+                }
+                Services.Dispose();
+            };
             desktop.MainWindow = new MainWindow { DataContext = mainViewModel };
             mainViewModel.InitializeCommand.Execute().Subscribe();
         }

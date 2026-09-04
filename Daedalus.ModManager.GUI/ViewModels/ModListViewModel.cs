@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive;
@@ -23,7 +24,7 @@ namespace Daedalus.ModManager.GUI.ViewModels;
 
 public sealed class ModListViewModel : ViewModelBase
 {
-    private static readonly TimeSpan DragSyncDelay = TimeSpan.FromMilliseconds(300);
+    private static readonly TimeSpan SyncDelay = TimeSpan.FromMilliseconds(300);
 
     private readonly IModProfileSerializer _profileSerializer;
     private readonly ILibraryModSerializer _modSerializer;
@@ -38,10 +39,12 @@ public sealed class ModListViewModel : ViewModelBase
     private bool _suppressProfileSwitch;
     private ObservableCollection<TreeNodeViewModel>? _dragRoots;
     private IDisposable? _dragSyncSubscription;
+    private readonly SemaphoreSlim _syncGate = new(1, 1);
 
     public ReactiveCommand<Unit, Unit> InitializeCommand { get; }
     public ReactiveCommand<Unit, Unit> CreateModCommand { get; }
     public ReactiveCommand<Unit, Unit> CreateGroupCommand { get; }
+    public ReactiveCommand<Unit, Unit> ClearSortCommand { get; }
 
     public ObservableCollection<string> ProfileNames { get; } = [];
 
@@ -54,8 +57,24 @@ public sealed class ModListViewModel : ViewModelBase
     public ModListGridSource? ModsSource
     {
         get => _modsSource;
-        private set => this.RaiseAndSetIfChanged(ref _modsSource, value);
+        private set
+        {
+            if (_modsSource is not null)
+            {
+                _modsSource.Sorted -= OnModsSourceSorted;
+            }
+            this.RaiseAndSetIfChanged(ref _modsSource, value);
+            if (value is not null)
+            {
+                value.Sorted += OnModsSourceSorted;
+            }
+            this.RaisePropertyChanged(nameof(SortActive));
+        }
     }
+
+    public bool SortActive => ModsSource?.IsSorted == true;
+
+    private void OnModsSourceSorted() => this.RaisePropertyChanged(nameof(SortActive));
 
     public string? SelectedProfileName
     {
@@ -93,6 +112,11 @@ public sealed class ModListViewModel : ViewModelBase
             .Select(profile => profile is not null);
         CreateModCommand = ReactiveCommand.CreateFromTask(CreateEmptyMod, hasActiveProfile);
         CreateGroupCommand = ReactiveCommand.Create(CreateGroup, hasActiveProfile);
+        ClearSortCommand = ReactiveCommand.Create(() =>
+        {
+            ModsSource?.ClearSort();
+            this.RaisePropertyChanged(nameof(SortActive));
+        });
     }
 
     private Task InitializeAsync() =>
@@ -193,6 +217,14 @@ public sealed class ModListViewModel : ViewModelBase
         }
     }
 
+    public void SaveActiveProfile()
+    {
+        if (ActiveProfile is not null)
+        {
+            _profileSerializer.Save(ActiveProfile.Model);
+        }
+    }
+
     private Task CreateEmptyMod() =>
         Task.Run(() =>
         {
@@ -200,7 +232,6 @@ public sealed class ModListViewModel : ViewModelBase
             var mod = new LibraryMod(
                 new ModInfo(
                     0,
-                    "New Mod",
                     SourceType.Local,
                     "1.0.0",
                     [],
@@ -275,7 +306,7 @@ public sealed class ModListViewModel : ViewModelBase
     private ModListGridSource BuildGridSource(IModList modList)
     {
         var roots = BuildRoots(modList);
-        HookDragSync(roots);
+        HookDomainSync(roots);
         var source = new HierarchicalTreeDataGridSource<TreeNodeViewModel>(roots)
         {
             Columns =
@@ -326,21 +357,28 @@ public sealed class ModListViewModel : ViewModelBase
                 .Concat(modList.ModGroups.Select(group => new GroupHeaderNodeViewModel(group)))
         );
 
-    private void HookDragSync(ObservableCollection<TreeNodeViewModel> roots)
+    private void HookDomainSync(ObservableCollection<TreeNodeViewModel> roots)
     {
         _dragRoots = roots;
         _dragSyncSubscription?.Dispose();
 
-        var streams = roots
-            .OfType<GroupHeaderNodeViewModel>()
+        var groupNodes = roots.OfType<GroupHeaderNodeViewModel>().ToList();
+        var collectionStreams = groupNodes
             .Select(group => StreamOf(group.ObservableChildren))
-            .Append(StreamOf(roots));
+            .Append(StreamOf(roots))
+            .Select(stream => stream.Select(_ => Unit.Default));
+        var renameStreams = roots
+            .Concat(groupNodes.SelectMany(group => group.ObservableChildren))
+            .Select(node => node.RenameCommitted);
 
         _dragSyncSubscription = Observable
-            .Merge(streams)
-            .Throttle(DragSyncDelay)
+            .Merge(collectionStreams.Concat(renameStreams))
+            .Throttle(SyncDelay)
             .ObserveOn(_uiContext ?? SynchronizationContext.Current!)
-            .Subscribe(_ => SyncDomainFromTree());
+            .Subscribe(ignored =>
+            {
+                _ = SyncDomainFromTreeAsync();
+            });
 
         static IObservable<EventPattern<NotifyCollectionChangedEventArgs>> StreamOf(
             ObservableCollection<TreeNodeViewModel> collection
@@ -354,18 +392,17 @@ public sealed class ModListViewModel : ViewModelBase
             );
     }
 
-    private void SyncDomainFromTree()
+    private async Task SyncDomainFromTreeAsync()
     {
         if (ActiveProfile is null || _dragRoots is null)
         {
             return;
         }
 
-        var looseMods = _dragRoots
-            .OfType<ModEntryNodeViewModel>()
-            .Select(node => node.Model)
-            .ToList();
-        var groupNodes = _dragRoots.OfType<GroupHeaderNodeViewModel>().ToList();
+        var profile = ActiveProfile.Model;
+        var roots = _dragRoots;
+        var looseMods = roots.OfType<ModEntryNodeViewModel>().Select(node => node.Model).ToList();
+        var groupNodes = roots.OfType<GroupHeaderNodeViewModel>().ToList();
         var groupMembers = groupNodes
             .Select(node =>
                 (IReadOnlyList<ILibraryMod>)
@@ -376,15 +413,32 @@ public sealed class ModListViewModel : ViewModelBase
             )
             .ToList();
 
-        ModOrderSync.ApplyOrder(
-            looseMods,
-            groupNodes.Select(group => group.Group).ToList(),
-            groupMembers,
-            ActiveProfile.Model.ModList
-        );
-        _profileSerializer.Save(ActiveProfile.Model);
-
-        RefreshPriorities(_dragRoots);
+        try
+        {
+            await _syncGate.WaitAsync();
+            try
+            {
+                await Task.Run(() =>
+                {
+                    ModOrderSync.ApplyOrder(
+                        looseMods,
+                        groupNodes.Select(group => group.Group).ToList(),
+                        groupMembers,
+                        profile.ModList
+                    );
+                    _profileSerializer.Save(profile);
+                });
+            }
+            finally
+            {
+                _syncGate.Release();
+            }
+            RefreshPriorities(roots);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex);
+        }
     }
 
     private static void RefreshPriorities(IEnumerable<TreeNodeViewModel> nodes)

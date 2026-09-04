@@ -33,15 +33,7 @@ public class LibraryModSerializerTests : IDisposable
 
     private LibraryMod CreateMod(string folder) =>
         new(
-            new ModInfo(
-                1001,
-                "Mod A",
-                SourceType.NexusMods,
-                "2.1.0",
-                ["Textures", "Gameplay"],
-                "Data",
-                7
-            ),
+            new ModInfo(1001, SourceType.NexusMods, "2.1.0", ["Textures", "Gameplay"], "Data", 7),
             ModFolder(folder),
             []
         );
@@ -83,7 +75,7 @@ public class LibraryModSerializerTests : IDisposable
         var loaded = sut.Load(ModFolder("TestMod"));
 
         Assert.Equal(mod.Info.ID, loaded.Info.ID);
-        Assert.Equal(mod.Info.Name, loaded.Info.Name);
+        Assert.Equal(mod.Name, loaded.Name);
         Assert.Equal(mod.Info.IDSource, loaded.Info.IDSource);
         Assert.Equal(mod.Info.Version, loaded.Info.Version);
         Assert.Equal(mod.Info.Categories, loaded.Info.Categories);

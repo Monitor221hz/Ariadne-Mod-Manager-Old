@@ -69,9 +69,9 @@ public class ModProfileSerializerTests : IDisposable
     private DirectoryInfo ProfileFolder =>
         new(System.IO.Path.Combine(_temp.Path, "profiles", "Main"));
 
-    private LibraryMod CreateMod(string folder, ulong id, string name) =>
+    private LibraryMod CreateMod(string folder, ulong id) =>
         new(
-            new ModInfo(id, name, SourceType.NexusMods, "1.0", [], "Data", 0),
+            new ModInfo(id, SourceType.NexusMods, "1.0", [], "Data", 0),
             new DirectoryInfo(System.IO.Path.Combine(ModsRoot.FullName, folder)),
             []
         );
@@ -91,14 +91,9 @@ public class ModProfileSerializerTests : IDisposable
         );
     }
 
-    private LibraryMod SaveMod(
-        ILibraryModSerializer serializer,
-        string folder,
-        ulong id,
-        string name
-    )
+    private LibraryMod SaveMod(ILibraryModSerializer serializer, string folder, ulong id)
     {
-        var mod = CreateMod(folder, id, name);
+        var mod = CreateMod(folder, id);
         serializer.Save(mod);
         return mod;
     }
@@ -107,8 +102,8 @@ public class ModProfileSerializerTests : IDisposable
     public void Save_WritesProfileJson_ReferencingModsByFolderName()
     {
         var modSerializer = new LibraryModSerializer([]);
-        var modA = SaveMod(modSerializer, "TestModA", 1001, "Mod A");
-        var modB = SaveMod(modSerializer, "TestModB", 2002, "Mod B");
+        var modA = SaveMod(modSerializer, "TestModA", 1001);
+        var modB = SaveMod(modSerializer, "TestModB", 2002);
         var profile = CreateProfile(modA, modB);
         var sut = new ModProfileSerializer(modSerializer, _paths);
 
@@ -130,8 +125,8 @@ public class ModProfileSerializerTests : IDisposable
     public void Load_RoundTripsProfile_AndDerivesFoldersFromFileLocation()
     {
         var modSerializer = new LibraryModSerializer([]);
-        var modA = SaveMod(modSerializer, "TestModA", 1001, "Mod A");
-        var modB = SaveMod(modSerializer, "TestModB", 2002, "Mod B");
+        var modA = SaveMod(modSerializer, "TestModA", 1001);
+        var modB = SaveMod(modSerializer, "TestModB", 2002);
         var profile = CreateProfile(modA, modB);
         var sut = new ModProfileSerializer(modSerializer, _paths);
         sut.Save(profile);
@@ -147,8 +142,8 @@ public class ModProfileSerializerTests : IDisposable
         );
 
         Assert.Equal(2, loaded.ModList.Count);
-        Assert.Equal("Mod B", loaded.ModList[0].Info.Name); // loose first
-        Assert.Equal("Mod A", loaded.ModList[1].Info.Name); // grouped after
+        Assert.Equal("TestModB", loaded.ModList[0].Name); // loose first
+        Assert.Equal("TestModA", loaded.ModList[1].Name); // grouped after
 
         var group = Assert.Single(loaded.ModList.ModGroups);
         Assert.Equal("Group G", group.Name);
@@ -162,7 +157,7 @@ public class ModProfileSerializerTests : IDisposable
     [Fact]
     public void Load_ResolvesModsThroughInjectedLibraryModSerializer()
     {
-        var mod = CreateMod("TestModA", 1001, "Mod A");
+        var mod = CreateMod("TestModA", 1001);
         var recording = new RecordingLibraryModSerializer(mod);
         var sut = new ModProfileSerializer(recording, _paths);
         var profileFile = new FileInfo(

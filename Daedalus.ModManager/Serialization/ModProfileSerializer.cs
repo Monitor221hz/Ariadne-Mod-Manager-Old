@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using Daedalus.Contracts.ModManager;
 using Daedalus.Contracts.Mods;
@@ -43,11 +44,14 @@ public sealed class ModProfileSerializer : IModProfileSerializer
                 $"Profile file \"{profileFile.FullName}\" has no parent directory."
             );
 
-        List<ILibraryMod> looseMods = record.ModList.LooseMods.Select(LoadMod).ToList();
+        List<ILibraryMod> looseMods = record
+            .ModList.LooseMods.Select(LoadMod)
+            .OfType<ILibraryMod>()
+            .ToList();
         List<IModGroup> groups = record
             .ModList.ModGroups.Select(group => new ModGroup(
                 group.Name,
-                group.Mods.Select(LoadMod).ToList(),
+                group.Mods.Select(LoadMod).OfType<ILibraryMod>().ToList(),
                 group.HeaderColor
             ))
             .Cast<IModGroup>()
@@ -93,8 +97,19 @@ public sealed class ModProfileSerializer : IModProfileSerializer
 
     private static string ModFolderName(ILibraryMod mod) => mod.Directory.Name;
 
-    private ILibraryMod LoadMod(string modFolderName) =>
-        _libraryModSerializer.Load(
-            new DirectoryInfo(Path.Join(_paths.ModsFolder.FullName, modFolderName))
-        );
+    private ILibraryMod? LoadMod(string modFolderName)
+    {
+        try
+        {
+            return _libraryModSerializer.Load(
+                new DirectoryInfo(Path.Join(_paths.ModsFolder.FullName, modFolderName))
+            );
+        }
+        catch (Exception ex)
+            when (ex is IOException or UnauthorizedAccessException or JsonException)
+        {
+            Debug.WriteLine($"Skipping mod \"{modFolderName}\": {ex.Message}");
+            return null;
+        }
+    }
 }

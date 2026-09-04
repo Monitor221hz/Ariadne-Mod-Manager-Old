@@ -39,7 +39,6 @@ public partial class VirtualNode<TNodeData>
 
     public TNodeData? Data { get; set; }
 
-    /// <summary>In case-insensitive ordinal name order.</summary>
     public IReadOnlyList<VirtualNode<TNodeData>> Children => _ordered ??= BuildOrderedChildren();
 
     private List<VirtualNode<TNodeData>> BuildOrderedChildren()

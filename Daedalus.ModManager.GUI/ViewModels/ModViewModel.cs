@@ -13,7 +13,7 @@ public class ModViewModel : ViewModelBase
     public ILibraryMod Model => _mod;
 
     public ulong ID => _mod.Info.ID;
-    public string Name => _mod.Info.Name;
+    public string Name => _mod.Name;
     public string Version => _mod.Info.Version;
     public SourceType IDSource => _mod.Info.IDSource;
     public IReadOnlyList<string> Categories => _mod.Info.Categories;

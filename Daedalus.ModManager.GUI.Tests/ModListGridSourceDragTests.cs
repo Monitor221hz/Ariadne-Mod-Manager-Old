@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Avalonia.Controls;
 using Avalonia.Controls.Models;
 using Avalonia.Controls.Models.TreeDataGrid;
@@ -14,13 +15,15 @@ public class ModListGridSourceDragTests
 {
     private sealed class FakeMod(string name) : ILibraryMod
     {
-        public IModInfo Info { get; } =
-            new Mods.ModInfo(0, name, SourceType.Local, "1.0", [], "", 0);
+        public IModInfo Info { get; } = new Mods.ModInfo(0, SourceType.Local, "1.0", [], "", 0);
+        public string Name { get; } = name;
         public DirectoryInfo Directory => new(".");
         public Daedalus.VFS.VirtualNode<ModFileEntry> Content { get; } =
             new("", Daedalus.VFS.NodeFlags.Directory, null, default);
 
         public void RefreshContent() { }
+
+        public void RenameTo(string newName) { }
     }
 
     private sealed record Grid(
@@ -56,6 +59,7 @@ public class ModListGridSourceDragTests
                     node => node.Children,
                     node => node.HasChildren
                 ),
+                new TextColumn<TreeNodeViewModel, string>("Name", node => node.DisplayName),
             },
         };
 
@@ -87,8 +91,8 @@ public class ModListGridSourceDragTests
                 {
                     GroupHeaderNodeViewModel group => group
                         .ObservableChildren.OfType<ModEntryNodeViewModel>()
-                        .Select(m => m.Model.Info.Name),
-                    ModEntryNodeViewModel mod => new[] { mod.Model.Info.Name },
+                        .Select(m => m.Model.Name),
+                    ModEntryNodeViewModel mod => new[] { mod.Model.Name },
                     _ => Enumerable.Empty<string>(),
                 }
             )
@@ -124,6 +128,42 @@ public class ModListGridSourceDragTests
                 .Single(g => g.Group.Name == "G2")
                 .ObservableChildren
         );
+    }
+
+    private static string[] PresentedNames(ModListGridSource source) =>
+        source.Rows.Select(row => ((TreeNodeViewModel)row.Model!).DisplayName).ToArray();
+
+    [Fact]
+    public void Sort_Then_ClearSort_Restores_Natural_Order()
+    {
+        var b = new FakeMod("B");
+        var a = new FakeMod("A");
+        var z = new FakeMod("Z");
+        var grid = NewGrid([b, a], new() { ["G"] = [z] });
+
+        Assert.True(grid.Source.SortBy(grid.Source.Columns[1], ListSortDirection.Ascending));
+        Assert.True(grid.Source.IsSorted);
+        Assert.Equal(new[] { "A", "B", "G" }, PresentedNames(grid.Source));
+
+        grid.Source.ClearSort();
+        Assert.False(grid.Source.IsSorted);
+        Assert.Equal(new[] { "B", "A", "G" }, PresentedNames(grid.Source));
+    }
+
+    [Fact]
+    public void Drag_Is_Rejected_While_Sorted_And_Works_After_ClearSort()
+    {
+        var m1 = new FakeMod("A");
+        var m2 = new FakeMod("B");
+        var grid = NewGrid([m1, m2], new());
+        grid.Source.SortBy(grid.Source.Columns[1], ListSortDirection.Ascending);
+
+        Drag(grid.Source, new IndexPath(0), new IndexPath(1), TreeDataGridRowDropPosition.After);
+        AssertFlatOrder(grid.Roots, "A", "B");
+
+        grid.Source.ClearSort();
+        Drag(grid.Source, new IndexPath(0), new IndexPath(1), TreeDataGridRowDropPosition.After);
+        AssertFlatOrder(grid.Roots, "B", "A");
     }
 
     [Fact]

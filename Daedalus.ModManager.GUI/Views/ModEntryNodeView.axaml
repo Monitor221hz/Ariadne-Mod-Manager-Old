@@ -4,8 +4,14 @@
              x:Class="Daedalus.ModManager.GUI.Views.ModEntryNodeView"
              x:DataType="vm:ModEntryNodeViewModel">
 
-    <TextBlock Text="{Binding DisplayName}"
-               Foreground="{DynamicResource FgBaseBrush}"
-               VerticalAlignment="Center"
-               Margin="0,3" />
+    <MaskedTextBox x:Name="NameBox" Text="{Binding DisplayName, Mode=TwoWay}"
+              Classes="transparent"
+              Foreground="{DynamicResource FgBaseBrush}"
+              VerticalAlignment="Center"
+              Margin="0,3" IsReadOnly="{Binding !IsEditing}" Background="Transparent" BorderThickness="0"
+              Focusable="{Binding IsEditing}"
+              IsHitTestVisible="{Binding IsEditing}"
+              Cursor="Arrow"
+              CaretBrush="Transparent"
+              SelectionBrush="{DynamicResource BgSelection}" DoubleTapped="MaskedTextBox_DoubleTapped"/>
 </UserControl>
