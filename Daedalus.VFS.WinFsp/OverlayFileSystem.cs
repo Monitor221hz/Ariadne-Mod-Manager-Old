@@ -705,6 +705,10 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
         out FileInfo fileInfo
     )
     {
+        if (fileDesc.IsFile)
+        {
+            EnsureWritable(fileDesc);
+        }
         lock (_sync)
         {
             Debug.WriteLine($"Overwrite '{fileDesc.Owner.GetPath()}'");
@@ -905,6 +909,17 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
         bool replaceIfExists
     )
     {
+        if (fileDesc.IsFile)
+        {
+            try
+            {
+                EnsureWritable(fileDesc);
+            }
+            catch (Exception ex)
+            {
+                return ExceptionHandler(ex);
+            }
+        }
         lock (_sync)
         {
             Debug.WriteLine($"Rename '{fileName}' -> '{newFileName}'");
@@ -989,6 +1004,10 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
         out FileInfo fileInfo
     )
     {
+        if (fileDesc.IsFile)
+        {
+            EnsureWritable(fileDesc);
+        }
         lock (_sync)
         {
             if (!fileDesc.IsFile)

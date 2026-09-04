@@ -832,4 +832,86 @@ public class OverlayFileSystemHeadlessTests : IDisposable
             File.ReadAllText(Path.Combine(OverwriteDir, "meshes", "sword.nif"))
         );
     }
+
+    [SkippableFact]
+    public void CopyUp_In_Flight_Does_Not_Deadlock_SetFileSize()
+    {
+        SkipNonWindows();
+        CopyUpInFlightDeadlockProbe(
+            (node, desc) => FS.SetFileSize(node, desc, 12345, false, out _)
+        );
+    }
+
+    [SkippableFact]
+    public void CopyUp_In_Flight_Does_Not_Deadlock_Overwrite()
+    {
+        SkipNonWindows();
+        CopyUpInFlightDeadlockProbe(
+            (node, desc) => FS.Overwrite(node, desc, FileAttributes.Normal, true, 0, out _)
+        );
+    }
+
+    [SkippableFact]
+    public void CopyUp_In_Flight_Does_Not_Deadlock_Rename()
+    {
+        SkipNonWindows();
+        CopyUpInFlightDeadlockProbe(
+            (node, desc) => FS.Rename(node, desc, "\\big.bin", "\\big-renamed.bin", false)
+        );
+    }
+
+    private void CopyUpInFlightDeadlockProbe(Func<FileSystemNode, FileSystemDescription, int> op)
+    {
+        string bigBacking = Path.Combine(ModADir, "big.bin");
+        var data = new byte[64 * 1024 * 1024];
+        new Random(42).NextBytes(data);
+        File.WriteAllBytes(bigBacking, data);
+        Root.LinkFile(bigBacking, "big.bin");
+
+        Assert.Equal(
+            0,
+            FS.Open(
+                "\\big.bin",
+                (FileCreateOptions)0,
+                FileSystemRights.FullControl,
+                out var nodeA,
+                out var descA,
+                out _,
+                out _
+            )
+        );
+        Assert.Equal(
+            0,
+            FS.Open(
+                "\\big.bin",
+                (FileCreateOptions)0,
+                FileSystemRights.FullControl,
+                out var nodeB,
+                out var descB,
+                out _,
+                out _
+            )
+        );
+
+        string sink = Path.Combine(OverwriteDir, "big.bin");
+        var payload = Encoding.UTF8.GetBytes("x");
+        var copier = Task.Run(() =>
+            FS.Write(null!, descA!, payload, 0, 1, false, false, out _, out _)
+        );
+
+        Assert.True(
+            SpinWait.SpinUntil(() => File.Exists(sink), TimeSpan.FromSeconds(10)),
+            "copy-up did not start"
+        );
+        var meta = Task.Run(() => op(nodeB!, descB!));
+
+        Assert.True(
+            Task.WaitAll(new[] { copier, meta }, TimeSpan.FromSeconds(30)),
+            "metadata op deadlocked against in-flight copy-up"
+        );
+        Assert.Equal(0, copier.Result);
+        Assert.Equal(0, meta.Result);
+        descA!.Dispose();
+        descB!.Dispose();
+    }
 }
