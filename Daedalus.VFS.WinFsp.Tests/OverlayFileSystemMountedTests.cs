@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Text;
 using Daedalus.VFS;
 using Daedalus.VFS.WinFsp;
 using Fsp;
@@ -30,6 +31,18 @@ public class OverlayFileSystemMountedTests : IDisposable
     private string BaseDir => _tmp + "\\base";
     private string ModDir => _tmp + "\\mod";
     private string OverwriteDir => _tmp + "\\overwrite";
+
+    private static string ReadShared(string path)
+    {
+        using var s = new FileStream(
+            path,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.ReadWrite | FileShare.Delete
+        );
+        using var r = new StreamReader(s);
+        return r.ReadToEnd();
+    }
 
     public OverlayFileSystemMountedTests()
     {
@@ -161,10 +174,18 @@ public class OverlayFileSystemMountedTests : IDisposable
                         string name = $"s{fileIndex:D3}.dat";
                         try
                         {
-                            File.WriteAllText(
-                                mounted + "\\stress\\" + name,
-                                $"edited-{worker}-{round}"
-                            );
+                            var bytesToWrite = Encoding.UTF8.GetBytes($"edited-{worker}-{round}");
+                            using (
+                                var stream = new FileStream(
+                                    mounted + "\\stress\\" + name,
+                                    FileMode.Create,
+                                    FileAccess.Write,
+                                    FileShare.ReadWrite
+                                )
+                            )
+                            {
+                                stream.Write(bytesToWrite, 0, bytesToWrite.Length);
+                            }
                         }
                         catch (Exception ex)
                         {
@@ -184,8 +205,8 @@ public class OverlayFileSystemMountedTests : IDisposable
         {
             string modFile = ModDir + $"\\stress\\s{i:D3}.dat";
             string sinkFile = OverwriteDir + $"\\stress\\s{i:D3}.dat";
-            Assert.Equal($"stock-{i:D3}", File.ReadAllText(modFile));
-            Assert.Matches(@"^edited-\d+-\d+$", File.ReadAllText(sinkFile));
+            Assert.Equal($"stock-{i:D3}", ReadShared(modFile));
+            Assert.Matches(@"^edited-\d+-\d+$", ReadShared(sinkFile));
         }
     }
 
