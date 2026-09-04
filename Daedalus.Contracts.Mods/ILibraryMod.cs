@@ -2,7 +2,7 @@ using Daedalus.VFS;
 
 namespace Daedalus.Contracts.Mods;
 
-public interface ILibraryMod
+public interface ILibraryMod : IEqualityComparer<ILibraryMod>, IEquatable<ILibraryMod>
 {
     IModInfo Info { get; }
     DirectoryInfo Directory { get; }

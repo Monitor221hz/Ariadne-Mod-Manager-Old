@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using Avalonia.Controls;
 using Avalonia.Controls.Models;
 using Avalonia.Controls.Models.TreeDataGrid;
@@ -20,6 +21,18 @@ public class ModListGridSourceDragTests
         public DirectoryInfo Directory => new(".");
         public Daedalus.VFS.VirtualNode<ModFileEntry> Content { get; } =
             new("", Daedalus.VFS.NodeFlags.Directory, null, default);
+
+        public bool Equals(ILibraryMod? x, ILibraryMod? y)
+        {
+            return x is not null && y is not null && x.Directory.FullName == y.Directory.FullName;
+        }
+
+        public int GetHashCode([DisallowNull] ILibraryMod obj)
+        {
+            return obj.Directory.FullName.GetHashCode(StringComparison.OrdinalIgnoreCase);
+        }
+
+        public bool Equals(ILibraryMod? other) => ReferenceEquals(this, other);
 
         public void RefreshContent() { }
 
@@ -131,7 +144,22 @@ public class ModListGridSourceDragTests
     }
 
     private static string[] PresentedNames(ModListGridSource source) =>
-        source.Rows.Select(row => ((TreeNodeViewModel)row.Model!).DisplayName).ToArray();
+        Enumerable
+            .Range(0, source.Rows.Count)
+            .Select(i => ((TreeNodeViewModel)source.Rows[i].Model!).DisplayName)
+            .ToArray();
+
+    private static void AssertEventuallyPresented(ModListGridSource source, string[] expected)
+    {
+        var settled = SpinWait.SpinUntil(
+            () => PresentedNames(source).SequenceEqual(expected),
+            TimeSpan.FromSeconds(5)
+        );
+        Assert.True(
+            settled,
+            $"rows never settled to [{string.Join(", ", expected)}], last seen [{string.Join(", ", PresentedNames(source))}]"
+        );
+    }
 
     [Fact]
     public void Sort_Then_ClearSort_Restores_Natural_Order()
@@ -143,11 +171,11 @@ public class ModListGridSourceDragTests
 
         Assert.True(grid.Source.SortBy(grid.Source.Columns[1], ListSortDirection.Ascending));
         Assert.True(grid.Source.IsSorted);
-        Assert.Equal(new[] { "A", "B", "G" }, PresentedNames(grid.Source));
+        AssertEventuallyPresented(grid.Source, ["A", "B", "G"]);
 
         grid.Source.ClearSort();
         Assert.False(grid.Source.IsSorted);
-        Assert.Equal(new[] { "B", "A", "G" }, PresentedNames(grid.Source));
+        AssertEventuallyPresented(grid.Source, ["B", "A", "G"]);
     }
 
     [Fact]
@@ -164,6 +192,40 @@ public class ModListGridSourceDragTests
         grid.Source.ClearSort();
         Drag(grid.Source, new IndexPath(0), new IndexPath(1), TreeDataGridRowDropPosition.After);
         AssertFlatOrder(grid.Roots, "B", "A");
+    }
+
+    [Fact]
+    public void Group_Expanded_With_Child_Then_Another_Added_Appears()
+    {
+        var x = new FakeMod("X");
+        var a = new FakeMod("A");
+        var grid = NewGrid([a], new() { ["G"] = [x] });
+        grid.Source.Expand(new IndexPath(1));
+        AssertEventuallyPresented(grid.Source, ["A", "G", "X"]);
+
+        var b = new FakeMod("B");
+        grid.Roots.OfType<GroupHeaderNodeViewModel>().Single().ObservableChildren.Add(
+            new ModEntryNodeViewModel(b)
+        );
+
+        AssertEventuallyPresented(grid.Source, ["A", "G", "X", "B"]);
+    }
+
+    [Fact]
+    public void Expand_On_Empty_Group_Is_Ignored_Until_Children_Arrive()
+    {
+        var x = new FakeMod("X");
+        var grid = NewGrid([], new() { ["G"] = [] });
+        grid.Source.Expand(new IndexPath(0));
+        AssertEventuallyPresented(grid.Source, ["G"]);
+
+        grid.Roots.OfType<GroupHeaderNodeViewModel>().Single().ObservableChildren.Add(
+            new ModEntryNodeViewModel(x)
+        );
+        AssertEventuallyPresented(grid.Source, ["G"]);
+
+        grid.Source.Expand(new IndexPath(0));
+        AssertEventuallyPresented(grid.Source, ["G", "X"]);
     }
 
     [Fact]

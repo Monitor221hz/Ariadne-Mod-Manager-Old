@@ -19,12 +19,11 @@ public class MainViewModel : ViewModelBase
     private readonly ILibraryModSerializer? _modSerializer;
     private readonly IModManagerPaths? _paths;
     private readonly IInstanceService? _instances;
+    private readonly IModProfileEditor? _editor;
     private readonly IGameCatalog? _catalog;
     private readonly IGameLocator? _locator;
 
     private object? _currentViewModel;
-    private bool _deletePromptVisible;
-    private string? _pendingDeleteName;
 
     public object? CurrentViewModel
     {
@@ -35,25 +34,12 @@ public class MainViewModel : ViewModelBase
     public ObservableCollection<InstanceEntryViewModel> Instances { get; } = [];
     public ObservableCollection<ThemeEntryViewModel> Themes { get; } = [];
 
-    public bool DeletePromptVisible
-    {
-        get => _deletePromptVisible;
-        private set => this.RaiseAndSetIfChanged(ref _deletePromptVisible, value);
-    }
-
-    public string? PendingDeleteName
-    {
-        get => _pendingDeleteName;
-        private set => this.RaiseAndSetIfChanged(ref _pendingDeleteName, value);
-    }
+    public Interaction<string, InstanceDeleteChoice> ConfirmDeleteInstance { get; } = new();
 
     public ReactiveCommand<Unit, Unit> InitializeCommand { get; }
     public ReactiveCommand<Unit, Unit> ExitCommand { get; }
     public ReactiveCommand<string, Unit> SwitchInstanceCommand { get; }
     public ReactiveCommand<string, Unit> AskDeleteCommand { get; }
-    public ReactiveCommand<Unit, Unit> CancelDeleteCommand { get; }
-    public ReactiveCommand<Unit, Unit> RemoveRegistryOnlyCommand { get; }
-    public ReactiveCommand<Unit, Unit> RemoveAndDeleteCommand { get; }
 
     // Design-time ctor.
     public MainViewModel()
@@ -62,9 +48,6 @@ public class MainViewModel : ViewModelBase
         ExitCommand = ReactiveCommand.Create(Quit);
         SwitchInstanceCommand = ReactiveCommand.Create<string>(_ => { });
         AskDeleteCommand = ReactiveCommand.Create<string>(_ => { });
-        CancelDeleteCommand = ReactiveCommand.Create(() => { });
-        RemoveRegistryOnlyCommand = ReactiveCommand.Create(() => { });
-        RemoveAndDeleteCommand = ReactiveCommand.Create(() => { });
     }
 
     public MainViewModel(
@@ -72,6 +55,7 @@ public class MainViewModel : ViewModelBase
         ILibraryModSerializer modSerializer,
         IModManagerPaths paths,
         IInstanceService instances,
+        IModProfileEditor editor,
         IGameCatalog catalog,
         IGameLocator locator
     )
@@ -80,6 +64,7 @@ public class MainViewModel : ViewModelBase
         _modSerializer = modSerializer;
         _paths = paths;
         _instances = instances;
+        _editor = editor;
         _catalog = catalog;
         _locator = locator;
 
@@ -96,18 +81,7 @@ public class MainViewModel : ViewModelBase
         InitializeCommand = ReactiveCommand.CreateFromTask(InitializeAsync);
         ExitCommand = ReactiveCommand.Create(Quit);
         SwitchInstanceCommand = ReactiveCommand.Create<string>(SwitchInstance);
-        AskDeleteCommand = ReactiveCommand.Create<string>(name =>
-        {
-            PendingDeleteName = name;
-            DeletePromptVisible = true;
-        });
-        CancelDeleteCommand = ReactiveCommand.Create(() =>
-        {
-            PendingDeleteName = null;
-            DeletePromptVisible = false;
-        });
-        RemoveRegistryOnlyCommand = ReactiveCommand.CreateFromTask(_ => RemoveInstanceAsync(false));
-        RemoveAndDeleteCommand = ReactiveCommand.CreateFromTask(_ => RemoveInstanceAsync(true));
+        AskDeleteCommand = ReactiveCommand.CreateFromTask<string>(RemoveInstanceAsync);
     }
 
     private Task InitializeAsync()
@@ -156,7 +130,8 @@ public class MainViewModel : ViewModelBase
             _profileSerializer!,
             _modSerializer!,
             _paths!,
-            _instances!
+            _instances!,
+            _editor!
         );
         CurrentViewModel = viewModel;
         viewModel.InitializeCommand.Execute().Subscribe();
@@ -192,15 +167,18 @@ public class MainViewModel : ViewModelBase
         RestartApplication();
     }
 
-    private async Task RemoveInstanceAsync(bool deleteFolder)
+    private async Task RemoveInstanceAsync(string name)
     {
-        if (PendingDeleteName is null || _instances is null)
+        if (_instances is null)
         {
             return;
         }
-        await Task.Run(() => _instances.Remove(PendingDeleteName, deleteFolder));
-        PendingDeleteName = null;
-        DeletePromptVisible = false;
+        var choice = await ConfirmDeleteInstance.Handle(name);
+        if (choice == InstanceDeleteChoice.Cancel)
+        {
+            return;
+        }
+        await Task.Run(() => _instances.Remove(name, choice == InstanceDeleteChoice.DeleteFolder));
         await InitializeAsync();
     }
 

@@ -1,5 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reactive;
+using System.Reactive.Subjects;
 using Daedalus.Contracts.Mods;
 using Daedalus.Mods;
 using ReactiveUI;
@@ -9,6 +12,7 @@ namespace Daedalus.ModManager.GUI.ViewModels;
 public sealed class ModEntryNodeViewModel : TreeNodeViewModel
 {
     private readonly ILibraryMod _mod;
+    private readonly Subject<Unit> _removeRequested = new();
     private uint _priorityValue;
     private string _sizeText;
 
@@ -40,7 +44,11 @@ public sealed class ModEntryNodeViewModel : TreeNodeViewModel
         _mod = mod;
         _priorityValue = mod.Info.Priority;
         _sizeText = DiskSize.Format(SizeBytes);
+        RemoveCommand = ReactiveCommand.Create(() => _removeRequested.OnNext(Unit.Default));
     }
+
+    public IObservable<Unit> RemoveRequested => _removeRequested;
+    public ReactiveCommand<Unit, Unit> RemoveCommand { get; }
 
     public void RefreshFromModel()
     {

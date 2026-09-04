@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Daedalus.Contracts.Mods;
 using Xunit;
 
@@ -12,6 +13,18 @@ public class ModListTests
         public DirectoryInfo Directory => new(".");
         public Daedalus.VFS.VirtualNode<ModFileEntry> Content { get; } =
             new("", Daedalus.VFS.NodeFlags.Directory, null, default);
+
+        public bool Equals(ILibraryMod? x, ILibraryMod? y)
+        {
+            return x is not null && y is not null && x.Directory.FullName == y.Directory.FullName;
+        }
+
+        public int GetHashCode([DisallowNull] ILibraryMod obj)
+        {
+            return obj.Directory.FullName.GetHashCode(StringComparison.OrdinalIgnoreCase);
+        }
+
+        public bool Equals(ILibraryMod? other) => ReferenceEquals(this, other);
 
         public void RefreshContent() { }
 

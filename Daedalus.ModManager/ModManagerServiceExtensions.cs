@@ -29,6 +29,7 @@ public static class ModManagerServiceExtensions
         ));
         services.AddSingleton<IDeploymentPathsFactory, DeploymentPathsFactory>();
         services.AddSingleton<IModProfileSerializer, ModProfileSerializer>();
+        services.AddSingleton<IModProfileEditor, ModProfileEditor>();
         services.AddSingleton<Func<IModProfile, IModDeploymentMethod>>(sp =>
             profile => new VirtualDeploymentMethod(
                 sp.GetRequiredService<IVirtualFileSystemFactory>(),

@@ -1,6 +1,9 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Reactive;
+using System.Reactive.Subjects;
 using Avalonia.Media;
 using Daedalus.Contracts.Mods;
 using ReactiveUI;
@@ -10,6 +13,7 @@ namespace Daedalus.ModManager.GUI.ViewModels;
 public sealed class GroupHeaderNodeViewModel : TreeNodeViewModel
 {
     private readonly ObservableCollection<TreeNodeViewModel> _children;
+    private readonly Subject<Unit> _dissolveRequested = new();
     private string _sizeText;
     private string _displayName;
     public override string DisplayName
@@ -43,7 +47,11 @@ public sealed class GroupHeaderNodeViewModel : TreeNodeViewModel
         );
         _children.CollectionChanged += (_, _) => this.RaisePropertyChanged(nameof(HasChildren));
         _sizeText = DiskSize.Format(SizeBytes);
+        DissolveCommand = ReactiveCommand.Create(() => _dissolveRequested.OnNext(Unit.Default));
     }
+
+    public IObservable<Unit> DissolveRequested => _dissolveRequested;
+    public ReactiveCommand<Unit, Unit> DissolveCommand { get; }
 
     protected override string ApplyRename(string name)
     {

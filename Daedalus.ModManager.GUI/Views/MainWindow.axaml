@@ -34,7 +34,8 @@
             <ContentControl Content="{Binding CurrentViewModel}" />
         </DockPanel>
 
-        <Border IsVisible="{Binding DeletePromptVisible}"
+        <Border x:Name="DeleteOverlay"
+                IsVisible="False"
                 Background="{DynamicResource DaedalusToolbarBackground}"
                 BorderBrush="{DynamicResource DaedalusToolbarBorder}"
                 BoxShadow="{DynamicResource GlassCardShadow}"
@@ -45,14 +46,13 @@
                 VerticalAlignment="Top"
                 Margin="0,64,0,0">
             <StackPanel Spacing="12" MinWidth="360">
-                <TextBlock FontWeight="SemiBold"
-                           Text="{Binding PendingDeleteName, StringFormat='Remove instance: {0} ?'}" />
+                <TextBlock x:Name="DeletePromptText" FontWeight="SemiBold" />
                 <TextBlock Text="The instance registration is scrubbed either way. Choose whether its folder is also deleted from disk."
                            TextWrapping="Wrap" />
                 <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Button Content="Registry only" Command="{Binding RemoveRegistryOnlyCommand}" />
-                    <Button Content="Delete folder" Command="{Binding RemoveAndDeleteCommand}" />
-                    <Button Content="Cancel" Command="{Binding CancelDeleteCommand}" />
+                    <Button x:Name="RegistryOnlyButton" Content="Registry only" />
+                    <Button x:Name="DeleteFolderButton" Content="Delete folder" />
+                    <Button x:Name="DeleteCancelButton" Content="Cancel" />
                 </StackPanel>
             </StackPanel>
         </Border>

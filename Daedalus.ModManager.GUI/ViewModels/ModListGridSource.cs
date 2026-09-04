@@ -60,7 +60,14 @@ public sealed class ModListGridSource : ITreeDataGridSource<TreeNodeViewModel>, 
 
     IEnumerable<object> ITreeDataGridSource.Items => ((ITreeDataGridSource)_inner).Items;
 
-    public void Expand(IndexPath index) => _inner.Expand(index);
+    public void Expand(IndexPath index)
+    {
+        if (TryGetModel(index, out var model) && !model.HasChildren)
+        {
+            return;
+        }
+        _inner.Expand(index);
+    }
 
     public void Collapse(IndexPath index) => _inner.Collapse(index);
 

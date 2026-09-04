@@ -4,6 +4,7 @@
              x:Class="Daedalus.ModManager.GUI.Views.ModListView"
              x:DataType="vm:ModListViewModel">
 
+    <Grid>
     <DockPanel>
         <Border DockPanel.Dock="Top"
                 Background="{DynamicResource DaedalusToolbarBackground}"
@@ -38,6 +39,32 @@
             </StackPanel>
         </Border>
 
-        <TreeDataGrid Source="{Binding ModsSource}" AutoDragDropRows="True" />
+        <TreeDataGrid Source="{Binding ModsSource}"
+                      AutoDragDropRows="True"
+                      ContextRequested="TreeDataGrid_ContextRequested" />
     </DockPanel>
+
+    <Border x:Name="RemoveOverlay"
+            IsVisible="False"
+            Background="#80000000">
+        <Border Background="{DynamicResource DaedalusToolbarBackground}"
+                BorderBrush="{DynamicResource DaedalusToolbarBorder}"
+                BoxShadow="{DynamicResource GlassCardShadow}"
+                BorderThickness="1"
+                Padding="16"
+                CornerRadius="8"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center">
+            <StackPanel Spacing="12" MinWidth="360">
+                <TextBlock x:Name="RemovePromptText" FontWeight="SemiBold" />
+                <TextBlock Text="The mod folder is deleted from disk. This cannot be undone."
+                           TextWrapping="Wrap" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button x:Name="DeleteModButton" Content="Delete" />
+                    <Button x:Name="RemoveModCancelButton" Content="Cancel" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Border>
+    </Grid>
 </UserControl>

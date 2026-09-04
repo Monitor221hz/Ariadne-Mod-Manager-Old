@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -30,6 +31,7 @@ public sealed class ModListViewModel : ViewModelBase
     private readonly ILibraryModSerializer _modSerializer;
     private readonly IModManagerPaths _paths;
     private readonly IInstanceService _instances;
+    private readonly IModProfileEditor _editor;
     private readonly SynchronizationContext? _uiContext = SynchronizationContext.Current;
 
     private ProfileViewModel? _activeProfile;
@@ -39,12 +41,14 @@ public sealed class ModListViewModel : ViewModelBase
     private bool _suppressProfileSwitch;
     private ObservableCollection<TreeNodeViewModel>? _dragRoots;
     private IDisposable? _dragSyncSubscription;
+    private IDisposable? _nodeActionSubscription;
     private readonly SemaphoreSlim _syncGate = new(1, 1);
 
     public ReactiveCommand<Unit, Unit> InitializeCommand { get; }
     public ReactiveCommand<Unit, Unit> CreateModCommand { get; }
     public ReactiveCommand<Unit, Unit> CreateGroupCommand { get; }
     public ReactiveCommand<Unit, Unit> ClearSortCommand { get; }
+    public Interaction<ModEntryNodeViewModel, bool> ConfirmRemoveMod { get; } = new();
 
     public ObservableCollection<string> ProfileNames { get; } = [];
 
@@ -99,13 +103,15 @@ public sealed class ModListViewModel : ViewModelBase
         IModProfileSerializer profileSerializer,
         ILibraryModSerializer modSerializer,
         IModManagerPaths paths,
-        IInstanceService instances
+        IInstanceService instances,
+        IModProfileEditor editor
     )
     {
         _profileSerializer = profileSerializer;
         _modSerializer = modSerializer;
         _paths = paths;
         _instances = instances;
+        _editor = editor;
 
         InitializeCommand = ReactiveCommand.CreateFromTask(InitializeAsync);
         var hasActiveProfile = this.WhenAnyValue(x => x.ActiveProfile)
@@ -341,7 +347,7 @@ public sealed class ModListViewModel : ViewModelBase
 
         for (var i = roots.Count - 1; i >= 0; i--)
         {
-            if (roots[i] is GroupHeaderNodeViewModel)
+            if (roots[i] is GroupHeaderNodeViewModel { HasChildren: true })
             {
                 gridSource.Expand(i);
             }
@@ -361,6 +367,7 @@ public sealed class ModListViewModel : ViewModelBase
     {
         _dragRoots = roots;
         _dragSyncSubscription?.Dispose();
+        _nodeActionSubscription?.Dispose();
 
         var groupNodes = roots.OfType<GroupHeaderNodeViewModel>().ToList();
         var collectionStreams = groupNodes
@@ -379,6 +386,29 @@ public sealed class ModListViewModel : ViewModelBase
             {
                 _ = SyncDomainFromTreeAsync();
             });
+
+        var uiContext = _uiContext ?? SynchronizationContext.Current!;
+        var modNodes = roots
+            .Concat(groupNodes.SelectMany(group => group.ObservableChildren))
+            .OfType<ModEntryNodeViewModel>()
+            .ToList();
+        _nodeActionSubscription = new CompositeDisposable
+        {
+            Observable
+                .Merge(modNodes.Select(node => node.RemoveRequested.Select(_ => node)))
+                .ObserveOn(uiContext)
+                .Subscribe(node =>
+                {
+                    _ = RemoveModNodeAsync(node);
+                }),
+            Observable
+                .Merge(groupNodes.Select(group => group.DissolveRequested.Select(_ => group)))
+                .ObserveOn(uiContext)
+                .Subscribe(group =>
+                {
+                    _ = DissolveGroupNodeAsync(group);
+                }),
+        };
 
         static IObservable<EventPattern<NotifyCollectionChangedEventArgs>> StreamOf(
             ObservableCollection<TreeNodeViewModel> collection
@@ -434,6 +464,74 @@ public sealed class ModListViewModel : ViewModelBase
                 _syncGate.Release();
             }
             RefreshPriorities(roots);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex);
+        }
+    }
+
+    private async Task RemoveModNodeAsync(ModEntryNodeViewModel node)
+    {
+        if (ActiveProfile is null || _dragRoots is null)
+        {
+            return;
+        }
+        try
+        {
+            if (!await ConfirmRemoveMod.Handle(node))
+            {
+                return;
+            }
+            await _editor.RemoveModAsync(ActiveProfile.Model, node.Model);
+            if (!_dragRoots.Remove(node))
+            {
+                foreach (var group in _dragRoots.OfType<GroupHeaderNodeViewModel>())
+                {
+                    if (group.ObservableChildren.Remove(node))
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex);
+        }
+    }
+
+    private async Task DissolveGroupNodeAsync(GroupHeaderNodeViewModel node)
+    {
+        if (ActiveProfile is null || _dragRoots is null)
+        {
+            return;
+        }
+        try
+        {
+            await _editor.DissolveGroupAsync(ActiveProfile.Model, node.Group);
+            var index = _dragRoots.IndexOf(node);
+            if (index < 0)
+            {
+                return;
+            }
+            var children = node.ObservableChildren.ToList();
+            _dragRoots.RemoveAt(index);
+            if (index < _dragRoots.Count && _dragRoots[index] is GroupHeaderNodeViewModel nextGroup)
+            {
+                foreach (var child in children)
+                {
+                    nextGroup.ObservableChildren.Add(child);
+                }
+                ModsSource?.Expand(new IndexPath(index));
+            }
+            else
+            {
+                foreach (var child in children)
+                {
+                    _dragRoots.Insert(index++, child);
+                }
+            }
         }
         catch (Exception ex)
         {

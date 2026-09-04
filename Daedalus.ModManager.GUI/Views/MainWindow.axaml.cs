@@ -1,6 +1,14 @@
+using System;
 using System.Linq;
+using System.Reactive;
+using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
+using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 using Daedalus.ModManager.GUI.ViewModels;
+using ReactiveUI;
 
 namespace Daedalus.ModManager.GUI.Views;
 
@@ -9,15 +17,16 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        DataContextChanged += (_, _) => Attach(DataContext as MainViewModel);
+        this.GetObservable(DataContextProperty)
+            .Select(dataContext => dataContext as MainViewModel)
+            .WhereNotNull()
+            .Take(1)
+            .Subscribe(Attach);
     }
 
-    private void Attach(MainViewModel? viewModel)
+    private void Attach(MainViewModel viewModel)
     {
-        if (viewModel is null)
-        {
-            return;
-        }
+        viewModel.ConfirmDeleteInstance.RegisterHandler(HandleDeletePrompt);
         RebuildInstanceMenus(viewModel);
         viewModel.Instances.CollectionChanged += (_, _) => RebuildInstanceMenus(viewModel);
 
@@ -42,6 +51,28 @@ public partial class MainWindow : Window
             })
             .ToList();
     }
+
+    private async Task HandleDeletePrompt(IInteractionContext<string, InstanceDeleteChoice> context)
+    {
+        DeletePromptText.Text = $"Remove instance: {context.Input} ?";
+        DeleteOverlay.IsVisible = true;
+        var choice = await Observable
+            .Merge(
+                ClickOf(RegistryOnlyButton).Select(_ => InstanceDeleteChoice.RegistryOnly),
+                ClickOf(DeleteFolderButton).Select(_ => InstanceDeleteChoice.DeleteFolder),
+                ClickOf(DeleteCancelButton).Select(_ => InstanceDeleteChoice.Cancel)
+            )
+            .FirstAsync()
+            .ToTask();
+        DeleteOverlay.IsVisible = false;
+        context.SetOutput(choice);
+    }
+
+    private static IObservable<EventPattern<RoutedEventArgs>> ClickOf(Button button) =>
+        Observable.FromEventPattern<RoutedEventArgs>(
+            handler => button.Click += handler,
+            handler => button.Click -= handler
+        );
 
     private void RebuildInstanceMenus(MainViewModel viewModel)
     {

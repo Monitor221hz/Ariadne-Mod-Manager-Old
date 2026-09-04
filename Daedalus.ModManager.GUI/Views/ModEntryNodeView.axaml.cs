@@ -29,7 +29,23 @@ public partial class ModEntryNodeView : ReactiveUserControl<ViewModels.TreeNodeV
                 )
                 .Switch()
                 .Subscribe(node => node.FinishRenameCommand.Execute(Unit.Default).Subscribe());
+
+            var editSubscription = this.GetObservable(DataContextProperty)
+                .Select(dataContext => dataContext as ViewModels.TreeNodeViewModel)
+                .WhereNotNull()
+                .Select(node => node.WhenAnyValue(n => n.IsEditing))
+                .Switch()
+                .Where(editing => editing)
+                .Subscribe(_ =>
+                {
+                    Dispatcher.Post(() =>
+                    {
+                        NameBox.Focus();
+                        NameBox.CaretIndex = NameBox.Text?.Length ?? 0;
+                    });
+                });
             disposables.Add(subscription);
+            disposables.Add(editSubscription);
         });
     }
 
