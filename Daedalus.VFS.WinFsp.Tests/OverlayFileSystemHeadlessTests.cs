@@ -810,4 +810,26 @@ public class OverlayFileSystemHeadlessTests : IDisposable
         descB.Dispose();
         Assert.Equal("modA-mesh", File.ReadAllText(Path.Combine(ModADir, "meshes", "sword.nif")));
     }
+
+    [SkippableFact]
+    public void Write_After_CopyUp_Completed_Redirects_Stale_Handle()
+    {
+        SkipNonWindows();
+        var descA = OpenFile("\\meshes\\sword.nif", FileSystemRights.FullControl);
+        var descB = OpenFile("\\meshes\\sword.nif", FileSystemRights.FullControl);
+        var payload = Encoding.UTF8.GetBytes("x");
+
+        FS.Write(null!, descA, payload, 0, 1, false, false, out _, out _);
+        Assert.True(File.Exists(Path.Combine(OverwriteDir, "meshes", "sword.nif")));
+
+        FS.Write(null!, descB, payload, 0, 1, false, false, out _, out _);
+
+        descA.Dispose();
+        descB.Dispose();
+        Assert.Equal("modA-mesh", File.ReadAllText(Path.Combine(ModADir, "meshes", "sword.nif")));
+        Assert.Equal(
+            "xodA-mesh",
+            File.ReadAllText(Path.Combine(OverwriteDir, "meshes", "sword.nif"))
+        );
+    }
 }

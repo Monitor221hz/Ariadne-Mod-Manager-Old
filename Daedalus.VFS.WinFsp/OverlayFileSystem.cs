@@ -294,11 +294,6 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
             }
 
             physical = node.Data.PhysicalPath!;
-            if (IsSinkPath(physical))
-            {
-                return;
-            }
-
             if (_copiesInProgress.TryGetValue(node, out state))
             {
                 isCopier = false;
@@ -311,6 +306,10 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
             }
             else
             {
+                if (IsSinkPath(physical))
+                {
+                    return;
+                }
                 state = new CopyState();
                 _copiesInProgress[node] = state;
                 isCopier = true;
