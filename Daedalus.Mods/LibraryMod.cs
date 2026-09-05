@@ -90,15 +90,15 @@ public sealed class LibraryMod : ILibraryMod
                 continue;
             }
             var file = (FileInfo)entry;
+            var reader = FindArchiveReader(file.Extension);
             var data = new ModFileEntry(
                 file.Name,
-                ModEntryKind.File,
+                reader is not null ? ModEntryKind.Archive : ModEntryKind.File,
                 file.FullName,
                 file.Length,
                 new DateTimeOffset(file.LastWriteTimeUtc)
             );
             var child = node.AddFile(file.Name, data, NodeFlags.None);
-            var reader = FindArchiveReader(file.Extension);
             if (reader is not null)
             {
                 foreach (var archiveEntry in reader.Read(file))

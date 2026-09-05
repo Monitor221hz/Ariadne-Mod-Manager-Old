@@ -11,9 +11,9 @@
   <Project Path="Daedalus.ModManager.Bethesda/Daedalus.ModManager.Bethesda.csproj" />
   <Project Path="Daedalus.ModManager.Bethesda.Tests/Daedalus.ModManager.Bethesda.Tests.csproj" />
   <Project Path="Daedalus.ModManager.CLI/Daedalus.ModManager.CLI.csproj" />
-  <Project Path="Daedalus.ModManager.GUI/Daedalus.ModManager.GUI.csproj" />
   <Project Path="Daedalus.ModManager.GUI.Tests/Daedalus.ModManager.GUI.Tests.csproj" />
   <Project Path="Daedalus.ModManager/Daedalus.ModManager.csproj" />
+  <Project Path="Daedalus.ModManager.GUI/Daedalus.ModManager.GUI.csproj" />
   <Project Path="Daedalus.ModManager.Tests/Daedalus.ModManager.Tests.csproj" />
   <Project Path="Daedalus.Mods/Daedalus.Mods.csproj" />
   <Project Path="Daedalus.Mods.Tests/Daedalus.Mods.Tests.csproj" />

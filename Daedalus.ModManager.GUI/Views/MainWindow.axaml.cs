@@ -58,21 +58,21 @@ public partial class MainWindow : Window
         DeleteOverlay.IsVisible = true;
         var choice = await Observable
             .Merge(
-                ClickOf(RegistryOnlyButton).Select(_ => InstanceDeleteChoice.RegistryOnly),
-                ClickOf(DeleteFolderButton).Select(_ => InstanceDeleteChoice.DeleteFolder),
-                ClickOf(DeleteCancelButton).Select(_ => InstanceDeleteChoice.Cancel)
+                ButtonObservables
+                    .ClicksOf(RegistryOnlyButton)
+                    .Select(_ => InstanceDeleteChoice.RegistryOnly),
+                ButtonObservables
+                    .ClicksOf(DeleteFolderButton)
+                    .Select(_ => InstanceDeleteChoice.DeleteFolder),
+                ButtonObservables
+                    .ClicksOf(DeleteCancelButton)
+                    .Select(_ => InstanceDeleteChoice.Cancel)
             )
             .FirstAsync()
             .ToTask();
         DeleteOverlay.IsVisible = false;
         context.SetOutput(choice);
     }
-
-    private static IObservable<EventPattern<RoutedEventArgs>> ClickOf(Button button) =>
-        Observable.FromEventPattern<RoutedEventArgs>(
-            handler => button.Click += handler,
-            handler => button.Click -= handler
-        );
 
     private void RebuildInstanceMenus(MainViewModel viewModel)
     {

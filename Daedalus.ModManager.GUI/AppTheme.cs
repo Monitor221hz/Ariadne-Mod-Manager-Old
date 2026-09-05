@@ -120,12 +120,6 @@ public static class AppTheme
             ["BorderActiveBrush"] = new SolidColorBrush(C(palette.Border)),
             ["GlassPanelBrush"] = new SolidColorBrush(C(palette.GlassPanel)),
             ["GlassBorderBrush"] = new SolidColorBrush(C(palette.GlassBorder)),
-            ["TreeDataGridSelectedCellBackgroundBrush"] = new SolidColorBrush(Colors.Transparent),
-            ["TreeDataGridRowBackgroundSelected"] = new SolidColorBrush(C(palette.ActiveList)),
-            ["TreeDataGridRowBackgroundSelectedPointerOver"] = new SolidColorBrush(
-                C(palette.ActiveList)
-            ),
-            ["TreeDataGridRowBorderBrushSelected"] = new SolidColorBrush(C(palette.AccentPrimary)),
             ["MenuFlyoutPresenterBackground"] = new SolidColorBrush(C(palette.GlassPanel)),
             ["MenuFlyoutPresenterBorderBrush"] = new SolidColorBrush(C(palette.Border)),
             ["FlyoutPresenterBackground"] = new SolidColorBrush(C(palette.GlassPanel)),

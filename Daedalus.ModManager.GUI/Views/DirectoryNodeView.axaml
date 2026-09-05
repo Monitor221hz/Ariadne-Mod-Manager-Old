@@ -6,6 +6,7 @@
 
     <MaskedTextBox Text="{Binding DisplayName}"
                Classes="transparent"
+               FontSize="{DynamicResource UiFontSizeMedium}"
                Foreground="{DynamicResource FgMutedBrush}"
                VerticalAlignment="Center"
                Margin="0,3"

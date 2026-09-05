@@ -5,8 +5,9 @@
              x:DataType="vm:FileLeafNodeViewModel">
 
     <MaskedTextBox Text="{Binding DisplayName}"
-              Classes="transparent"
-              Foreground="{DynamicResource FgMutedBrush}"
+               Classes="transparent"
+               FontSize="{DynamicResource UiFontSizeMedium}"
+               Foreground="{DynamicResource FgMutedBrush}"
               VerticalAlignment="Center"
               Margin="0,3"
               Background="Transparent" BorderThickness="0"
