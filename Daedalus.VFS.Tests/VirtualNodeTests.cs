@@ -1,4 +1,3 @@
-using Daedalus.VFS;
 using Xunit;
 
 namespace Daedalus.VFS.Tests;

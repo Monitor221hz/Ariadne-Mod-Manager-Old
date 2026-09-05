@@ -1,4 +1,3 @@
-using Daedalus.VFS;
 using Xunit;
 using Wildcard = Daedalus.VFS.VirtualNode<object>.Wildcard;
 

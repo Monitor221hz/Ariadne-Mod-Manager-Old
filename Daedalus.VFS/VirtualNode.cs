@@ -1,6 +1,4 @@
-﻿using System.Text;
-
-namespace Daedalus.VFS;
+﻿namespace Daedalus.VFS;
 
 public partial class VirtualNode<TNodeData>
 {

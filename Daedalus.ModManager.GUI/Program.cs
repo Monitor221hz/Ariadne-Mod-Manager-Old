@@ -1,6 +1,4 @@
-﻿using System;
-using Avalonia;
-using Daedalus.ModManager;
+﻿using Avalonia;
 using Daedalus.ModManager.Bethesda;
 using Microsoft.Extensions.DependencyInjection;
 using ReactiveUI.Avalonia;

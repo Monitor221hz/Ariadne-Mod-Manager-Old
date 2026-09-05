@@ -1,4 +1,3 @@
-using Daedalus.Contracts.Games;
 using Xunit;
 
 namespace Daedalus.Games.Tests;

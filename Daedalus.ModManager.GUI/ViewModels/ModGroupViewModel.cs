@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Linq;
 using Avalonia.Media;
 using Daedalus.Contracts.Mods;
 using ReactiveUI;

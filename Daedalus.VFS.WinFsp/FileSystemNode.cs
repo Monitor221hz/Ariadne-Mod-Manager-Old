@@ -1,8 +1,4 @@
-using Daedalus.VFS;
-
 namespace Daedalus.VFS.WinFsp;
-
-using SysFileInfo = System.IO.FileInfo;
 
 public class FileSystemNode
 {

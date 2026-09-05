@@ -1,8 +1,6 @@
-using System;
 using System.Reactive;
 using System.Reactive.Subjects;
 using Daedalus.Contracts.Mods;
-using Daedalus.Mods;
 using ReactiveUI;
 
 namespace Daedalus.ModManager.GUI.ViewModels;

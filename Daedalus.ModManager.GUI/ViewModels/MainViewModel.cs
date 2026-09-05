@@ -1,10 +1,7 @@
-using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
-using System.Threading.Tasks;
 using Avalonia.Controls.ApplicationLifetimes;
 using Daedalus.Contracts.Games;
 using Daedalus.Contracts.ModManager;

@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using Avalonia.Controls.DataGridHierarchical;
 using Daedalus.Contracts.Mods;
 using Daedalus.ModManager.GUI.ViewModels;

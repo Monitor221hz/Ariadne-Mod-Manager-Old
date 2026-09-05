@@ -1,5 +1,4 @@
-﻿using System;
-using System.Globalization;
+﻿using System.Globalization;
 using Avalonia.Controls.DataGridHierarchical;
 using Avalonia.Data.Converters;
 using Daedalus.Contracts.Mods;

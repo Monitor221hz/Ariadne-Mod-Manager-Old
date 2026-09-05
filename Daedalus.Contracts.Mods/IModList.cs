@@ -1,5 +1,3 @@
-using Daedalus.Contracts.Mods;
-
 namespace Daedalus.Contracts.Mods;
 
 public interface IModList : IList<ILibraryMod>

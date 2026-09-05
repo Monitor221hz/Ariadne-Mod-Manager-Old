@@ -1,7 +1,5 @@
 using System.Collections.Concurrent;
 using System.Text;
-using Daedalus.VFS;
-using Daedalus.VFS.WinFsp;
 using Fsp;
 using Xunit;
 

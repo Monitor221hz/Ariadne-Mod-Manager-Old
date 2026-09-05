@@ -1,5 +1,3 @@
-using Daedalus.VFS;
-
 namespace Daedalus.VFS.WinFsp;
 
 public sealed record class OverlayFileSystemOptions

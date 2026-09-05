@@ -1,5 +1,4 @@
 using Avalonia.Styling;
-using Daedalus.ModManager.GUI;
 using Xunit;
 
 namespace Daedalus.ModManager.GUI.Tests;

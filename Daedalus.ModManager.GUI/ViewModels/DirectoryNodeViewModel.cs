@@ -1,4 +1,3 @@
-using System.Drawing;
 using Daedalus.Contracts.Mods;
 using Daedalus.VFS;
 using ReactiveUI;

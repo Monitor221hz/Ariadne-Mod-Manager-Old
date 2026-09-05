@@ -1,7 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Security.AccessControl;
-using Daedalus.VFS;
 
 namespace Daedalus.VFS.WinFsp;
 

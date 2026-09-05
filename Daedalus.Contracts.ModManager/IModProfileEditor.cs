@@ -1,4 +1,3 @@
-using System.Threading.Tasks;
 using Daedalus.Contracts.Mods;
 
 namespace Daedalus.Contracts.ModManager;

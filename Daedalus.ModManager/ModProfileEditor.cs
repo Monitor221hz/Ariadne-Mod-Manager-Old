@@ -1,8 +1,5 @@
-using System;
-using System.Threading.Tasks;
 using Daedalus.Contracts.ModManager;
 using Daedalus.Contracts.Mods;
-using Daedalus.Mods;
 
 namespace Daedalus.ModManager;
 

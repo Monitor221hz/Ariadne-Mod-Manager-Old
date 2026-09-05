@@ -1,7 +1,6 @@
 using Daedalus.Contracts.Mods;
 using Daedalus.Games;
 using Daedalus.Mods;
-using Daedalus.VFS;
 using Xunit;
 
 namespace Daedalus.ModManager.Tests;

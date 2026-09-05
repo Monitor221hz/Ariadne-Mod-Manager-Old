@@ -1,8 +1,6 @@
 using System.Reactive;
-using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia;
-using Avalonia.Controls;
 using Avalonia.Input;
 using ReactiveUI;
 using ReactiveUI.Avalonia;

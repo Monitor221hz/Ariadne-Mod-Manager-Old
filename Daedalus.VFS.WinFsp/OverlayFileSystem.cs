@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Security.AccessControl;
-using Daedalus.VFS;
 using Fsp;
 using Fsp.Interop;
 using FileInfo = Fsp.Interop.FileInfo;

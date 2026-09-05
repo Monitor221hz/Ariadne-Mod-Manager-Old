@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using Avalonia.Controls.DataGridDragDrop;
 using Avalonia.Input;
 using Daedalus.ModManager.GUI.ViewModels;

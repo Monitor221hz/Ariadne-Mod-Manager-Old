@@ -1,5 +1,4 @@
 using Daedalus.Contracts.Games;
-using Daedalus.Contracts.ModManager;
 using Daedalus.Games;
 using Daedalus.Games.Serialization;
 using Xunit;

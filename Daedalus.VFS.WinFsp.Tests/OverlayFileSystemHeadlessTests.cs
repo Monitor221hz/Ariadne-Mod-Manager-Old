@@ -1,10 +1,6 @@
 using System.Security.AccessControl;
 using System.Text;
-using Daedalus.VFS;
-using Daedalus.VFS.WinFsp;
-using Fsp;
 using Xunit;
-using FileInfo = Fsp.Interop.FileInfo;
 
 namespace Daedalus.VFS.WinFsp.Tests;
 

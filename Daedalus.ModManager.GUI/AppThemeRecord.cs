@@ -1,4 +1,3 @@
-using System;
 using Avalonia.Styling;
 
 namespace Daedalus.ModManager.GUI;

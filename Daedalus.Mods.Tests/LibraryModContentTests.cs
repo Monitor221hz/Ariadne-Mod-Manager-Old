@@ -1,5 +1,4 @@
 using Daedalus.Contracts.Mods;
-using Daedalus.VFS;
 using Xunit;
 
 namespace Daedalus.Mods.Tests;

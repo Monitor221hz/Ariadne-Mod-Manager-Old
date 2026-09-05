@@ -3,7 +3,6 @@ using System.Text.Json;
 using Daedalus.Contracts.ModManager;
 using Daedalus.Contracts.Mods;
 using Daedalus.Mods;
-using Daedalus.Mods.Serialization;
 
 namespace Daedalus.ModManager.Serialization;
 

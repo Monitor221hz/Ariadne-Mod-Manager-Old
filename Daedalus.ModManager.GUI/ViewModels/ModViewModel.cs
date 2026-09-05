@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using Daedalus.Contracts.Mods;
 using ReactiveUI;
 
