@@ -110,9 +110,23 @@ public class LibraryModContentTests : IDisposable
         var zipNode = content.Children.First(node => !node.IsDirectory);
 
         Assert.Equal("pack.zip", zipNode.Name);
+        Assert.Equal(ModEntryKind.Archive, zipNode.Data!.Kind);
         var folderNode = Assert.Single(zipNode.Children);
         Assert.Equal("folder", folderNode.Name);
         Assert.Equal("hello.txt", Assert.Single(folderNode.Children).Name);
+    }
+
+    [Fact]
+    public void Archive_NoMatchingReader_StaysFileKind()
+    {
+        var mod = CreateMod("mod");
+        var dir = mod.Directory;
+        dir.Create();
+        File.WriteAllText(System.IO.Path.Combine(dir.FullName, "pack.zip"), "not a real zip");
+
+        var zipNode = Assert.Single(mod.Content.Children);
+
+        Assert.Equal(ModEntryKind.File, zipNode.Data!.Kind);
     }
 
     [Fact]

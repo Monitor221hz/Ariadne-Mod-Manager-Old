@@ -1,7 +1,5 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
 using System.Reactive;
 using System.Reactive.Subjects;
 using Avalonia.Media;
@@ -46,6 +44,7 @@ public sealed class GroupHeaderNodeViewModel : TreeNodeViewModel
             group.Select(mod => new ModEntryNodeViewModel((ILibraryMod)mod))
         );
         _children.CollectionChanged += (_, _) => this.RaisePropertyChanged(nameof(HasChildren));
+        IsExpanded = HasChildren;
         _sizeText = DiskSize.Format(SizeBytes);
         DissolveCommand = ReactiveCommand.Create(() => _dissolveRequested.OnNext(Unit.Default));
     }

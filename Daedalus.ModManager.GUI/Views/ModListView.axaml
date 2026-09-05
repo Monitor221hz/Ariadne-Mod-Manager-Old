@@ -1,8 +1,29 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Daedalus.ModManager.GUI.ViewModels"
+             xmlns:views="using:Daedalus.ModManager.GUI.Views"
+             xmlns:fi="using:FluentIcons.Avalonia"
              x:Class="Daedalus.ModManager.GUI.Views.ModListView"
              x:DataType="vm:ModListViewModel">
+
+    <UserControl.Resources>
+        <views:HierarchicalSortingAdapterFactory x:Key="HierarchicalSortingAdapterFactory" />
+    </UserControl.Resources>
+
+    <UserControl.DataTemplates>
+        <DataTemplate DataType="vm:ModEntryNodeViewModel">
+            <views:ModEntryNodeView />
+        </DataTemplate>
+        <DataTemplate DataType="vm:GroupHeaderNodeViewModel">
+            <views:GroupHeaderNodeView />
+        </DataTemplate>
+        <DataTemplate DataType="vm:DirectoryNodeViewModel">
+            <views:DirectoryNodeView />
+        </DataTemplate>
+        <DataTemplate DataType="vm:FileLeafNodeViewModel">
+            <views:FileLeafNodeView />
+        </DataTemplate>
+    </UserControl.DataTemplates>
 
     <Grid>
     <DockPanel>
@@ -19,7 +40,7 @@
                             <MenuItem Header="Create New Group" Command="{Binding CreateGroupCommand}" />
                         </MenuFlyout>
                     </Button.Flyout>
-                    <LucideIcon Kind="Plus" Size="16" />
+                    <fi:SymbolIcon FontSize="16" Symbol="Add" />
                 </Button>
                 <TextBlock VerticalAlignment="Center"
                            FontWeight="SemiBold"
@@ -39,9 +60,54 @@
             </StackPanel>
         </Border>
 
-        <TreeDataGrid Source="{Binding ModsSource}"
-                      AutoDragDropRows="True"
-                      ContextRequested="TreeDataGrid_ContextRequested" />
+        <DataGrid x:Name="ModsGrid" HierarchicalModel="{Binding Model}"
+                  HierarchicalRowsEnabled="True"
+                  RowHeight="{DynamicResource DaedalusRowHeight}"
+                  SortingModel="{Binding SortingModel}"
+                  SortingAdapterFactory="{StaticResource HierarchicalSortingAdapterFactory}"
+                  CanUserSortColumns="True"
+                  CanUserReorderRows="True"
+                  RowDragHandle="RowHeaderAndRow"
+                  RowDropHandler="{Binding DropHandler}"
+                  SelectionMode="Extended"
+                  SelectionUnit="FullRow"
+                  SelectionChanged="ModsGrid_SelectionChanged"
+                  AutoGenerateColumns="False"
+                  HeadersVisibility="Column"
+                  ContextRequested="ModsGrid_ContextRequested">
+            <DataGrid.Columns>
+                <DataGridHierarchicalColumn Header="Name"
+                                            SortMemberPath="Item.DisplayName"
+                                            ColumnKey="name"
+                                            Width="3*"
+                                            x:CompileBindings="False"
+                                            Binding="{Binding Item}">
+                    <DataGridHierarchicalColumn.CellTemplate>
+                        <DataTemplate x:CompileBindings="False">
+                            <ContentControl Content="{Binding}" />
+                        </DataTemplate>
+                    </DataGridHierarchicalColumn.CellTemplate>
+                </DataGridHierarchicalColumn>
+                <DataGridTextColumn Header="Priority"
+                                    SortMemberPath="Item.PriorityValue"
+                                    ColumnKey="priority"
+                                    Width="90"
+                                    x:CompileBindings="False"
+                                    Binding="{Binding Item.PriorityValue}" />
+                <DataGridTextColumn Header="Version"
+                                    SortMemberPath="Item.VersionText"
+                                    ColumnKey="version"
+                                    Width="120"
+                                    x:CompileBindings="False"
+                                    Binding="{Binding Item.VersionText}" />
+                <DataGridTextColumn Header="Size"
+                                    SortMemberPath="Item.SizeBytes"
+                                    ColumnKey="size"
+                                    Width="100"
+                                    x:CompileBindings="False"
+                                    Binding="{Binding Item.SizeText}" />
+            </DataGrid.Columns>
+        </DataGrid>
     </DockPanel>
 
     <Border x:Name="RemoveOverlay"

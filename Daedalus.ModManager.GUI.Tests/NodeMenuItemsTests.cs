@@ -1,13 +1,12 @@
-using System.Globalization;
 using Daedalus.Contracts.Mods;
-using Daedalus.ModManager.GUI.Converters;
 using Daedalus.ModManager.GUI.ViewModels;
+using Daedalus.ModManager.GUI.Views;
 using Daedalus.Mods;
 using Xunit;
 
 namespace Daedalus.ModManager.GUI.Tests;
 
-public class NodeMenuItemsConverterTests
+public class NodeMenuItemsTests
 {
     private sealed class FakeMod(string name) : ILibraryMod
     {
@@ -28,18 +27,11 @@ public class NodeMenuItemsConverterTests
         public bool Equals(ILibraryMod? other) => ReferenceEquals(this, other);
     }
 
-    private static readonly NodeMenuItemsConverter Converter = new();
-
-    private static NodeMenuItem[] Convert(TreeNodeViewModel node) =>
-        (NodeMenuItem[]?)
-            Converter.Convert(node, typeof(NodeMenuItem[]), null, CultureInfo.InvariantCulture)
-        ?? [];
-
     [Fact]
     public void Mod_Nodes_Get_Rename_And_Remove_Bound_To_Own_Commands()
     {
         var node = new ModEntryNodeViewModel(new FakeMod("A"));
-        var items = Convert(node);
+        var items = NodeMenuItems.For(node);
 
         Assert.Equal(new[] { "Rename", "Remove" }, items.Select(item => item.Header));
         Assert.Same(node.StartRenameCommand, items[0].Command);
@@ -50,7 +42,7 @@ public class NodeMenuItemsConverterTests
     public void Group_Nodes_Get_Rename_And_Dissolve_Bound_To_Own_Commands()
     {
         var node = new GroupHeaderNodeViewModel(new ModGroup("G", []));
-        var items = Convert(node);
+        var items = NodeMenuItems.For(node);
 
         Assert.Equal(new[] { "Rename", "Dissolve" }, items.Select(item => item.Header));
         Assert.Same(node.StartRenameCommand, items[0].Command);
@@ -69,6 +61,6 @@ public class NodeMenuItemsConverterTests
             )
         );
 
-        Assert.Empty(Convert(node));
+        Assert.Empty(NodeMenuItems.For(node));
     }
 }

@@ -1,14 +1,8 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading.Tasks;
-using Avalonia.Controls.Platform;
-using Avalonia.Input;
-using DynamicData.Binding;
-using Mutagen.Bethesda.Fallout3;
-using Noggog;
 using ReactiveUI;
 using ReactiveUI.Avalonia;
 
@@ -17,9 +11,16 @@ namespace Daedalus.ModManager.GUI.ViewModels;
 public abstract class TreeNodeViewModel : ViewModelBase
 {
     private bool _isEditing;
+    private bool _isExpanded;
     private string _committedName = string.Empty;
     private readonly Subject<Unit> _renameCommitted = new();
     public IObservable<Unit> RenameCommitted => _renameCommitted;
+
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        internal set => this.RaiseAndSetIfChanged(ref _isExpanded, value);
+    }
 
     public abstract string DisplayName { get; set; }
     public virtual uint? PriorityValue => null;

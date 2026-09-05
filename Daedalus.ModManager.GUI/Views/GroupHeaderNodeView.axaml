@@ -7,9 +7,18 @@
     <Border Padding="8,4"
             HorizontalAlignment="Stretch"
             Margin="0,3">
-        <TextBlock Text="{Binding DisplayName}"
-                   FontWeight="SemiBold"
-                   Foreground="{Binding SeparatorBrush, Converter={StaticResource BandContrastForeground}}"
-                   VerticalAlignment="Center" />
+        <MaskedTextBox x:Name="NameBox"
+                       Text="{Binding DisplayName, Mode=TwoWay}"
+                       Classes="transparent"
+                       FontWeight="SemiBold"
+                       Foreground="{Binding SeparatorBrush, Converter={StaticResource BandContrastForeground}}"
+                       VerticalAlignment="Center"
+                       IsReadOnly="{Binding !IsEditing}"
+                       IsHitTestVisible="False"
+                       Background="Transparent"
+                       BorderThickness="0"
+                       CaretBrush="Transparent"
+                       SelectionBrush="{DynamicResource BgSelection}"
+                       LostFocus="NameBox_LostFocus" />
     </Border>
 </UserControl>

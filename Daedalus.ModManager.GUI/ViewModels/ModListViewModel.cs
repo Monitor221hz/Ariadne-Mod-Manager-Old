@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -10,10 +11,9 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Controls.Models.TreeDataGrid;
-using Avalonia.Controls.Templates;
+using Avalonia.Controls.DataGridDragDrop;
+using Avalonia.Controls.DataGridHierarchical;
+using Avalonia.Controls.DataGridSorting;
 using Daedalus.Contracts.ModManager;
 using Daedalus.Contracts.Mods;
 using Daedalus.ModManager;
@@ -35,12 +35,12 @@ public sealed class ModListViewModel : ViewModelBase
     private readonly SynchronizationContext? _uiContext = SynchronizationContext.Current;
 
     private ProfileViewModel? _activeProfile;
-    private ModListGridSource? _modsSource;
+    private HierarchicalModel<TreeNodeViewModel>? _model;
     private string? _currentGameText;
     private string? _selectedProfileName;
     private bool _suppressProfileSwitch;
-    private ObservableCollection<TreeNodeViewModel>? _dragRoots;
-    private IDisposable? _dragSyncSubscription;
+    private ObservableCollection<TreeNodeViewModel>? _roots;
+    private IDisposable? _syncSubscription;
     private IDisposable? _nodeActionSubscription;
     private readonly SemaphoreSlim _syncGate = new(1, 1);
 
@@ -51,34 +51,26 @@ public sealed class ModListViewModel : ViewModelBase
     public Interaction<ModEntryNodeViewModel, bool> ConfirmRemoveMod { get; } = new();
 
     public ObservableCollection<string> ProfileNames { get; } = [];
+    public ObservableCollection<TreeNodeViewModel> SelectedNodes { get; } = [];
+
+    public HierarchicalModel<TreeNodeViewModel>? Model
+    {
+        get => _model;
+        private set => this.RaiseAndSetIfChanged(ref _model, value);
+    }
+
+    public ISortingModel SortingModel { get; } =
+        new SortingModel { CycleMode = SortCycleMode.AscendingDescendingNone };
+
+    public IDataGridRowDropHandler DropHandler { get; }
+
+    public bool SortActive => SortingModel.Descriptors.Count > 0;
 
     public ProfileViewModel? ActiveProfile
     {
         get => _activeProfile;
         private set => this.RaiseAndSetIfChanged(ref _activeProfile, value);
     }
-
-    public ModListGridSource? ModsSource
-    {
-        get => _modsSource;
-        private set
-        {
-            if (_modsSource is not null)
-            {
-                _modsSource.Sorted -= OnModsSourceSorted;
-            }
-            this.RaiseAndSetIfChanged(ref _modsSource, value);
-            if (value is not null)
-            {
-                value.Sorted += OnModsSourceSorted;
-            }
-            this.RaisePropertyChanged(nameof(SortActive));
-        }
-    }
-
-    public bool SortActive => ModsSource?.IsSorted == true;
-
-    private void OnModsSourceSorted() => this.RaisePropertyChanged(nameof(SortActive));
 
     public string? SelectedProfileName
     {
@@ -118,11 +110,69 @@ public sealed class ModListViewModel : ViewModelBase
             .Select(profile => profile is not null);
         CreateModCommand = ReactiveCommand.CreateFromTask(CreateEmptyMod, hasActiveProfile);
         CreateGroupCommand = ReactiveCommand.Create(CreateGroup, hasActiveProfile);
-        ClearSortCommand = ReactiveCommand.Create(() =>
+        ClearSortCommand = ReactiveCommand.Create(() => SortingModel.Clear());
+        DropHandler = new DragDrop.ModListRowDropHandler(() => SortActive);
+        SortingModel.SortingChanged += (_, args) =>
         {
-            ModsSource?.ClearSort();
+            if (Model is { } model)
+            {
+                model.ApplySiblingComparer(BuildComparer(args.NewDescriptors), recursive: true);
+                if (args.NewDescriptors.Count == 0)
+                {
+                    model.Refresh();
+                }
+            }
             this.RaisePropertyChanged(nameof(SortActive));
-        });
+        };
+    }
+
+    private static IComparer<TreeNodeViewModel>? BuildComparer(
+        IReadOnlyList<SortingDescriptor> descriptors
+    )
+    {
+        if (descriptors.Count == 0)
+        {
+            return null;
+        }
+        return Comparer<TreeNodeViewModel>.Create(
+            (left, right) =>
+            {
+                foreach (var descriptor in descriptors)
+                {
+                    var result = Compare(left, right, descriptor.PropertyPath);
+                    if (result != 0)
+                    {
+                        return descriptor.Direction == ListSortDirection.Descending
+                            ? -result
+                            : result;
+                    }
+                }
+                return 0;
+
+                static int Compare(TreeNodeViewModel left, TreeNodeViewModel right, string? path) =>
+                    path switch
+                    {
+                        "Item.DisplayName" or "DisplayName" => string.Compare(
+                            left.DisplayName,
+                            right.DisplayName,
+                            StringComparison.OrdinalIgnoreCase
+                        ),
+                        "Item.PriorityValue" or "PriorityValue" => Nullable.Compare(
+                            left.PriorityValue,
+                            right.PriorityValue
+                        ),
+                        "Item.VersionText" or "VersionText" => string.Compare(
+                            left.VersionText,
+                            right.VersionText,
+                            StringComparison.OrdinalIgnoreCase
+                        ),
+                        "Item.SizeBytes" or "SizeBytes" => left.SizeBytes.CompareTo(
+                            right.SizeBytes
+                        ),
+                        _ => 0,
+                    };
+            }
+        );
     }
 
     private Task InitializeAsync() =>
@@ -148,7 +198,7 @@ public sealed class ModListViewModel : ViewModelBase
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
                 ActiveProfile = new ProfileViewModel(profile);
-                ModsSource = BuildGridSource(profile.ModList);
+                Model = BuildModel(profile.ModList);
                 RefreshProfileNames();
                 SyncSelectedProfile(profile.ProfileFolder.Name);
                 CurrentGameText = currentGame is { } game
@@ -176,7 +226,7 @@ public sealed class ModListViewModel : ViewModelBase
         var profile = _profileSerializer.Load(profileFolder);
         NormalizePriorities(profile);
         ActiveProfile = new ProfileViewModel(profile);
-        ModsSource = BuildGridSource(profile.ModList);
+        Model = BuildModel(profile.ModList);
     }
 
     private static void NormalizePriorities(IModProfile profile)
@@ -254,7 +304,7 @@ public sealed class ModListViewModel : ViewModelBase
             {
                 ActiveProfile!.AddLooseMod(mod);
                 _profileSerializer.Save(ActiveProfile.Model);
-                ModsSource = BuildGridSource(ActiveProfile.Model.ModList);
+                Model = BuildModel(ActiveProfile.Model.ModList);
             });
         });
 
@@ -269,7 +319,7 @@ public sealed class ModListViewModel : ViewModelBase
         }
         ActiveProfile.AddGroup(new ModGroup(name, [], RandomHeaderColor()));
         _profileSerializer.Save(ActiveProfile.Model);
-        ModsSource = BuildGridSource(ActiveProfile.Model.ModList);
+        Model = BuildModel(ActiveProfile.Model.ModList);
     }
 
     private static DirectoryInfo UniqueModFolder(DirectoryInfo modsFolder)
@@ -309,51 +359,29 @@ public sealed class ModListViewModel : ViewModelBase
         return 0.2126 * Linear(r / 255.0) + 0.7152 * Linear(g / 255.0) + 0.0722 * Linear(b / 255.0);
     }
 
-    private ModListGridSource BuildGridSource(IModList modList)
+    private HierarchicalModel<TreeNodeViewModel> BuildModel(IModList modList)
     {
+        var expandedPaths = _roots is null ? null : CollectExpandedPaths(_roots);
         var roots = BuildRoots(modList);
         HookDomainSync(roots);
-        var source = new HierarchicalTreeDataGridSource<TreeNodeViewModel>(roots)
+        if (expandedPaths is not null)
         {
-            Columns =
-            {
-                new HierarchicalExpanderColumn<TreeNodeViewModel>(
-                    new TemplateColumn<TreeNodeViewModel>(
-                        "Name",
-                        new NodeCellTemplate(),
-                        width: new GridLength(3, GridUnitType.Star)
-                    ),
-                    node => node.Children,
-                    node => node.HasChildren
-                ),
-                new TextColumn<TreeNodeViewModel, uint?>(
-                    "Priority",
-                    node => node.PriorityValue,
-                    width: new GridLength(90)
-                ),
-                new TextColumn<TreeNodeViewModel, string?>(
-                    "Version",
-                    node => node.VersionText,
-                    width: new GridLength(120)
-                ),
-                new TextColumn<TreeNodeViewModel, string>(
-                    "Size",
-                    node => node.SizeText,
-                    width: new GridLength(100)
-                ),
-            },
-        };
-        var gridSource = new ModListGridSource(source);
-
-        for (var i = roots.Count - 1; i >= 0; i--)
-        {
-            if (roots[i] is GroupHeaderNodeViewModel { HasChildren: true })
-            {
-                gridSource.Expand(i);
-            }
+            ApplyExpansionPaths(roots, expandedPaths);
         }
+        var model = new HierarchicalModel<TreeNodeViewModel>(
+            new HierarchicalOptions<TreeNodeViewModel>
+            {
+                ChildrenSelector = node => node.Children,
+                VirtualizeChildren = true,
+                ExpandedStateKeyMode = ExpandedStateKeyMode.Item,
+                IsExpandedSelector = node => node.IsExpanded,
+                IsExpandedSetter = (node, expanded) => node.IsExpanded = expanded,
+            }
+        );
+        model.SetRoots(roots);
+        model.ApplySiblingComparer(BuildComparer(SortingModel.Descriptors), recursive: true);
 
-        return gridSource;
+        return model;
     }
 
     private static ObservableCollection<TreeNodeViewModel> BuildRoots(IModList modList) =>
@@ -365,8 +393,8 @@ public sealed class ModListViewModel : ViewModelBase
 
     private void HookDomainSync(ObservableCollection<TreeNodeViewModel> roots)
     {
-        _dragRoots = roots;
-        _dragSyncSubscription?.Dispose();
+        _roots = roots;
+        _syncSubscription?.Dispose();
         _nodeActionSubscription?.Dispose();
 
         var groupNodes = roots.OfType<GroupHeaderNodeViewModel>().ToList();
@@ -378,7 +406,7 @@ public sealed class ModListViewModel : ViewModelBase
             .Concat(groupNodes.SelectMany(group => group.ObservableChildren))
             .Select(node => node.RenameCommitted);
 
-        _dragSyncSubscription = Observable
+        _syncSubscription = Observable
             .Merge(collectionStreams.Concat(renameStreams))
             .Throttle(SyncDelay)
             .ObserveOn(_uiContext ?? SynchronizationContext.Current!)
@@ -424,13 +452,13 @@ public sealed class ModListViewModel : ViewModelBase
 
     private async Task SyncDomainFromTreeAsync()
     {
-        if (ActiveProfile is null || _dragRoots is null)
+        if (ActiveProfile is null || _roots is null)
         {
             return;
         }
 
         var profile = ActiveProfile.Model;
-        var roots = _dragRoots;
+        var roots = _roots;
         var looseMods = roots.OfType<ModEntryNodeViewModel>().Select(node => node.Model).ToList();
         var groupNodes = roots.OfType<GroupHeaderNodeViewModel>().ToList();
         var groupMembers = groupNodes
@@ -473,25 +501,76 @@ public sealed class ModListViewModel : ViewModelBase
 
     private async Task RemoveModNodeAsync(ModEntryNodeViewModel node)
     {
-        if (ActiveProfile is null || _dragRoots is null)
+        if (ActiveProfile is null || _roots is null)
+        {
+            return;
+        }
+        var targets =
+            SelectedNodes.Contains(node) && SelectedNodes.Count > 1
+                ? SelectedNodes.OfType<ModEntryNodeViewModel>().ToList()
+                : [node];
+        try
+        {
+            if (!await ConfirmRemoveMod.Handle(targets[0]))
+            {
+                return;
+            }
+            foreach (var target in targets)
+            {
+                await RemoveSingleModNodeAsync(target);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex);
+        }
+    }
+
+    private async Task RemoveSingleModNodeAsync(ModEntryNodeViewModel node)
+    {
+        await _editor.RemoveModAsync(ActiveProfile!.Model, node.Model);
+        if (_roots!.Remove(node))
+        {
+            return;
+        }
+        foreach (var group in _roots.OfType<GroupHeaderNodeViewModel>())
+        {
+            if (group.ObservableChildren.Remove(node))
+            {
+                return;
+            }
+        }
+    }
+
+    private async Task DissolveGroupNodeAsync(GroupHeaderNodeViewModel node)
+    {
+        if (ActiveProfile is null || _roots is null)
         {
             return;
         }
         try
         {
-            if (!await ConfirmRemoveMod.Handle(node))
+            await _editor.DissolveGroupAsync(ActiveProfile.Model, node.Group);
+            var index = _roots.IndexOf(node);
+            if (index < 0)
             {
                 return;
             }
-            await _editor.RemoveModAsync(ActiveProfile.Model, node.Model);
-            if (!_dragRoots.Remove(node))
+            var children = node.ObservableChildren.ToList();
+            _roots.RemoveAt(index);
+            if (index < _roots.Count && _roots[index] is GroupHeaderNodeViewModel nextGroup)
             {
-                foreach (var group in _dragRoots.OfType<GroupHeaderNodeViewModel>())
+                foreach (var child in children)
                 {
-                    if (group.ObservableChildren.Remove(node))
-                    {
-                        break;
-                    }
+                    nextGroup.ObservableChildren.Add(child);
+                }
+                Model?.Expand([nextGroup]);
+            }
+            else
+            {
+                foreach (var child in children)
+                {
+                    _roots.Insert(index++, child);
                 }
             }
         }
@@ -501,41 +580,49 @@ public sealed class ModListViewModel : ViewModelBase
         }
     }
 
-    private async Task DissolveGroupNodeAsync(GroupHeaderNodeViewModel node)
+    private static HashSet<string> CollectExpandedPaths(
+        IEnumerable<TreeNodeViewModel> nodes,
+        string prefix = ""
+    )
     {
-        if (ActiveProfile is null || _dragRoots is null)
+        var paths = new HashSet<string>();
+        CollectInto(nodes, paths);
+        return paths;
+
+        static void CollectInto(
+            IEnumerable<TreeNodeViewModel> level,
+            HashSet<string> paths,
+            string prefix = ""
+        )
         {
-            return;
-        }
-        try
-        {
-            await _editor.DissolveGroupAsync(ActiveProfile.Model, node.Group);
-            var index = _dragRoots.IndexOf(node);
-            if (index < 0)
+            foreach (var node in level)
             {
-                return;
-            }
-            var children = node.ObservableChildren.ToList();
-            _dragRoots.RemoveAt(index);
-            if (index < _dragRoots.Count && _dragRoots[index] is GroupHeaderNodeViewModel nextGroup)
-            {
-                foreach (var child in children)
+                var path = prefix.Length == 0 ? node.DisplayName : $"{prefix}/{node.DisplayName}";
+                if (!node.IsExpanded)
                 {
-                    nextGroup.ObservableChildren.Add(child);
+                    continue;
                 }
-                ModsSource?.Expand(new IndexPath(index));
-            }
-            else
-            {
-                foreach (var child in children)
-                {
-                    _dragRoots.Insert(index++, child);
-                }
+                paths.Add(path);
+                CollectInto(node.Children, paths, path);
             }
         }
-        catch (Exception ex)
+    }
+
+    private static void ApplyExpansionPaths(
+        IEnumerable<TreeNodeViewModel> nodes,
+        HashSet<string> expanded,
+        string prefix = ""
+    )
+    {
+        foreach (var node in nodes)
         {
-            Debug.WriteLine(ex);
+            var path = prefix.Length == 0 ? node.DisplayName : $"{prefix}/{node.DisplayName}";
+            if (!expanded.Contains(path))
+            {
+                continue;
+            }
+            node.IsExpanded = true;
+            ApplyExpansionPaths(node.Children, expanded, path);
         }
     }
 
@@ -553,15 +640,5 @@ public sealed class ModListViewModel : ViewModelBase
                     break;
             }
         }
-    }
-
-    private sealed class NodeCellTemplate : IDataTemplate
-    {
-        private static readonly Views.ViewLocator s_locator = new();
-
-        public Control? Build(object? param) =>
-            param is TreeNodeViewModel node ? s_locator.Build(node) : null;
-
-        public bool Match(object? data) => data is TreeNodeViewModel;
     }
 }

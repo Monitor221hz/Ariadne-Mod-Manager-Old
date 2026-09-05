@@ -1,0 +1,265 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:col="clr-namespace:Avalonia.Controls;assembly=Avalonia.Controls.ColorPicker"
+        xmlns:xlang="using:System"
+        x:DataType="xlang:Object">
+
+    <Design.PreviewWith>
+        <Border Padding="20" Background="#FF1E1E2E">
+            <Border.Resources>
+                <ResourceDictionary>
+                    <Color x:Key="BgBase">#FF1E1E2E</Color>
+                    <Color x:Key="BgMantle">#FF181825</Color>
+                    <Color x:Key="BgDarker">#FF11111B</Color>
+                    <Color x:Key="BgElevated">#FF313244</Color>
+                    <Color x:Key="BgSelection">#40CBA6F7</Color>
+                    <Color x:Key="BgHover">#FF45475A</Color>
+                    <Color x:Key="BgActiveList">#FF585B70</Color>
+                    <Color x:Key="FgBase">#FFCDD6F4</Color>
+                    <Color x:Key="FgMuted">#FFBAC2DE</Color>
+                    <Color x:Key="FgDimmed">#FF9399B2</Color>
+                    <Color x:Key="FgBright">#FFF5E0DC</Color>
+                    <Color x:Key="AccentPrimary">#FFCBA6F7</Color>
+                    <Color x:Key="AccentSoft">#FFF5C2E7</Color>
+                    <Color x:Key="BorderColor">#FF313244</Color>
+                    <Color x:Key="GlassPanel">#E6313244</Color>
+                    <Color x:Key="GlassBorder">#33FFFFFF</Color>
+                </ResourceDictionary>
+            </Border.Resources>
+            <ScrollViewer>
+                <StackPanel Spacing="14">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="Normal" />
+                        <Button Content="Disabled" IsEnabled="False" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <ComboBox Width="180" PlaceholderText="Profile">
+                            <ComboBoxItem Content="Alpha" />
+                            <ComboBoxItem Content="Beta" IsSelected="True" />
+                            <ComboBoxItem Content="Gamma" />
+                        </ComboBox>
+                        <NumericUpDown Value="42" Width="120" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="16">
+                        <CheckBox Content="Unchecked" />
+                        <CheckBox Content="Checked" IsChecked="True" />
+                        <CheckBox Content="Indeterminate" IsThreeState="True" IsChecked="{x:Null}" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="16">
+                        <RadioButton Content="Off" />
+                        <RadioButton Content="On" IsChecked="True" />
+                        <ToggleSwitch OnContent="On" OffContent="Off" IsChecked="True" />
+                    </StackPanel>
+                    <TextBox Text="Normal" Width="220" />
+                    <TextBox Text="Disabled" IsEnabled="False"  />
+                    <ProgressBar Value="50"  />
+                    <Slider Value="50"  />
+                    <ListBox Height="90">
+                        <ListBoxItem Content="Row A" />
+                        <ListBoxItem Content="Row B" IsSelected="True" />
+                        <ListBoxItem Content="Row C" />
+                    </ListBox>
+                    <TabControl Height="80">
+                        <TabItem Header="First"><TextBlock Text="First tab content" /></TabItem>
+                        <TabItem Header="Second" />
+                    </TabControl>
+                    <Expander Header="Expanded section" IsExpanded="True" >
+                        <TextBlock Text="Body content with themed background." TextWrapping="Wrap" />
+                    </Expander>
+                    <col:ColorView  />
+                    <col:ColorPicker />
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+    </Design.PreviewWith>
+
+    <Styles.Resources>
+        <ResourceDictionary>
+            <SolidColorBrush x:Key="ButtonBackground" Color="{DynamicResource BgDarker}" />
+            <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="{DynamicResource BgHover}" />
+            <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="{DynamicResource AccentSoft}" />
+            <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="{DynamicResource BgDarker}" />
+            <SolidColorBrush x:Key="ButtonForeground" Color="{DynamicResource FgBase}" />
+            <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="{DynamicResource FgBase}" />
+            <SolidColorBrush x:Key="ButtonForegroundPressed" Color="{DynamicResource FgBase}" />
+            <SolidColorBrush x:Key="ButtonForegroundDisabled" Color="{DynamicResource FgDimmed}" />
+            <SolidColorBrush x:Key="ButtonBorderBrush" Color="{DynamicResource BorderColor}" />
+            <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="{DynamicResource AccentPrimary}" />
+            <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="{DynamicResource AccentPrimary}" />
+            <SolidColorBrush x:Key="ButtonBorderBrushDisabled" Color="{DynamicResource BorderColor}" />
+            <Thickness x:Key="ButtonPadding">10,5</Thickness>
+
+            <SolidColorBrush x:Key="ComboBoxBackground" Color="{DynamicResource BgDarker}" />
+            <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="{DynamicResource BgHover}" />
+            <SolidColorBrush x:Key="ComboBoxBackgroundPressed" Color="{DynamicResource BgHover}" />
+            <SolidColorBrush x:Key="ComboBoxBackgroundDisabled" Color="{DynamicResource BgDarker}" />
+            <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="{DynamicResource BorderColor}" />
+            <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="{DynamicResource AccentPrimary}" />
+            <SolidColorBrush x:Key="ComboBoxBorderBrushPressed" Color="{DynamicResource AccentPrimary}" />
+            <SolidColorBrush x:Key="ComboBoxBorderBrushDisabled" Color="{DynamicResource BorderColor}" />
+            <SolidColorBrush x:Key="ComboBoxForeground" Color="{DynamicResource FgBase}" />
+            <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="{DynamicResource GlassPanel}" />
+            <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="{DynamicResource BorderColor}" />
+            <Thickness x:Key="ComboBoxPadding">8,4,0,5</Thickness>
+            <x:Double x:Key="ComboBoxMinHeight">30</x:Double>
+
+            <!-- TextBox -->
+            <SolidColorBrush x:Key="TextControlBackground" Color="{DynamicResource BgDarker}" />
+            <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="{DynamicResource BgDarker}" />
+            <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="{DynamicResource BgDarker}" />
+            <SolidColorBrush x:Key="TextControlBackgroundDisabled" Color="{DynamicResource BgMantle}" />
+            <SolidColorBrush x:Key="TextControlBorderBrush" Color="{DynamicResource BorderColor}" />
+            <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="{DynamicResource AccentPrimary}" />
+            <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="{DynamicResource AccentPrimary}" />
+            <SolidColorBrush x:Key="TextControlBorderBrushDisabled" Color="{DynamicResource BorderColor}" />
+            <SolidColorBrush x:Key="TextControlForeground" Color="{DynamicResource FgBase}" />
+            <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="{DynamicResource FgBase}" />
+            <SolidColorBrush x:Key="TextControlForegroundFocused" Color="{DynamicResource FgBright}" />
+            <SolidColorBrush x:Key="TextControlForegroundDisabled" Color="{DynamicResource FgDimmed}" />
+            <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="{DynamicResource FgDimmed}" />
+            <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="{DynamicResource FgMuted}" />
+            <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="{DynamicResource FgMuted}" />
+            <SolidColorBrush x:Key="TextControlSelectionHighlightColor" Color="{DynamicResource BgSelection}" />
+
+            <!-- CheckBox -->
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUnchecked" Color="{DynamicResource BgDarker}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUnchecked" Color="{DynamicResource BorderColor}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUncheckedPointerOver" Color="{DynamicResource BgDarker}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUncheckedPointerOver" Color="{DynamicResource AccentPrimary}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillChecked" Color="{DynamicResource AccentPrimary}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeChecked" Color="{DynamicResource AccentPrimary}" />
+            <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundChecked" Color="{DynamicResource FgBright}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPointerOver" Color="{DynamicResource AccentSoft}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeCheckedPointerOver" Color="{DynamicResource AccentSoft}" />
+            <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundUnchecked" Color="Transparent" />
+            <SolidColorBrush x:Key="CheckBoxForegroundUnchecked" Color="{DynamicResource FgBase}" />
+            <SolidColorBrush x:Key="CheckBoxForegroundChecked" Color="{DynamicResource FgBase}" />
+
+            <!-- RadioButton -->
+            <SolidColorBrush x:Key="RadioButtonBackground" Color="Transparent" />
+            <SolidColorBrush x:Key="RadioButtonBorderBrush" Color="Transparent" />
+            <SolidColorBrush x:Key="RadioButtonForeground" Color="{DynamicResource FgBase}" />
+            <SolidColorBrush x:Key="RadioButtonBackgroundPointerOver" Color="Transparent" />
+            <SolidColorBrush x:Key="RadioButtonBorderBrushPointerOver" Color="Transparent" />
+            <SolidColorBrush x:Key="RadioButtonOuterEllipseFill" Color="Transparent" />
+            <SolidColorBrush x:Key="RadioButtonOuterEllipseStroke" Color="{DynamicResource BorderColor}" />
+            <SolidColorBrush x:Key="RadioButtonOuterEllipseFillPointerOver" Color="Transparent" />
+            <SolidColorBrush x:Key="RadioButtonOuterEllipseStrokePointerOver" Color="{DynamicResource AccentPrimary}" />
+            <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedStroke" Color="{DynamicResource AccentPrimary}" />
+            <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedFill" Color="Transparent" />
+            <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedFillPointerOver" Color="Transparent" />
+            <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedStrokePointerOver" Color="{DynamicResource AccentPrimary}" />
+            <SolidColorBrush x:Key="RadioButtonCheckGlyphFill" Color="{DynamicResource AccentPrimary}" />
+
+            <!-- Slider -->
+            <SolidColorBrush x:Key="SliderTrackFill" Color="{DynamicResource BgElevated}" />
+            <SolidColorBrush x:Key="SliderTrackValueFill" Color="{DynamicResource AccentSoft}" />
+            <SolidColorBrush x:Key="SliderThumbBackground" Color="{DynamicResource FgBright}" />
+            <SolidColorBrush x:Key="SliderTrackFillPointerOver" Color="{DynamicResource BgElevated}" />
+            <SolidColorBrush x:Key="SliderTrackValueFillPointerOver" Color="{DynamicResource AccentPrimary}" />
+            <SolidColorBrush x:Key="SliderTrackValueFillPressed" Color="{DynamicResource AccentPrimary}" />
+
+            <!-- ListBoxItem -->
+            <SolidColorBrush x:Key="SystemControlHighlightListLowBrush" Color="{DynamicResource BgHover}" />
+            <SolidColorBrush x:Key="SystemControlHighlightListMediumBrush" Color="{DynamicResource BgSelection}" />
+            <SolidColorBrush x:Key="SystemControlHighlightListAccentLowBrush" Color="{DynamicResource BgActiveList}" />
+            <SolidColorBrush x:Key="SystemControlHighlightListAccentMediumBrush" Color="{DynamicResource BgActiveList}" />
+            <SolidColorBrush x:Key="SystemControlHighlightAltBaseHighBrush" Color="{DynamicResource FgBright}" />
+
+            <!-- ToggleSwitch -->
+            <SolidColorBrush x:Key="ToggleSwitchFillOff" Color="{DynamicResource BgDarker}" />
+            <SolidColorBrush x:Key="ToggleSwitchStrokeOff" Color="{DynamicResource BorderColor}" />
+            <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="{DynamicResource AccentPrimary}" />
+            <SolidColorBrush x:Key="ToggleSwitchStrokeOn" Color="{DynamicResource AccentPrimary}" />
+            <SolidColorBrush x:Key="ToggleSwitchKnobFillOn" Color="{DynamicResource FgBright}" />
+            <SolidColorBrush x:Key="ToggleSwitchKnobFillOff" Color="{DynamicResource FgBright}" />
+            <SolidColorBrush x:Key="ToggleSwitchFillOffPointerOver" Color="{DynamicResource BgDarker}" />
+            <SolidColorBrush x:Key="ToggleSwitchStrokeOffPointerOver" Color="{DynamicResource AccentPrimary}" />
+            <SolidColorBrush x:Key="ToggleSwitchFillOnPointerOver" Color="{DynamicResource AccentSoft}" />
+            <SolidColorBrush x:Key="ToggleSwitchContentForeground" Color="{DynamicResource FgBase}" />
+            <SolidColorBrush x:Key="ToggleSwitchContainerBackground" Color="Transparent" />
+            <SolidColorBrush x:Key="ToggleSwitchContainerBackgroundPointerOver" Color="Transparent" />
+            <SolidColorBrush x:Key="ToggleSwitchContainerBackgroundPressed" Color="Transparent" />
+
+            <!-- ProgressBar -->
+            <SolidColorBrush x:Key="SystemControlHighlightAccentBrush" Color="{DynamicResource AccentPrimary}" />
+            <SolidColorBrush x:Key="SystemControlBackgroundBaseLowBrush" Color="{DynamicResource BgElevated}" />
+
+            <!-- ToolTip -->
+            <SolidColorBrush x:Key="ToolTipBackground" Color="{DynamicResource GlassPanel}" />
+            <SolidColorBrush x:Key="ToolTipBorderBrush" Color="{DynamicResource BorderColor}" />
+            <SolidColorBrush x:Key="ToolTipForeground" Color="{DynamicResource FgBase}" />
+
+            <!-- TabItem -->
+            <SolidColorBrush x:Key="TabItemHeaderBackgroundUnselected" Color="Transparent" />
+            <SolidColorBrush x:Key="TabItemHeaderBackgroundSelected" Color="{DynamicResource BgActiveList}" />
+            <SolidColorBrush x:Key="TabItemHeaderBackgroundUnselectedPointerOver" Color="{DynamicResource BgHover}" />
+            <SolidColorBrush x:Key="TabItemHeaderBackgroundSelectedPointerOver" Color="{DynamicResource BgActiveList}" />
+            <SolidColorBrush x:Key="TabItemHeaderBackgroundUnselectedPressed" Color="{DynamicResource BgSelection}" />
+            <SolidColorBrush x:Key="TabItemHeaderBackgroundSelectedPressed" Color="{DynamicResource BgActiveList}" />
+            <SolidColorBrush x:Key="TabItemHeaderForegroundUnselected" Color="{DynamicResource FgMuted}" />
+            <SolidColorBrush x:Key="TabItemHeaderForegroundSelected" Color="{DynamicResource FgBright}" />
+            <SolidColorBrush x:Key="TabItemHeaderSelectedPipeFill" Color="{DynamicResource AccentPrimary}" />
+            <x:Double x:Key="TabItemMinHeight">36</x:Double>
+
+            <!-- ScrollBar -->
+            <SolidColorBrush x:Key="ScrollBarBackground" Color="Transparent" />
+            <SolidColorBrush x:Key="ScrollBarBackgroundPointerOver" Color="Transparent" />
+            <SolidColorBrush x:Key="ScrollBarTrackFill" Color="Transparent" />
+            <SolidColorBrush x:Key="ScrollBarTrackStroke" Color="Transparent" />
+            <SolidColorBrush x:Key="ScrollBarThumbBackgroundColor" Color="{DynamicResource FgDimmed}" />
+            <SolidColorBrush x:Key="ScrollBarPanningThumbBackground" Color="{DynamicResource FgDimmed}" />
+            <SolidColorBrush x:Key="ScrollBarThumbFillPointerOver" Color="{DynamicResource FgMuted}" />
+            <SolidColorBrush x:Key="ScrollBarThumbFillPressed" Color="{DynamicResource FgBase}" />
+            <SolidColorBrush x:Key="ScrollBarThumbFillDisabled" Color="{DynamicResource FgDimmed}" />
+            <SolidColorBrush x:Key="ScrollBarButtonBackgroundPointerOver" Color="{DynamicResource BgHover}" />
+
+            <!-- Expander -->
+            <SolidColorBrush x:Key="ExpanderHeaderBackground" Color="{DynamicResource BgSurface}" />
+            <SolidColorBrush x:Key="ExpanderHeaderBorderBrush" Color="{DynamicResource BorderColor}" />
+            <SolidColorBrush x:Key="ExpanderHeaderForeground" Color="{DynamicResource FgBase}" />
+            <SolidColorBrush x:Key="ExpanderHeaderBackgroundPointerOver" Color="{DynamicResource BgHover}" />
+            <SolidColorBrush x:Key="ExpanderHeaderBorderBrushPointerOver" Color="{DynamicResource AccentPrimary}" />
+            <SolidColorBrush x:Key="ExpanderHeaderForegroundPointerOver" Color="{DynamicResource FgBright}" />
+            <SolidColorBrush x:Key="ExpanderHeaderBackgroundPressed" Color="{DynamicResource BgSelection}" />
+            <SolidColorBrush x:Key="ExpanderChevronBackground" Color="Transparent" />
+            <SolidColorBrush x:Key="ExpanderChevronForeground" Color="{DynamicResource FgDimmed}" />
+            <SolidColorBrush x:Key="ExpanderChevronForegroundPointerOver" Color="{DynamicResource AccentPrimary}" />
+            <SolidColorBrush x:Key="ExpanderContentBackground" Color="{DynamicResource BgDarker}" />
+            <SolidColorBrush x:Key="ExpanderContentBorderBrush" Color="{DynamicResource BorderColor}" />
+
+            <!-- NumericUpDown rides TextControl* keys (already themed above); spinner arrows: -->
+            <SolidColorBrush x:Key="RepeatButtonBackground" Color="Transparent" />
+
+            <!-- ColorPicker (uses ToggleButton tab keys) -->
+            <SolidColorBrush x:Key="ColorViewContentBackgroundBrush" Color="{DynamicResource BgSurface}" />
+            <SolidColorBrush x:Key="ColorViewContentBorderBrush" Color="{DynamicResource BorderColor}" />
+            <SolidColorBrush x:Key="ColorViewTabBorderBrush" Color="{DynamicResource BorderColor}" />
+
+            <!-- ToggleButton (used by ColorPicker mode buttons) -->
+            <SolidColorBrush x:Key="ToggleButtonBackground" Color="{DynamicResource BgSurface}" />
+            <SolidColorBrush x:Key="ToggleButtonBorderBrush" Color="{DynamicResource BorderColor}" />
+            <SolidColorBrush x:Key="ToggleButtonForeground" Color="{DynamicResource FgBase}" />
+            <SolidColorBrush x:Key="ToggleButtonBackgroundPointerOver" Color="{DynamicResource BgHover}" />
+            <SolidColorBrush x:Key="ToggleButtonBorderBrushPointerOver" Color="{DynamicResource AccentPrimary}" />
+            <SolidColorBrush x:Key="ToggleButtonBackgroundChecked" Color="{DynamicResource BgActiveList}" />
+            <SolidColorBrush x:Key="ToggleButtonBorderBrushChecked" Color="{DynamicResource AccentPrimary}" />
+            <!-- ListBox container (rows are transparent; chrome was defaulting gray) -->
+            <SolidColorBrush x:Key="SystemControlBackgroundChromeMediumLowBrush" Color="{DynamicResource BgDarker}" />
+            <SolidColorBrush x:Key="SystemControlForegroundBaseHighBrush" Color="{DynamicResource FgBase}" />
+            <SolidColorBrush x:Key="SystemControlDisabledBaseMediumLowBrush" Color="{DynamicResource FgDimmed}" />
+
+            <!-- ComboBoxItem -->
+            <SolidColorBrush x:Key="ComboBoxItemBackground" Color="Transparent" />
+            <SolidColorBrush x:Key="ComboBoxItemForeground" Color="{DynamicResource FgBase}" />
+            <SolidColorBrush x:Key="ComboBoxItemBackgroundPointerOver" Color="{DynamicResource BgHover}" />
+            <SolidColorBrush x:Key="ComboBoxItemForegroundPointerOver" Color="{DynamicResource FgBase}" />
+            <SolidColorBrush x:Key="ComboBoxItemBackgroundSelected" Color="{DynamicResource BgActiveList}" />
+            <SolidColorBrush x:Key="ComboBoxItemForegroundSelected" Color="{DynamicResource FgBright}" />
+            <SolidColorBrush x:Key="ComboBoxItemBackgroundSelectedPointerOver" Color="{DynamicResource BgActiveList}" />
+
+            <SolidColorBrush x:Key="ToggleButtonForegroundChecked" Color="{DynamicResource FgBright}" />
+        </ResourceDictionary>
+    </Styles.Resources>
+
+</Styles>

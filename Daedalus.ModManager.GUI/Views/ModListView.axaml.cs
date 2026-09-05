@@ -1,14 +1,12 @@
-using System;
-using System.Globalization;
-using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.DataGridHierarchical;
 using Avalonia.Input;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
-using Daedalus.ModManager.GUI.Converters;
 using Daedalus.ModManager.GUI.ViewModels;
 using ReactiveUI;
 
@@ -32,8 +30,8 @@ public partial class ModListView : UserControl
         RemoveOverlay.IsVisible = true;
         var confirmed = await Observable
             .Merge(
-                ClickOf(DeleteModButton).Select(_ => true),
-                ClickOf(RemoveModCancelButton).Select(_ => false)
+                ButtonObservables.ClicksOf(DeleteModButton).Select(_ => true),
+                ButtonObservables.ClicksOf(RemoveModCancelButton).Select(_ => false)
             )
             .FirstAsync()
             .ToTask();
@@ -41,30 +39,65 @@ public partial class ModListView : UserControl
         context.SetOutput(confirmed);
     }
 
-    private static IObservable<EventPattern<Avalonia.Interactivity.RoutedEventArgs>> ClickOf(
-        Button button
-    ) =>
-        Observable.FromEventPattern<Avalonia.Interactivity.RoutedEventArgs>(
-            handler => button.Click += handler,
-            handler => button.Click -= handler
-        );
+    private void ModsGrid_SelectionChanged(
+        object? sender,
+        Avalonia.Controls.SelectionChangedEventArgs e
+    )
+    {
+        if (DataContext is not ModListViewModel viewModel)
+        {
+            return;
+        }
+        Dispatcher.UIThread.Post(() => SyncSelectedNodes(viewModel), DispatcherPriority.Loaded + 1);
+    }
 
-    private static readonly NodeMenuItemsConverter MenuItems = new();
+    private void SyncSelectedNodes(ModListViewModel viewModel)
+    {
+        if (ModsGrid.Selection is not { } selection)
+        {
+            return;
+        }
+        viewModel.SelectedNodes.Clear();
+        foreach (var item in selection.SelectedItems)
+        {
+            var node = item switch
+            {
+                TreeNodeViewModel direct => direct,
+                HierarchicalNode { Item: TreeNodeViewModel wrapped } => wrapped,
+                _ => null,
+            };
+            if (node is not null)
+            {
+                viewModel.SelectedNodes.Add(node);
+            }
+        }
+    }
 
-    private void TreeDataGrid_ContextRequested(object? sender, ContextRequestedEventArgs e)
+    private void ModsGrid_ContextRequested(object? sender, ContextRequestedEventArgs e)
     {
         var anchor = (e.Source as Control)
             ?.GetSelfAndVisualAncestors()
             .OfType<Control>()
-            .FirstOrDefault(control => control.DataContext is TreeNodeViewModel);
-        if (anchor is null || anchor.DataContext is not TreeNodeViewModel node)
+            .FirstOrDefault(control =>
+                control.DataContext is TreeNodeViewModel
+                || control.DataContext is HierarchicalNode { Item: TreeNodeViewModel }
+            );
+        if (anchor is null)
         {
             return;
         }
-        if (
-            MenuItems.Convert(node, typeof(NodeMenuItem[]), null, CultureInfo.InvariantCulture)
-            is not IEnumerable<NodeMenuItem> items
-        )
+        var node = anchor.DataContext switch
+        {
+            TreeNodeViewModel direct => direct,
+            HierarchicalNode { Item: TreeNodeViewModel wrapped } => wrapped,
+            _ => null,
+        };
+        if (node is null)
+        {
+            return;
+        }
+        var items = NodeMenuItems.For(node);
+        if (items.Length == 0)
         {
             return;
         }
@@ -72,10 +105,6 @@ public partial class ModListView : UserControl
         foreach (var item in items)
         {
             menu.Items.Add(new MenuItem { Header = item.Header, Command = item.Command });
-        }
-        if (menu.Items.Count == 0)
-        {
-            return;
         }
         e.Handled = true;
         menu.Open(anchor);
