@@ -5,13 +5,11 @@
              x:DataType="vm:ModEntryNodeViewModel">
 
     <MaskedTextBox x:Name="NameBox" Text="{Binding DisplayName, Mode=TwoWay}"
-              Classes="transparent"
-              Foreground="{DynamicResource FgBaseBrush}"
+               Classes.transparent="{Binding !IsEditing}"
+               Foreground="{DynamicResource FgBaseBrush}"
               VerticalAlignment="Center"
               Margin="0,3" IsReadOnly="{Binding !IsEditing}" Background="Transparent" BorderThickness="0"
-              Focusable="{Binding IsEditing}"
-              IsHitTestVisible="{Binding IsEditing}"
-              Cursor="Arrow"
-              CaretBrush="Transparent"
+               Focusable="{Binding IsEditing}"
+               IsHitTestVisible="{Binding IsEditing}"
               SelectionBrush="{DynamicResource BgSelection}" DoubleTapped="MaskedTextBox_DoubleTapped"/>
 </UserControl>

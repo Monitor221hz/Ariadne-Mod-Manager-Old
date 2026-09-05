@@ -12,6 +12,7 @@
 
     <Application.Resources>
         <ResourceDictionary>
+            <FontFamily x:Key="ContentControlThemeFontFamily">avares://Mortex/Assets/Fonts/AtkinsonHyperlegible#Atkinson Hyperlegible, $Default</FontFamily>
             <converters:BandContrastForegroundConverter x:Key="BandContrastForeground" />
             <ResourceDictionary.MergedDictionaries>
                 <ResourceInclude Source="avares://Mortex/Themes/Theme.axaml" />

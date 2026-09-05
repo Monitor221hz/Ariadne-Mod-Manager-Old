@@ -11,6 +11,7 @@
             <converters:GroupBandBrushConverter x:Key="GroupBandBrush" />
             <converters:NodeIconConverter x:Key="NodeIconGeometry" />
             <converters:NodeIconSizeConverter x:Key="NodeIconSize" />
+            <converters:NodeExpanderEnabledConverter x:Key="NodeExpanderEnabled" />
 
             <ControlTheme x:Key="DaedalusHierarchyExpanderToggle" TargetType="ToggleButton">
                 <Setter Property="Margin" Value="0" />
@@ -60,10 +61,16 @@
                                               Width="{DynamicResource DaedalusExpanderToggleWidth}"
                                               Height="{DynamicResource DaedalusExpanderToggleHeight}"
                                               Theme="{StaticResource DaedalusHierarchyExpanderToggle}"
-                                              IsEnabled="{TemplateBinding IsExpandable}"
                                               HorizontalAlignment="Center"
                                               VerticalAlignment="Center"
-                                              IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}}" />
+                                              IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}">
+                                    <ToggleButton.IsEnabled>
+                                        <MultiBinding Converter="{StaticResource NodeExpanderEnabled}">
+                                            <Binding Path="IsExpandable" RelativeSource="{RelativeSource TemplatedParent}" />
+                                            <Binding Path="DataContext" RelativeSource="{RelativeSource TemplatedParent}" />
+                                        </MultiBinding>
+                                    </ToggleButton.IsEnabled>
+                                </ToggleButton>
                                 <ContentPresenter Grid.Column="1"
                                                   Margin="{DynamicResource DaedalusHierarchyContentMargin}"
                                                   HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"

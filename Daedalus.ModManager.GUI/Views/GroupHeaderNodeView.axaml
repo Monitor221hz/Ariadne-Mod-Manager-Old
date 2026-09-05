@@ -9,7 +9,7 @@
             Margin="0,3">
         <MaskedTextBox x:Name="NameBox"
                        Text="{Binding DisplayName, Mode=TwoWay}"
-                       Classes="transparent"
+                       Classes.transparent="{Binding !IsEditing}"
                        FontWeight="SemiBold"
                        Foreground="{Binding SeparatorBrush, Converter={StaticResource BandContrastForeground}}"
                        VerticalAlignment="Center"
@@ -17,8 +17,8 @@
                        IsHitTestVisible="False"
                        Background="Transparent"
                        BorderThickness="0"
-                       CaretBrush="Transparent"
                        SelectionBrush="{DynamicResource BgSelection}"
-                       LostFocus="NameBox_LostFocus" />
+                       LostFocus="NameBox_LostFocus"
+                        LetterSpacing="1"/>
     </Border>
 </UserControl>

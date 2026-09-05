@@ -57,6 +57,25 @@ public class ModListHierarchyTests
         model.Flattened.Select(node => ((TreeNodeViewModel)node.Item).DisplayName).ToArray();
 
     [Fact]
+    public void Expand_Then_Collapse_Empty_Group_Ratchets_Until_Child_Added()
+    {
+        var (model, group) = CreateModel();
+        var node = model.Flattened.Single(n => ReferenceEquals(n.Item, group));
+
+        model.Expand(node);
+        Assert.True(node.IsExpanded);
+
+        model.Collapse(node);
+        Assert.True(node.IsExpanded);
+
+        group.ObservableChildren.Add(new ModEntryNodeViewModel(new FakeMod("X")));
+
+        var expandedNode = model.Flattened.Single(n => ReferenceEquals(n.Item, group));
+        model.Collapse(expandedNode);
+        Assert.False(expandedNode.IsExpanded);
+    }
+
+    [Fact]
     public void Natural_Order_Follows_Priority_Insertion_Order()
     {
         var (model, _) = CreateModel("B", "A", "C");
