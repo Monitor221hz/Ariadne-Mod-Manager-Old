@@ -1,6 +1,8 @@
 using System.Reactive;
+using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using Daedalus.Contracts.Mods;
+using Noggog;
 using ReactiveUI;
 
 namespace Daedalus.ModManager.GUI.ViewModels;
@@ -10,12 +12,22 @@ public sealed class ModEntryNodeViewModel : TreeNodeViewModel
     private readonly ILibraryMod _mod;
     private readonly Subject<Unit> _removeRequested = new();
     private uint _priorityValue;
+    private bool _active;
     private string _sizeText;
 
     private string _displayName;
     public ILibraryMod Model => _mod;
     public override uint? PriorityValue => _priorityValue;
     public override string? VersionText => _mod.Info.Version;
+    public bool Active
+    {
+        get => _active;
+        set
+        {
+            _mod.Info.Active = value;
+            this.RaiseAndSetIfChanged(ref _active, value);
+        }
+    }
     public override string DisplayName
     {
         get => _displayName;
@@ -40,6 +52,7 @@ public sealed class ModEntryNodeViewModel : TreeNodeViewModel
         _mod = mod;
         _priorityValue = mod.Info.Priority;
         _sizeText = DiskSize.Format(SizeBytes);
+        _active = mod.Info.Active;
         RemoveCommand = ReactiveCommand.Create(() => _removeRequested.OnNext(Unit.Default));
     }
 
@@ -49,6 +62,7 @@ public sealed class ModEntryNodeViewModel : TreeNodeViewModel
     public void RefreshFromModel()
     {
         this.RaiseAndSetIfChanged(ref _priorityValue, _mod.Info.Priority, nameof(PriorityValue));
+        // this.RaiseAndSetIfChanged(ref _active, _mod.Info.Active, nameof(Active));
     }
 
     protected override string ApplyRename(string name)

@@ -12,7 +12,8 @@ public class ModListDropRulesTests
 {
     private sealed class FakeMod(string name) : ILibraryMod
     {
-        public IModInfo Info { get; } = new Mods.ModInfo(0, SourceType.Local, "1.0", [], "", 0);
+        public IModInfo Info { get; } =
+            new Mods.ModInfo(0, SourceType.Local, "1.0", [], "", 0, false);
         public string Name { get; } = name;
         public DirectoryInfo Directory => new(".");
         public Daedalus.VFS.VirtualNode<ModFileEntry> Content { get; } =
@@ -200,7 +201,11 @@ public class ModListDropRulesTests
     {
         var dragged = Mod("A");
         var roots = new System.Collections.ObjectModel.ObservableCollection<TreeNodeViewModel>
-            { Mod("B"), dragged, Group("G") };
+        {
+            Mod("B"),
+            dragged,
+            Group("G"),
+        };
         var target = roots.OfType<GroupHeaderNodeViewModel>().Single();
 
         ModListDropRules.MoveIntoGroup(roots, target, [dragged]);
@@ -216,7 +221,10 @@ public class ModListDropRulesTests
         var source = Group("G1", dragged, Mod("B"));
         var target = Group("G2");
         var roots = new System.Collections.ObjectModel.ObservableCollection<TreeNodeViewModel>
-            { source, target };
+        {
+            source,
+            target,
+        };
 
         ModListDropRules.MoveIntoGroup(roots, target, [dragged]);
 
@@ -227,7 +235,10 @@ public class ModListDropRulesTests
     [Fact]
     public void MoveIntoGroup_Skips_NonMods()
     {
-        var roots = new System.Collections.ObjectModel.ObservableCollection<TreeNodeViewModel> { Dir };
+        var roots = new System.Collections.ObjectModel.ObservableCollection<TreeNodeViewModel>
+        {
+            Dir,
+        };
         var target = Group("G");
 
         ModListDropRules.MoveIntoGroup(roots, target, [Dir]);

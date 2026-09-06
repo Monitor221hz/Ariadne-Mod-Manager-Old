@@ -3,6 +3,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Reactive;
+using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.Controls.DataGridDragDrop;
@@ -298,7 +299,8 @@ public sealed class ModListViewModel : ViewModelBase
                     "1.0.0",
                     [],
                     "",
-                    (uint)(ActiveProfile!.Model.ModList.Count + 1)
+                    (uint)(ActiveProfile!.Model.ModList.Count + 1),
+                    false
                 ),
                 folder,
                 []
@@ -443,6 +445,8 @@ public sealed class ModListViewModel : ViewModelBase
                 {
                     _ = DissolveGroupNodeAsync(group);
                 }),
+            GetActiveSubscription(modNodes),
+            GetPrioritySubscription(modNodes),
         };
 
         static IObservable<EventPattern<NotifyCollectionChangedEventArgs>> StreamOf(
@@ -456,6 +460,48 @@ public sealed class ModListViewModel : ViewModelBase
                 handler => collection.CollectionChanged -= handler
             );
     }
+
+    private IDisposable GetPrioritySubscription(
+        List<ModEntryNodeViewModel> modEntryNodeViewModels
+    ) =>
+        Observable
+            .Merge(
+                modEntryNodeViewModels.Select(node =>
+                    node.WhenAnyValue(n => n.PriorityValue).Skip(1).Select(_ => node)
+                )
+            )
+            .ObserveOn(TaskPoolScheduler.Default)
+            .Subscribe(node =>
+            {
+                try
+                {
+                    _modSerializer.Save(node.Model);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine(ex);
+                }
+            });
+
+    private IDisposable GetActiveSubscription(List<ModEntryNodeViewModel> modEntryNodeViewModels) =>
+        Observable
+            .Merge(
+                modEntryNodeViewModels.Select(node =>
+                    node.WhenAnyValue(n => n.Active).Skip(1).Select(_ => node)
+                )
+            )
+            .ObserveOn(TaskPoolScheduler.Default)
+            .Subscribe(node =>
+            {
+                try
+                {
+                    _modSerializer.Save(node.Model);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine(ex);
+                }
+            });
 
     private async Task OpenFileNode(FileLeafNodeViewModel node)
     {

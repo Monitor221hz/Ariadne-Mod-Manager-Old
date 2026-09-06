@@ -3,13 +3,22 @@
              xmlns:vm="using:Daedalus.ModManager.GUI.ViewModels"
              x:Class="Daedalus.ModManager.GUI.Views.ModEntryNodeView"
              x:DataType="vm:ModEntryNodeViewModel">
+    <StackPanel Orientation="Horizontal" Margin="0" Spacing="0">
 
+    <LayoutTransformControl Margin="0,0,0,4">
+        <LayoutTransformControl.LayoutTransform>
+            <ScaleTransform ScaleX="0.8" ScaleY="0.8" />
+        </LayoutTransformControl.LayoutTransform>
+        <CheckBox Padding="0" Margin="0" IsChecked="{Binding Active, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+    </LayoutTransformControl>
     <MaskedTextBox x:Name="NameBox" Text="{Binding DisplayName, Mode=TwoWay}"
                Classes.transparent="{Binding !IsEditing}"
                Foreground="{DynamicResource FgBaseBrush}"
               VerticalAlignment="Center"
-              Margin="0,3" IsReadOnly="{Binding !IsEditing}" Background="Transparent" BorderThickness="0"
+               IsReadOnly="{Binding !IsEditing}" Background="Transparent" BorderThickness="0"
                Focusable="{Binding IsEditing}"
                IsHitTestVisible="{Binding IsEditing}"
               SelectionBrush="{DynamicResource BgSelection}" DoubleTapped="MaskedTextBox_DoubleTapped"/>
+    </StackPanel>
+
 </UserControl>

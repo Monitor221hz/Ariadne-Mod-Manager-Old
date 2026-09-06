@@ -12,7 +12,8 @@ public class TreeNodeRenameTests
 {
     private sealed class FakeMod(string name) : ILibraryMod
     {
-        public IModInfo Info { get; } = new Mods.ModInfo(0, SourceType.Local, "1.0", [], "", 0);
+        public IModInfo Info { get; } =
+            new Mods.ModInfo(0, SourceType.Local, "1.0", [], "", 0, false);
         public string Name { get; private set; } = name;
         public DirectoryInfo Directory => new(".");
         public Daedalus.VFS.VirtualNode<ModFileEntry> Content { get; } =

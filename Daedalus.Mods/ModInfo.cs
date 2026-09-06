@@ -10,6 +10,7 @@ public sealed class ModInfo : IModInfo
     public List<string> Categories { get; }
     public string Target { get; set; }
     public uint Priority { get; set; }
+    public bool Active { get; set; }
 
     public ModInfo(
         ulong id,
@@ -17,7 +18,8 @@ public sealed class ModInfo : IModInfo
         string version,
         List<string> categories,
         string target,
-        uint priority
+        uint priority,
+        bool active
     )
     {
         ID = id;
@@ -26,5 +28,6 @@ public sealed class ModInfo : IModInfo
         Categories = categories;
         Target = target;
         Priority = priority;
+        Active = active;
     }
 }

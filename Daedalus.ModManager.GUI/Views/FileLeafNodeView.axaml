@@ -10,11 +10,11 @@
         <conv:FileIconConverter x:Key="FileIcon" />
     </UserControl.Resources>
 
-    <StackPanel Orientation="Horizontal" Spacing="4">
+    <StackPanel Orientation="Horizontal" Spacing="0">
         <fi:FluentIcon Icon="{Binding Converter={StaticResource FileIcon}}"
                        FontSize="20"
                        Foreground="{DynamicResource FgDimmedBrush}"
-                       VerticalAlignment="Center" />
+                       VerticalAlignment="Center" Padding="0" Margin="0" />
         <MaskedTextBox Text="{Binding DisplayName}"
                    Classes="transparent"
                    FontSize="{DynamicResource UiFontSizeMedium}"

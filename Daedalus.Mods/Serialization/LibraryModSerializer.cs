@@ -38,7 +38,8 @@ public sealed class LibraryModSerializer(IReadOnlyList<IArchiveReader> archiveRe
                 record.Version,
                 record.Categories,
                 record.Target,
-                record.Priority
+                record.Priority,
+                record.IsEnabled
             ),
             directory,
             archiveReaders
@@ -56,7 +57,8 @@ public sealed class LibraryModSerializer(IReadOnlyList<IArchiveReader> archiveRe
             mod.Info.Version,
             mod.Info.Categories,
             mod.Info.Target,
-            mod.Info.Priority
+            mod.Info.Priority,
+            mod.Info.Active
         );
         mod.Directory.Refresh();
         if (!mod.Directory.Exists)

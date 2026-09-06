@@ -71,7 +71,7 @@ public class ModProfileSerializerTests : IDisposable
 
     private LibraryMod CreateMod(string folder, ulong id) =>
         new(
-            new ModInfo(id, SourceType.NexusMods, "1.0", [], "Data", 0),
+            new ModInfo(id, SourceType.NexusMods, "1.0", [], "Data", 0, false),
             new DirectoryInfo(System.IO.Path.Combine(ModsRoot.FullName, folder)),
             []
         );

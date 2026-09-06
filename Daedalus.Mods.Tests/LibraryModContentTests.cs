@@ -30,7 +30,7 @@ public class LibraryModContentTests : IDisposable
 
     private LibraryMod CreateMod(string folder, params IArchiveReader[] readers) =>
         new(
-            new ModInfo(1, SourceType.Local, "1.0", [], "", 0),
+            new ModInfo(1, SourceType.Local, "1.0", [], "", 0, false),
             new DirectoryInfo(System.IO.Path.Combine(_temp.Path, folder)),
             readers
         );

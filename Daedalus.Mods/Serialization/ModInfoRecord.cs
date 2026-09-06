@@ -9,5 +9,6 @@ public sealed record class ModInfoRecord(
     string Version,
     List<string> Categories,
     string Target,
-    uint Priority
+    uint Priority,
+    bool IsEnabled
 );
