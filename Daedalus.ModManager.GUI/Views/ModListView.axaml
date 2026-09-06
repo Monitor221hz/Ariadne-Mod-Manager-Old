@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Daedalus.ModManager.GUI.ViewModels"
              xmlns:views="using:Daedalus.ModManager.GUI.Views"
+             xmlns:hier="using:Avalonia.Controls.DataGridHierarchical"
              xmlns:fi="using:FluentIcons.Avalonia"
              x:Class="Daedalus.ModManager.GUI.Views.ModListView"
              x:DataType="vm:ModListViewModel">
@@ -83,10 +84,10 @@
                                             SortMemberPath="Item.DisplayName"
                                             ColumnKey="name"
                                             Width="3*"
-                                            x:CompileBindings="False"
+                                            x:DataType="hier:HierarchicalNode"
                                             Binding="{Binding Item}">
                     <DataGridHierarchicalColumn.CellTemplate>
-                        <DataTemplate x:CompileBindings="False">
+                        <DataTemplate x:DataType="vm:TreeNodeViewModel">
                             <ContentControl Content="{Binding}" />
                         </DataTemplate>
                     </DataGridHierarchicalColumn.CellTemplate>
@@ -95,20 +96,20 @@
                                     SortMemberPath="Item.PriorityValue"
                                     ColumnKey="priority"
                                     Width="90"
-                                    x:CompileBindings="False"
-                                    Binding="{Binding Item.PriorityValue}" />
+                                    x:DataType="hier:HierarchicalNode"
+                                    Binding="{Binding ((vm:TreeNodeViewModel)Item).PriorityValue}" />
                 <DataGridTextColumn Header="Version"
                                     SortMemberPath="Item.VersionText"
                                     ColumnKey="version"
                                     Width="120"
-                                    x:CompileBindings="False"
-                                    Binding="{Binding Item.VersionText}" />
+                                    x:DataType="hier:HierarchicalNode"
+                                    Binding="{Binding ((vm:TreeNodeViewModel)Item).VersionText}" />
                 <DataGridTextColumn Header="Size"
                                     SortMemberPath="Item.SizeBytes"
                                     ColumnKey="size"
                                     Width="100"
-                                    x:CompileBindings="False"
-                                    Binding="{Binding Item.SizeText}" />
+                                    x:DataType="hier:HierarchicalNode"
+                                    Binding="{Binding ((vm:TreeNodeViewModel)Item).SizeText}" />
             </DataGrid.Columns>
         </DataGrid>
     </DockPanel>
