@@ -1,6 +1,7 @@
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using ByteSizeLib;
 using Daedalus.Contracts.Mods;
 using Noggog;
 using ReactiveUI;
@@ -51,7 +52,7 @@ public sealed class ModEntryNodeViewModel : TreeNodeViewModel
         _displayName = mod.Name;
         _mod = mod;
         _priorityValue = mod.Info.Priority;
-        _sizeText = DiskSize.Format(SizeBytes);
+        _sizeText = ByteSize.FromBytes(SizeBytes).ToString();
         _active = mod.Info.Active;
         RemoveCommand = ReactiveCommand.Create(() => _removeRequested.OnNext(Unit.Default));
     }
@@ -62,7 +63,7 @@ public sealed class ModEntryNodeViewModel : TreeNodeViewModel
     public void RefreshFromModel()
     {
         this.RaiseAndSetIfChanged(ref _priorityValue, _mod.Info.Priority, nameof(PriorityValue));
-        // this.RaiseAndSetIfChanged(ref _active, _mod.Info.Active, nameof(Active));
+        this.RaiseAndSetIfChanged(ref _active, _mod.Info.Active, nameof(Active));
     }
 
     protected override string ApplyRename(string name)

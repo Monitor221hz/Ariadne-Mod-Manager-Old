@@ -628,6 +628,7 @@ public sealed class ModListViewModel : ViewModelBase
                 {
                     nextGroup.ObservableChildren.Add(child);
                 }
+                Model?.Refresh();
                 Model?.Expand([nextGroup]);
             }
             else

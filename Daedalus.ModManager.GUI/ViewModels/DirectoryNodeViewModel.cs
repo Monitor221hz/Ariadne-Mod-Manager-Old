@@ -1,3 +1,4 @@
+using ByteSizeLib;
 using Daedalus.Contracts.Mods;
 using Daedalus.VFS;
 using ReactiveUI;
@@ -30,7 +31,7 @@ public sealed class DirectoryNodeViewModel : TreeNodeViewModel
     public DirectoryNodeViewModel(VirtualNode<ModFileEntry> node)
     {
         _node = node;
-        _sizeText = DiskSize.Format(SizeBytes);
+        _sizeText = ByteSize.FromBytes(SizeBytes).ToString();
         _displayName = node.Name;
     }
 }

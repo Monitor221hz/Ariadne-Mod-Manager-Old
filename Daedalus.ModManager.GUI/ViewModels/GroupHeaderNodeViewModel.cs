@@ -1,7 +1,10 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.Reactive;
+using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using Avalonia.Media;
+using ByteSizeLib;
 using Daedalus.Contracts.Mods;
 using ReactiveUI;
 
@@ -11,6 +14,8 @@ public sealed class GroupHeaderNodeViewModel : TreeNodeViewModel
 {
     private readonly ObservableCollection<TreeNodeViewModel> _children;
     private readonly Subject<Unit> _dissolveRequested = new();
+
+    private readonly IDisposable _sizeSubscription;
     private string _sizeText;
     private string _displayName;
     public override string DisplayName
@@ -49,8 +54,19 @@ public sealed class GroupHeaderNodeViewModel : TreeNodeViewModel
             this.RaisePropertyChanged(nameof(ExpanderVisible));
         };
         IsExpanded = HasChildren;
-        _sizeText = DiskSize.Format(SizeBytes);
+        _sizeText = ByteSize.FromBytes(SizeBytes).ToString();
         DissolveCommand = ReactiveCommand.Create(() => _dissolveRequested.OnNext(Unit.Default));
+
+        _sizeSubscription = Observable
+            .FromEventPattern<
+                NotifyCollectionChangedEventHandler,
+                NotifyCollectionChangedEventArgs
+            >(
+                handler => _children.CollectionChanged += handler,
+                handler => _children.CollectionChanged -= handler
+            )
+            .Select(_ => ByteSize.FromBytes(SizeBytes).ToString())
+            .Subscribe(text => SizeText = text);
     }
 
     public IObservable<Unit> DissolveRequested => _dissolveRequested;
