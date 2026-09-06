@@ -30,7 +30,7 @@ public sealed class SharpCompressArchiveReader : IArchiveReader
                 new ModFileEntry(
                     path[(path.LastIndexOf('/') + 1)..],
                     ModEntryKind.File,
-                    archiveFile.FullName,
+                    path,
                     entry.Size,
                     entry.LastModifiedTime ?? DateTimeOffset.MinValue
                 )

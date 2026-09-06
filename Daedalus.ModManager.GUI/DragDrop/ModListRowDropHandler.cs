@@ -7,7 +7,11 @@ using Daedalus.ModManager.GUI.ViewModels;
 
 namespace Daedalus.ModManager.GUI.DragDrop;
 
-public sealed class ModListRowDropHandler(Func<bool> isSorted) : IDataGridRowDropHandler
+public sealed class ModListRowDropHandler(
+    Func<bool> isSorted,
+    Func<IList<TreeNodeViewModel>> getRoots,
+    Func<HierarchicalModel<TreeNodeViewModel>?> getModel
+) : IDataGridRowDropHandler
 {
     private readonly DataGridHierarchicalRowReorderHandler _reorder = new();
 
@@ -48,6 +52,16 @@ public sealed class ModListRowDropHandler(Func<bool> isSorted) : IDataGridRowDro
             }
             return false;
         }
+        if (IsGroupInsideDrop(args))
+        {
+            args.EffectiveEffect = DragDropEffects.Move;
+            if (args.Session is not null)
+            {
+                args.Session.FeedbackCaption =
+                    $"Move into {GetTargetGroup(args)?.DisplayName ?? "group"}.";
+            }
+            return true;
+        }
         var valid = _reorder.Validate(args);
         if (valid && args.Session is not null)
         {
@@ -56,11 +70,46 @@ public sealed class ModListRowDropHandler(Func<bool> isSorted) : IDataGridRowDro
         return valid;
     }
 
+    private static bool IsGroupInsideDrop(DataGridRowDropEventArgs args) =>
+        args.Position == DataGridRowDropPosition.Inside
+        && args.TargetItem is HierarchicalNode { Item: GroupHeaderNodeViewModel };
+
+    private static GroupHeaderNodeViewModel? GetTargetGroup(DataGridRowDropEventArgs args) =>
+        args.TargetItem is HierarchicalNode { Item: GroupHeaderNodeViewModel group } ? group : null;
+
+    private bool ExecuteFallback(DataGridRowDropEventArgs args)
+    {
+        if (
+            args.Position != DataGridRowDropPosition.Inside
+            || args.TargetItem
+                is not HierarchicalNode { Item: GroupHeaderNodeViewModel targetGroup }
+        )
+        {
+            return false;
+        }
+        var items = args
+            .Items.OfType<HierarchicalNode>()
+            .Select(draggedNode => draggedNode.Item as TreeNodeViewModel)
+            .Where(item => item != null)
+            .ToList()!;
+        ModListDropRules.MoveIntoGroup(getRoots(), targetGroup, items);
+        targetGroup.IsExpanded = true;
+        var model = getModel();
+        var node = model?.FindNode(targetGroup);
+        if (node is { } typed)
+        {
+            model!.Refresh(typed);
+        }
+        return true;
+    }
+
     public bool Execute(DataGridRowDropEventArgs args)
     {
         var scrollViewer = args.Grid.FindDescendantOfType<ScrollViewer>();
         var offset = scrollViewer?.Offset;
-        var result = _reorder.Execute(args);
+        var result = IsGroupInsideDrop(args)
+            ? ExecuteFallback(args)
+            : _reorder.Execute(args) || ExecuteFallback(args);
         if (result && scrollViewer is not null && offset is { } restoreTo)
         {
             Avalonia.Threading.Dispatcher.UIThread.Post(

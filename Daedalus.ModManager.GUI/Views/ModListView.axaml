@@ -23,6 +23,9 @@
         <DataTemplate DataType="vm:FileLeafNodeViewModel">
             <views:FileLeafNodeView />
         </DataTemplate>
+        <DataTemplate DataType="vm:ArchiveLeafNodeViewModel">
+            <views:ArchiveLeafNodeView />
+        </DataTemplate>
     </UserControl.DataTemplates>
 
     <Grid>

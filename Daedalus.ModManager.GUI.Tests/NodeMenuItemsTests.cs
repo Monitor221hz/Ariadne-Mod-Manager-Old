@@ -50,6 +50,30 @@ public class NodeMenuItemsTests
     }
 
     [Fact]
+    public void File_Nodes_Get_Open()
+    {
+        var entry = new ModFileEntry(
+            "file.txt",
+            ModEntryKind.File,
+            "C:/tmp/file.txt",
+            1,
+            DateTimeOffset.Now
+        );
+        var node = new FileLeafNodeViewModel(
+            new Daedalus.VFS.VirtualNode<ModFileEntry>(
+                "file.txt",
+                Daedalus.VFS.NodeFlags.None,
+                null,
+                entry
+            )
+        );
+        var items = NodeMenuItems.For(node);
+
+        Assert.Equal(new[] { "Open" }, items.Select(item => item.Header));
+        Assert.Same(node.OpenCommand, items[0].Command);
+    }
+
+    [Fact]
     public void Directory_Nodes_Get_No_Items()
     {
         var node = new DirectoryNodeViewModel(

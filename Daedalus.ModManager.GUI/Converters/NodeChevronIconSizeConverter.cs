@@ -6,7 +6,7 @@ using Daedalus.ModManager.GUI.ViewModels;
 
 namespace Daedalus.ModManager.GUI.Converters;
 
-public sealed class NodeIconSizeConverter : IValueConverter
+public sealed class NodeChevronIconSizeConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
@@ -16,8 +16,6 @@ public sealed class NodeIconSizeConverter : IValueConverter
             GroupHeaderNodeViewModel => 16.0,
             ModEntryNodeViewModel => 16.0,
             DirectoryNodeViewModel => 20.0,
-            FileLeafNodeViewModel { Kind: ModEntryKind.Archive } => 20.0,
-            FileLeafNodeViewModel => 20.0,
             _ => 20.0,
         };
     }

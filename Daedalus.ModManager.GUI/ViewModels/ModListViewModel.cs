@@ -92,6 +92,15 @@ public sealed class ModListViewModel : ViewModelBase
         IModProfileEditor editor
     )
     {
+        TreeNodeViewModel
+            .FileOpenRequested.ObserveOn(_uiContext ?? SynchronizationContext.Current!)
+            .Subscribe(node =>
+            {
+                if (node is FileLeafNodeViewModel leaf)
+                {
+                    _ = OpenFileNode(leaf);
+                }
+            });
         _profileSerializer = profileSerializer;
         _modSerializer = modSerializer;
         _paths = paths;
@@ -104,7 +113,11 @@ public sealed class ModListViewModel : ViewModelBase
         CreateModCommand = ReactiveCommand.CreateFromTask(CreateEmptyMod, hasActiveProfile);
         CreateGroupCommand = ReactiveCommand.Create(CreateGroup, hasActiveProfile);
         ClearSortCommand = ReactiveCommand.Create(() => SortingModel.Clear());
-        DropHandler = new DragDrop.ModListRowDropHandler(() => SortActive);
+        DropHandler = new DragDrop.ModListRowDropHandler(
+            () => SortActive,
+            () => _roots is null ? Array.Empty<TreeNodeViewModel>() : _roots,
+            () => Model
+        );
         SortingModel.SortingChanged += (_, args) =>
         {
             if (Model is { } model)
@@ -365,6 +378,7 @@ public sealed class ModListViewModel : ViewModelBase
             new HierarchicalOptions<TreeNodeViewModel>
             {
                 ChildrenSelector = node => node.Children,
+                IsLeafSelector = node => !node.HasChildren,
                 VirtualizeChildren = true,
                 ExpandedStateKeyMode = ExpandedStateKeyMode.Item,
                 IsExpandedSelector = node => node.IsExpanded,
@@ -441,6 +455,17 @@ public sealed class ModListViewModel : ViewModelBase
                 handler => collection.CollectionChanged += handler,
                 handler => collection.CollectionChanged -= handler
             );
+    }
+
+    private async Task OpenFileNode(FileLeafNodeViewModel node)
+    {
+        var processStartInfo = new ProcessStartInfo
+        {
+            FileName = node.AbsolutePath,
+            UseShellExecute = true,
+            WorkingDirectory = Path.GetDirectoryName(node.AbsolutePath),
+        };
+        Process.Start(processStartInfo);
     }
 
     private async Task SyncDomainFromTreeAsync()

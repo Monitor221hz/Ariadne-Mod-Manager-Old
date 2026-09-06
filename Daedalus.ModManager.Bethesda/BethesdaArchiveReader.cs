@@ -24,7 +24,7 @@ public class BethesdaArchiveReader : IArchiveReader
                 new ModFileEntry(
                     path[(path.LastIndexOf('/') + 1)..],
                     ModEntryKind.File,
-                    archiveFile.FullName,
+                    path,
                     file.Size,
                     DateTimeOffset.MinValue
                 )

@@ -7,6 +7,10 @@ public static class NodeMenuItems
     public static NodeMenuItem[] For(TreeNodeViewModel node) =>
         node switch
         {
+            FileLeafNodeViewModel =>
+            [
+                new("Open", node.OpenCommand),
+            ],
             ModEntryNodeViewModel mod =>
             [
                 new("Rename", mod.StartRenameCommand),

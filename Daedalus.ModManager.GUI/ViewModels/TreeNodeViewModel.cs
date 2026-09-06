@@ -11,6 +11,8 @@ public abstract class TreeNodeViewModel : ViewModelBase
     private bool _isEditing;
     private bool _isExpanded;
     private string _committedName = string.Empty;
+    private static readonly Subject<TreeNodeViewModel> _fileOpenRequested = new();
+    public static IObservable<TreeNodeViewModel> FileOpenRequested => _fileOpenRequested;
     private readonly Subject<Unit> _renameCommitted = new();
     public IObservable<Unit> RenameCommitted => _renameCommitted;
 
@@ -29,6 +31,7 @@ public abstract class TreeNodeViewModel : ViewModelBase
 
     public virtual IEnumerable<TreeNodeViewModel> Children => NoChildren;
     public virtual bool HasChildren => false;
+    public virtual bool ExpanderVisible => true;
     public abstract bool RenameAllowed { get; }
 
     public bool IsEditing
@@ -39,9 +42,11 @@ public abstract class TreeNodeViewModel : ViewModelBase
 
     public ReactiveCommand<Unit, Unit> StartRenameCommand { get; }
     public ReactiveCommand<Unit, Unit> FinishRenameCommand { get; }
+    public ReactiveCommand<Unit, Unit> OpenCommand { get; }
 
     protected TreeNodeViewModel()
     {
+        OpenCommand = ReactiveCommand.Create(() => _fileOpenRequested.OnNext(this));
         StartRenameCommand = ReactiveCommand.Create(() =>
         {
             if (!RenameAllowed || IsEditing)

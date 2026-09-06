@@ -4,12 +4,12 @@ using ReactiveUI;
 
 namespace Daedalus.ModManager.GUI.ViewModels;
 
-public sealed class FileLeafNodeViewModel : TreeNodeViewModel
+public sealed class ArchiveLeafNodeViewModel : TreeNodeViewModel
 {
     private readonly VirtualNode<ModFileEntry> _node;
     private string _sizeText;
-
     private string _displayName;
+
     public override string DisplayName
     {
         get => _displayName;
@@ -23,7 +23,6 @@ public sealed class FileLeafNodeViewModel : TreeNodeViewModel
     public override long SizeBytes =>
         _node.Data!.Size + (HasChildren ? _node.Children.Sum(c => c.Data?.Size ?? 0) : 0);
     public ModEntryKind Kind => _node.Data!.Kind;
-
     public string AbsolutePath => _node.Data!.AbsolutePath;
 
     public override bool RenameAllowed => false;
@@ -31,7 +30,7 @@ public sealed class FileLeafNodeViewModel : TreeNodeViewModel
         _node.Children.Select(ContentNodeViewModel.Wrap);
     public override bool HasChildren => _node.Children.Count > 0;
 
-    public FileLeafNodeViewModel(VirtualNode<ModFileEntry> node)
+    public ArchiveLeafNodeViewModel(VirtualNode<ModFileEntry> node)
     {
         _node = node;
         _sizeText = DiskSize.Format(node.Data!.Size);

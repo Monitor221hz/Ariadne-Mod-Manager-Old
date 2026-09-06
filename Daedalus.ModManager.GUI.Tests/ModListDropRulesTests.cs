@@ -196,6 +196,47 @@ public class ModListDropRulesTests
     }
 
     [Fact]
+    public void MoveIntoGroup_Moves_Mod_From_Root_Into_Group()
+    {
+        var dragged = Mod("A");
+        var roots = new System.Collections.ObjectModel.ObservableCollection<TreeNodeViewModel>
+            { Mod("B"), dragged, Group("G") };
+        var target = roots.OfType<GroupHeaderNodeViewModel>().Single();
+
+        ModListDropRules.MoveIntoGroup(roots, target, [dragged]);
+
+        Assert.Equal(new[] { "B", "G" }, roots.Select(node => node.DisplayName));
+        Assert.Equal(new[] { "A" }, target.ObservableChildren.Select(node => node.DisplayName));
+    }
+
+    [Fact]
+    public void MoveIntoGroup_From_Source_Group_To_Another()
+    {
+        var dragged = Mod("A");
+        var source = Group("G1", dragged, Mod("B"));
+        var target = Group("G2");
+        var roots = new System.Collections.ObjectModel.ObservableCollection<TreeNodeViewModel>
+            { source, target };
+
+        ModListDropRules.MoveIntoGroup(roots, target, [dragged]);
+
+        Assert.Equal(new[] { "B" }, source.ObservableChildren.Select(node => node.DisplayName));
+        Assert.Equal(new[] { "A" }, target.ObservableChildren.Select(node => node.DisplayName));
+    }
+
+    [Fact]
+    public void MoveIntoGroup_Skips_NonMods()
+    {
+        var roots = new System.Collections.ObjectModel.ObservableCollection<TreeNodeViewModel> { Dir };
+        var target = Group("G");
+
+        ModListDropRules.MoveIntoGroup(roots, target, [Dir]);
+
+        Assert.Empty(target.ObservableChildren);
+        Assert.Single(roots);
+    }
+
+    [Fact]
     public void Non_Move_Effect_Is_Illegal()
     {
         Assert.False(

@@ -22,6 +22,7 @@ public sealed class GroupHeaderNodeViewModel : TreeNodeViewModel
     public IModGroup Group { get; }
     public override IEnumerable<TreeNodeViewModel> Children => _children;
     public override bool HasChildren => _children.Count > 0;
+    public override bool ExpanderVisible => HasChildren;
     public ObservableCollection<TreeNodeViewModel> ObservableChildren => _children;
 
     public override string SizeText
@@ -42,7 +43,11 @@ public sealed class GroupHeaderNodeViewModel : TreeNodeViewModel
         _children = new ObservableCollection<TreeNodeViewModel>(
             group.Select(mod => new ModEntryNodeViewModel((ILibraryMod)mod))
         );
-        _children.CollectionChanged += (_, _) => this.RaisePropertyChanged(nameof(HasChildren));
+        _children.CollectionChanged += (_, _) =>
+        {
+            this.RaisePropertyChanged(nameof(HasChildren));
+            this.RaisePropertyChanged(nameof(ExpanderVisible));
+        };
         IsExpanded = HasChildren;
         _sizeText = DiskSize.Format(SizeBytes);
         DissolveCommand = ReactiveCommand.Create(() => _dissolveRequested.OnNext(Unit.Default));

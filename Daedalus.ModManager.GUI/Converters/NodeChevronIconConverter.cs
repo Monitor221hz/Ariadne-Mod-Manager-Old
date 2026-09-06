@@ -7,7 +7,7 @@ using FluentIcons.Common;
 
 namespace Daedalus.ModManager.GUI.Converters;
 
-public sealed class NodeIconConverter : IMultiValueConverter
+public sealed class NodeChevronIconConverter : IMultiValueConverter
 {
     public object? Convert(
         IList<object?> values,
@@ -29,9 +29,8 @@ public sealed class NodeIconConverter : IMultiValueConverter
             (ModEntryNodeViewModel, false) => Icon.ChevronRight,
             (DirectoryNodeViewModel, true) => Icon.FolderOpen,
             (DirectoryNodeViewModel, false) => Icon.Folder,
-            (FileLeafNodeViewModel { Kind: ModEntryKind.Archive }, true) => Icon.FolderOpen,
-            (FileLeafNodeViewModel { Kind: ModEntryKind.Archive }, false) => Icon.FolderZip,
-            (FileLeafNodeViewModel, _) => Icon.Document,
+            (ArchiveLeafNodeViewModel, true) => Icon.FolderOpen,
+            (ArchiveLeafNodeViewModel, false) => Icon.FolderZip,
             _ => null,
         };
     }

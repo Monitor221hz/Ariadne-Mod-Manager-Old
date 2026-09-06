@@ -2,19 +2,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Daedalus.ModManager.GUI.ViewModels"
              xmlns:fi="using:FluentIcons.Avalonia"
-             xmlns:conv="using:Daedalus.ModManager.GUI.Converters"
-             x:Class="Daedalus.ModManager.GUI.Views.FileLeafNodeView"
-             x:DataType="vm:FileLeafNodeViewModel">
-
-    <UserControl.Resources>
-        <conv:FileIconConverter x:Key="FileIcon" />
-    </UserControl.Resources>
-
-    <StackPanel Orientation="Horizontal" Spacing="4">
-        <fi:FluentIcon Icon="{Binding Converter={StaticResource FileIcon}}"
-                       FontSize="20"
-                       Foreground="{DynamicResource FgDimmedBrush}"
-                       VerticalAlignment="Center" />
+             x:Class="Daedalus.ModManager.GUI.Views.ArchiveLeafNodeView"
+             x:DataType="vm:ArchiveLeafNodeViewModel">
+             
         <MaskedTextBox Text="{Binding DisplayName}"
                    Classes="transparent"
                    FontSize="{DynamicResource UiFontSizeMedium}"
@@ -26,5 +16,4 @@
                    Focusable="False"
                    Cursor="Arrow"
                    CaretBrush="Transparent"/>
-    </StackPanel>
 </UserControl>

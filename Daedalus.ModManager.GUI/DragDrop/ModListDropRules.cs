@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Avalonia.Controls.DataGridDragDrop;
 using Avalonia.Input;
 using Daedalus.ModManager.GUI.ViewModels;
@@ -33,6 +34,30 @@ public static class ModListDropRules
             }
         }
         return true;
+    }
+
+    public static void MoveIntoGroup(
+        IList<TreeNodeViewModel> roots,
+        GroupHeaderNodeViewModel targetGroup,
+        IReadOnlyList<TreeNodeViewModel> dragged
+    )
+    {
+        foreach (var item in dragged)
+        {
+            if (item is not ModEntryNodeViewModel)
+            {
+                continue;
+            }
+            roots.Remove(item);
+            foreach (var group in roots)
+            {
+                if (group is GroupHeaderNodeViewModel sourceGroup)
+                {
+                    sourceGroup.ObservableChildren.Remove(item);
+                }
+            }
+            targetGroup.ObservableChildren.Add(item);
+        }
     }
 
     private static bool IsLegalModDrop(

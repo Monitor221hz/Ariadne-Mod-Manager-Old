@@ -9,9 +9,9 @@
     <Styles.Resources>
         <ResourceDictionary>
             <converters:GroupBandBrushConverter x:Key="GroupBandBrush" />
-            <converters:NodeIconConverter x:Key="NodeIconGeometry" />
-            <converters:NodeIconSizeConverter x:Key="NodeIconSize" />
-            <converters:NodeExpanderEnabledConverter x:Key="NodeExpanderEnabled" />
+            <converters:NodeChevronIconConverter x:Key="NodeChevronIconGeometry" />
+            <converters:NodeChevronIconSizeConverter x:Key="NodeChevronIconSize" />
+
 
             <ControlTheme x:Key="DaedalusHierarchyExpanderToggle" TargetType="ToggleButton">
                 <Setter Property="Margin" Value="0" />
@@ -29,11 +29,11 @@
                                 <fi:FluentIcon x:Name="Icon"
                                                HorizontalAlignment="Center"
                                                VerticalAlignment="Center"
-                                               FontSize="{Binding Path=DataContext, Converter={StaticResource NodeIconSize}, RelativeSource={RelativeSource TemplatedParent}}"
+                                               FontSize="{Binding Path=DataContext, Converter={StaticResource NodeChevronIconSize}, RelativeSource={RelativeSource TemplatedParent}}"
                                                Foreground="{TemplateBinding Foreground}"
                                                IconVariant="Regular">
                                     <fi:FluentIcon.Icon>
-                                        <MultiBinding Converter="{StaticResource NodeIconGeometry}">
+                                        <MultiBinding Converter="{StaticResource NodeChevronIconGeometry}">
                                             <Binding Path="DataContext" RelativeSource="{RelativeSource TemplatedParent}" />
                                             <Binding Path="IsChecked" RelativeSource="{RelativeSource TemplatedParent}" />
                                         </MultiBinding>
@@ -61,16 +61,11 @@
                                               Width="{DynamicResource DaedalusExpanderToggleWidth}"
                                               Height="{DynamicResource DaedalusExpanderToggleHeight}"
                                               Theme="{StaticResource DaedalusHierarchyExpanderToggle}"
+                                              IsEnabled="{TemplateBinding IsExpandable}"
+                                              IsVisible="{TemplateBinding IsExpandable}"
                                               HorizontalAlignment="Center"
                                               VerticalAlignment="Center"
-                                              IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}">
-                                    <ToggleButton.IsEnabled>
-                                        <MultiBinding Converter="{StaticResource NodeExpanderEnabled}">
-                                            <Binding Path="IsExpandable" RelativeSource="{RelativeSource TemplatedParent}" />
-                                            <Binding Path="DataContext" RelativeSource="{RelativeSource TemplatedParent}" />
-                                        </MultiBinding>
-                                    </ToggleButton.IsEnabled>
-                                </ToggleButton>
+                                              IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" />
                                 <ContentPresenter Grid.Column="1"
                                                   Margin="{DynamicResource DaedalusHierarchyContentMargin}"
                                                   HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
