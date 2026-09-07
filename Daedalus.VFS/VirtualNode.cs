@@ -1,4 +1,6 @@
-﻿namespace Daedalus.VFS;
+﻿using System.Diagnostics.CodeAnalysis;
+
+namespace Daedalus.VFS;
 
 public partial class VirtualNode<TNodeData>
 {
@@ -10,7 +12,6 @@ public partial class VirtualNode<TNodeData>
 
     private Dictionary<string, VirtualNode<TNodeData>>.AlternateLookup<ReadOnlySpan<char>>? _alt;
 
-    // snapshot for enumeration, invalidate on mutate
     private List<VirtualNode<TNodeData>>? _ordered;
 
     public VirtualNode(
@@ -26,6 +27,18 @@ public partial class VirtualNode<TNodeData>
         Data = data;
     }
 
+    public VirtualNode(VirtualNode<TNodeData> original)
+    {
+        Name = original.Name;
+        Flags = original.Flags;
+        Parent = null;
+        Data = original.Data;
+        foreach (var child in original._children)
+        {
+            SetChild(new VirtualNode<TNodeData>(child.Value));
+        }
+    }
+
     private Dictionary<string, VirtualNode<TNodeData>>.AlternateLookup<ReadOnlySpan<char>> Alt =>
         _alt ??= _children.GetAlternateLookup<ReadOnlySpan<char>>();
 
@@ -38,6 +51,18 @@ public partial class VirtualNode<TNodeData>
     public TNodeData? Data { get; set; }
 
     public IReadOnlyList<VirtualNode<TNodeData>> Children => _ordered ??= BuildOrderedChildren();
+
+    public IEnumerable<VirtualNode<TNodeData>> SelfAndDescendants()
+    {
+        yield return this;
+        foreach (var child in Children)
+        {
+            foreach (var desc in child.SelfAndDescendants())
+            {
+                yield return desc;
+            }
+        }
+    }
 
     private List<VirtualNode<TNodeData>> BuildOrderedChildren()
     {
