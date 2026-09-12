@@ -16,7 +16,7 @@ public static class ConflictMapper<T>
 
     public readonly record struct IndexedNode(int Index, VirtualNode<T> Node);
 
-    private static IEnumerable<Conflict> Scan(IReadOnlyList<IndexedNode> trees)
+    private static IEnumerable<Conflict> Scan(IReadOnlyList<IndexedNode> trees, int focusIndex = -1)
     {
         Dictionary<string, List<IndexedNode>> localNodes = new(StringComparer.OrdinalIgnoreCase);
         for (int i = 0; i < trees.Count; i++)
@@ -35,7 +35,7 @@ public static class ConflictMapper<T>
         foreach (var kvp in localNodes)
         {
             var group = kvp.Value;
-            if (group.Count < 2)
+            if (group.Count < 2 || (focusIndex >= 0 && !group.Exists(c => c.Index == focusIndex)))
             {
                 continue;
             }
@@ -43,7 +43,7 @@ public static class ConflictMapper<T>
             bool anyParent = false;
             foreach (var conflict in group)
             {
-                if (conflict.Node.IsDirectory || conflict.Node.Count > 0)
+                if (conflict.Node.IsDirectory)
                 {
                     anyParent = true;
                 }
@@ -63,7 +63,7 @@ public static class ConflictMapper<T>
             }
             if (anyParent)
             {
-                foreach (var childConflict in Scan(group))
+                foreach (var childConflict in Scan(group, focusIndex))
                 {
                     yield return childConflict;
                 }
@@ -77,14 +77,17 @@ public static class ConflictMapper<T>
         }
     }
 
-    private static IEnumerable<Conflict> EnumerateConflicts(IReadOnlyList<VirtualNode<T>> trees)
+    private static IEnumerable<Conflict> EnumerateConflicts(
+        IReadOnlyList<VirtualNode<T>> trees,
+        int focusIndex = -1
+    )
     {
         if (trees.Count < 2)
         {
             yield break;
         }
         var indexedTrees = trees.Select((n, i) => new IndexedNode(i, n)).ToList();
-        foreach (var conflict in Scan(indexedTrees))
+        foreach (var conflict in Scan(indexedTrees, focusIndex))
         {
             yield return conflict;
         }
@@ -93,6 +96,17 @@ public static class ConflictMapper<T>
     public static IEnumerable<Conflict> MapConflicts(IReadOnlyList<VirtualNode<T>> trees)
     {
         ArgumentNullException.ThrowIfNull(trees);
-        return EnumerateConflicts(trees);
+        return EnumerateConflicts(trees, -1);
+    }
+
+    public static IEnumerable<Conflict> MapConflictsFor(
+        IReadOnlyList<VirtualNode<T>> trees,
+        int focusIndex
+    )
+    {
+        ArgumentNullException.ThrowIfNull(trees);
+        ArgumentOutOfRangeException.ThrowIfNegative(focusIndex);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(focusIndex, trees.Count);
+        return EnumerateConflicts(trees, focusIndex);
     }
 }
