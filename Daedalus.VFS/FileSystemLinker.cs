@@ -42,22 +42,26 @@ public static class FileSystemLinker
             ? SearchOption.AllDirectories
             : SearchOption.TopDirectoryOnly;
 
-        foreach (
-            var physical in Directory.EnumerateFileSystemEntries(
-                physicalDirectory,
-                "*",
-                searchOption
-            )
-        )
+        IEnumerable<string> entries = Directory.EnumerateFileSystemEntries(
+            physicalDirectory,
+            "*",
+            searchOption
+        );
+        if (flags.HasFlag(LinkFlags.Whiteouts))
+        {
+            entries = entries
+                .Select(e => (Path: e, IsMarker: IsWhiteoutMarker(e)))
+                .OrderBy(e => e.IsMarker)
+                .Select(e => e.Path);
+        }
+
+        foreach (var physical in entries)
         {
             string relative = Path.GetRelativePath(physicalDirectory, physical);
             string virtualPath =
                 virtualDestination.Length == 0 ? relative : $"{virtualDestination}\\{relative}";
 
-            if (
-                flags.HasFlag(LinkFlags.Whiteouts)
-                && relative.EndsWith(".daehidden", StringComparison.OrdinalIgnoreCase)
-            )
+            if (flags.HasFlag(LinkFlags.Whiteouts) && IsWhiteoutMarker(relative))
             {
                 root.FindNode(virtualPath.AsSpan()[..^".daehidden".Length])?.RemoveFromParent();
                 continue;
@@ -79,6 +83,9 @@ public static class FileSystemLinker
 
         return node;
     }
+
+    private static bool IsWhiteoutMarker(string path) =>
+        path.EndsWith(".daehidden", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsLinked(VirtualNode<BackedEntry>? node) =>
         node?.Data.PhysicalPath is not null;

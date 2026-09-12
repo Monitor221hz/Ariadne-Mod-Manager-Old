@@ -10,6 +10,9 @@ namespace Daedalus.ModManager.Tests;
 
 public class ModManagerServiceExtensionsTests
 {
+    private static void SkipNonWindows() =>
+        Skip.If(!OperatingSystem.IsWindows(), "Requires VFS support not implemented on this platform");
+
     private static ModProfile CreateProfile(string name) =>
         new(
             name,
@@ -18,9 +21,11 @@ public class ModManagerServiceExtensionsTests
             new DirectoryInfo(Path.Combine("C:", "Daedalus", "Profiles", name))
         );
 
-    [Fact]
+    [SkippableFact]
     public void AddModManager_RegistersFullStack()
     {
+        SkipNonWindows();
+
         using var provider = new ServiceCollection().AddModManager().BuildServiceProvider();
 
         Assert.NotNull(provider.GetRequiredService<IModManagerPaths>());
@@ -33,9 +38,11 @@ public class ModManagerServiceExtensionsTests
         Assert.NotNull(provider.GetRequiredService<IVirtualFileSystemFactory>());
     }
 
-    [Fact]
+    [SkippableFact]
     public void AddModManager_StatelessServicesAreSingletons()
     {
+        SkipNonWindows();
+
         using var provider = new ServiceCollection().AddModManager().BuildServiceProvider();
 
         Assert.Same(
@@ -56,18 +63,22 @@ public class ModManagerServiceExtensionsTests
         );
     }
 
-    [Fact]
+    [SkippableFact]
     public void AddModManager_DoesNotRegisterGlobalDeploymentPathsOrMethod()
     {
+        SkipNonWindows();
+
         using var provider = new ServiceCollection().AddModManager().BuildServiceProvider();
 
         Assert.Null(provider.GetService<IDeploymentPaths>());
         Assert.Null(provider.GetService<IModDeploymentMethod>());
     }
 
-    [Fact]
+    [SkippableFact]
     public void AddModManager_DeploymentMethodFactoryYieldsFreshInstancePerProfile()
     {
+        SkipNonWindows();
+
         using var temp = new TempDirectory();
         var services = new ServiceCollection().AddModManager();
         services.AddSingleton<IInstanceStore>(_ => new InstanceStore(
@@ -93,13 +104,11 @@ public class ModManagerServiceExtensionsTests
         Assert.NotSame(first, otherProfile);
     }
 
-    [Fact]
+    [SkippableFact]
     public void AddModManager_VirtualFileSystemsAreTransient()
     {
-        if (!OperatingSystem.IsWindows())
-        {
-            return;
-        }
+        SkipNonWindows();
+
         using var provider = new ServiceCollection().AddModManager().BuildServiceProvider();
         var factory = provider.GetRequiredService<IVirtualFileSystemFactory>();
 

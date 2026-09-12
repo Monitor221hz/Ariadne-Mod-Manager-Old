@@ -89,9 +89,11 @@ public class GameCatalogTests : IDisposable
         Assert.Equal("Valid", game.Name);
     }
 
-    [Fact]
+    [SkippableFact]
     public void Catalog_LoadsEmbeddedSkyrimSEConfig()
     {
+        Skip.IfNot(OperatingSystem.IsWindows(), "Windows only");
+
         var catalog = new GameCatalog([typeof(SkyrimSELoadOrderBuilder).Assembly]);
 
         var game = Assert.Single(catalog.Games);

@@ -117,9 +117,11 @@ public class FileSystemLinkerTests : IDisposable
         Assert.Throws<IOException>(() => root.LinkDirectory(mod, "", LinkFlags.FailIfExists));
     }
 
-    [Fact]
+    [SkippableFact]
     public void LinkDirectory_NonRecursive_Skips_Nested()
     {
+        Skip.IfNot(OperatingSystem.IsWindows(), "Windows only");
+
         string mod = ModDir("modA");
         Touch(mod, "top.txt");
         Touch(mod, "nested\\deep.txt");

@@ -9,6 +9,8 @@ public class OutputRuleRouterTests : IDisposable
 
     public OutputRuleRouterTests()
     {
+        Skip.IfNot(OperatingSystem.IsWindows(), "Windows only");
+
         _tmp = Path.Combine(
             Path.GetTempPath(),
             "DaedalusRouterTests-" + Guid.NewGuid().ToString("N")
@@ -35,7 +37,7 @@ public class OutputRuleRouterTests : IDisposable
         return (mount, root);
     }
 
-    [Fact]
+    [SkippableFact]
     public void Unknown_Process_Resolves_To_Nothing()
     {
         var (mount, root) = Environment();
@@ -54,7 +56,7 @@ public class OutputRuleRouterTests : IDisposable
         Assert.False(router.TryResolve(4_777_001, out _));
     }
 
-    [Fact]
+    [SkippableFact]
     public void Direct_Image_Match_Resolves()
     {
         var (mount, root) = Environment();
@@ -70,7 +72,7 @@ public class OutputRuleRouterTests : IDisposable
         Assert.Equal(Path.Combine(_tmp, "out"), hit);
     }
 
-    [Fact]
+    [SkippableFact]
     public void Image_Match_Is_Case_Insensitive()
     {
         var (mount, root) = Environment();
@@ -85,7 +87,7 @@ public class OutputRuleRouterTests : IDisposable
         Assert.True(router.TryResolve(4_777_003, out _));
     }
 
-    [Fact]
+    [SkippableFact]
     public void Virtual_Launch_Translates_To_Physical_Before_Matching()
     {
         var (mount, root) = Environment();
@@ -101,7 +103,7 @@ public class OutputRuleRouterTests : IDisposable
         Assert.Equal(Path.Combine(_tmp, "out"), hit);
     }
 
-    [Fact]
+    [SkippableFact]
     public void Child_Inherits_Parents_Rule()
     {
         var (mount, root) = Environment();
@@ -118,7 +120,7 @@ public class OutputRuleRouterTests : IDisposable
         Assert.Equal(Path.Combine(_tmp, "out"), hit);
     }
 
-    [Fact]
+    [SkippableFact]
     public void Stopped_Process_Loses_Its_Hit()
     {
         var (mount, root) = Environment();
@@ -136,7 +138,7 @@ public class OutputRuleRouterTests : IDisposable
         Assert.False(router.TryResolve(4_777_012, out _));
     }
 
-    [Fact]
+    [SkippableFact]
     public void Unrelated_Process_Stays_Unmapped()
     {
         var (mount, root) = Environment();

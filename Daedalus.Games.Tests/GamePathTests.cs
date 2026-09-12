@@ -24,9 +24,11 @@ public class GamePathTests
     private static InstalledGame CreateInstalledGame(SupportedGame? config = null) =>
         new(InstallPath, config ?? CreateGame());
 
-    [Fact]
+    [SkippableFact]
     public void GetAbsolutePath_AbsoluteDirectoryPath_ReturnsDirectoryPath()
     {
+        Skip.IfNot(OperatingSystem.IsWindows(), "Windows only");
+
         var game = CreateInstalledGame();
         var absolute = @"D:\Somewhere\Else";
         var path = new GamePath("AppData", absolute, []);
@@ -84,9 +86,11 @@ public class GamePathTests
         Assert.Same(first, second);
     }
 
-    [Fact]
+    [SkippableFact]
     public void Constructor_ExpandsEnvironmentVariables()
     {
+        Skip.IfNot(OperatingSystem.IsWindows(), "Windows only");
+
         const string directoryPath = "%LOCALAPPDATA%\\Skyrim Special Edition";
         var path = new GamePath("AppData", directoryPath, []);
 

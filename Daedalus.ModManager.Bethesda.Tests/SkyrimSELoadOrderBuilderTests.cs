@@ -169,9 +169,17 @@ public class SkyrimSELoadOrderBuilderTests : IDisposable
         Assert.Empty(builder.Fetch(_game, [mod]));
     }
 
-    [Fact]
+    [SkippableFact]
     public void Deploy_WritesPluginsTxtToAppData()
     {
+        Skip.IfNot(
+            new Mutagen.Bethesda.Installs.GameLocator().TryGetDataDirectory(
+                GameRelease.SkyrimSE,
+                out _
+            ),
+            "Skyrim Special Edition installation not found"
+        );
+
         var modA = CreateMod("ModA", out var dirA);
         var modB = CreateMod("ModB", out var dirB);
         var activeKey = ModKey.FromNameAndExtension("Active.esp");
