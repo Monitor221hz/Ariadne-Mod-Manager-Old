@@ -6,9 +6,12 @@ using System.Reactive;
 using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
+using System.Reactive.Threading.Tasks;
 using Avalonia.Controls.DataGridDragDrop;
 using Avalonia.Controls.DataGridHierarchical;
 using Avalonia.Controls.DataGridSorting;
+using ByteSizeLib;
 using Daedalus.Contracts.ModManager;
 using Daedalus.Contracts.Mods;
 using Daedalus.ModManager.Serialization;
@@ -27,6 +30,7 @@ public sealed class ModListViewModel : ViewModelBase
     private readonly IInstanceService _instances;
     private readonly IModProfileEditor _editor;
     private readonly SynchronizationContext? _uiContext = SynchronizationContext.Current;
+    private CancellationTokenSource? _loadContentCts;
 
     private ProfileViewModel? _activeProfile;
     private HierarchicalModel<TreeNodeViewModel>? _model;
@@ -34,8 +38,10 @@ public sealed class ModListViewModel : ViewModelBase
     private string? _selectedProfileName;
     private bool _suppressProfileSwitch;
     private ObservableCollection<TreeNodeViewModel>? _roots;
+    private readonly Subject<Unit> _structureChanged = new();
     private IDisposable? _syncSubscription;
-    private IDisposable? _nodeActionSubscription;
+    private CompositeDisposable _syncHooks = new();
+    private CompositeDisposable _nodeActionHooks = new();
     private readonly SemaphoreSlim _syncGate = new(1, 1);
 
     public ReactiveCommand<Unit, Unit> InitializeCommand { get; }
@@ -43,6 +49,7 @@ public sealed class ModListViewModel : ViewModelBase
     public ReactiveCommand<Unit, Unit> CreateGroupCommand { get; }
     public ReactiveCommand<Unit, Unit> ClearSortCommand { get; }
     public Interaction<ModEntryNodeViewModel, bool> ConfirmRemoveMod { get; } = new();
+    public ReactiveCommand<ModEntryNodeViewModel, Unit> LoadInsertedRow { get; }
 
     public ObservableCollection<string> ProfileNames { get; } = [];
     public ObservableCollection<TreeNodeViewModel> SelectedNodes { get; } = [];
@@ -114,6 +121,17 @@ public sealed class ModListViewModel : ViewModelBase
         CreateModCommand = ReactiveCommand.CreateFromTask(CreateEmptyMod, hasActiveProfile);
         CreateGroupCommand = ReactiveCommand.Create(CreateGroup, hasActiveProfile);
         ClearSortCommand = ReactiveCommand.Create(() => SortingModel.Clear());
+        LoadInsertedRow = ReactiveCommand.CreateFromTask<ModEntryNodeViewModel>(
+            LoadInsertedRowAsync
+        );
+        LoadInsertedRow.ThrownExceptions.Subscribe(ex => Debug.WriteLine(ex));
+        _syncSubscription = _structureChanged
+            .Throttle(SyncDelay)
+            .ObserveOn(_uiContext ?? SynchronizationContext.Current!)
+            .Subscribe(signal =>
+            {
+                _ = SyncDomainFromTreeAsync();
+            });
         DropHandler = new DragDrop.ModListRowDropHandler(
             () => SortActive,
             () => _roots is null ? Array.Empty<TreeNodeViewModel>() : _roots,
@@ -312,7 +330,11 @@ public sealed class ModListViewModel : ViewModelBase
             {
                 ActiveProfile!.AddLooseMod(mod);
                 _profileSerializer.Save(ActiveProfile.Model);
-                Model = BuildModel(ActiveProfile.Model.ModList);
+                var vm = new ModEntryNodeViewModel(mod);
+                int insertAt = _roots!.TakeWhile(n => n is ModEntryNodeViewModel).Count();
+                _roots!.Insert(insertAt, vm);
+                HookModNode(vm);
+                LoadInsertedRow.Execute(vm).Subscribe();
             });
         });
 
@@ -325,9 +347,12 @@ public sealed class ModListViewModel : ViewModelBase
         {
             name = $"{baseName} {suffix++}";
         }
-        ActiveProfile.AddGroup(new ModGroup(name, [], RandomHeaderColor()));
+        var group = new ModGroup(name, [], RandomHeaderColor());
+        ActiveProfile.AddGroup(group);
         _profileSerializer.Save(ActiveProfile.Model);
-        Model = BuildModel(ActiveProfile.Model.ModList);
+        var groupVm = new GroupHeaderNodeViewModel(group);
+        _roots!.Add(groupVm);
+        HookGroupNode(groupVm);
     }
 
     private static DirectoryInfo UniqueModFolder(DirectoryInfo modsFolder)
@@ -367,10 +392,105 @@ public sealed class ModListViewModel : ViewModelBase
         return 0.2126 * Linear(r / 255.0) + 0.7152 * Linear(g / 255.0) + 0.0722 * Linear(b / 255.0);
     }
 
+    private static IEnumerable<ModEntryNodeViewModel> FlattenEntries(TreeNodeViewModel node)
+    {
+        if (node is ModEntryNodeViewModel entry)
+        {
+            yield return entry;
+        }
+        else if (node is GroupHeaderNodeViewModel group)
+        {
+            foreach (var child in group.ObservableChildren)
+            {
+                foreach (var entry2 in FlattenEntries(child))
+                {
+                    yield return entry2;
+                }
+            }
+        }
+    }
+
+    private Task LoadInsertedRowAsync(ModEntryNodeViewModel node)
+    {
+        return LoadInsertedRowCoreAsync(node, _loadContentCts?.Token ?? default);
+    }
+
+    private async Task LoadInsertedRowCoreAsync(ModEntryNodeViewModel node, CancellationToken token)
+    {
+        node.ConnectContentTree(token);
+        try
+        {
+            await node.WhenAnyValue(x => x.ContentTree).WhereNotNull().FirstAsync().ToTask(token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => Model?.Refresh());
+    }
+
+    private Task RefreshGroupSizesAsync()
+    {
+        if (_roots is null)
+            return Task.CompletedTask;
+        foreach (var group in _roots.OfType<GroupHeaderNodeViewModel>())
+        {
+            group.RefreshSizeText();
+        }
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadAllContentTreesAsync(
+        IReadOnlyList<ModEntryNodeViewModel> entries,
+        HierarchicalModel<TreeNodeViewModel> model,
+        CancellationToken cancellationToken = default
+    )
+    {
+        try
+        {
+            await Parallel.ForEachAsync(
+                entries,
+                new ParallelOptions
+                {
+                    MaxDegreeOfParallelism = Environment.ProcessorCount,
+                    CancellationToken = cancellationToken,
+                },
+                async (vm, token) =>
+                {
+                    vm.ConnectContentTree(token);
+                    await vm.WhenAnyValue(x => x.ContentTree)
+                        .WhereNotNull()
+                        .FirstAsync()
+                        .ToTask(token);
+                }
+            );
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex);
+            return;
+        }
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+        await RefreshGroupSizesAsync();
+        await model.RefreshAsync();
+    }
+
     private HierarchicalModel<TreeNodeViewModel> BuildModel(IModList modList)
     {
         var expandedPaths = _roots is null ? null : CollectExpandedPaths(_roots);
+        _loadContentCts?.Cancel();
+        _loadContentCts?.Dispose();
+        _loadContentCts = new CancellationTokenSource();
         var roots = BuildRoots(modList);
+        var mods = roots.SelectMany(FlattenEntries).ToList();
+
         HookDomainSync(roots);
         if (expandedPaths is not null)
         {
@@ -389,7 +509,7 @@ public sealed class ModListViewModel : ViewModelBase
         );
         model.SetRoots(roots);
         model.ApplySiblingComparer(BuildComparer(SortingModel.Descriptors), recursive: true);
-
+        _ = LoadAllContentTreesAsync(mods, model, _loadContentCts.Token);
         return model;
     }
 
@@ -403,115 +523,107 @@ public sealed class ModListViewModel : ViewModelBase
     private void HookDomainSync(ObservableCollection<TreeNodeViewModel> roots)
     {
         _roots = roots;
-        _syncSubscription?.Dispose();
-        _nodeActionSubscription?.Dispose();
-
-        var groupNodes = roots.OfType<GroupHeaderNodeViewModel>().ToList();
-        var collectionStreams = groupNodes
-            .Select(group => StreamOf(group.ObservableChildren))
-            .Append(StreamOf(roots))
-            .Select(stream => stream.Select(_ => Unit.Default));
-        var renameStreams = roots
-            .Concat(groupNodes.SelectMany(group => group.ObservableChildren))
-            .Select(node => node.RenameCommitted);
-
-        _syncSubscription = Observable
-            .Merge(collectionStreams.Concat(renameStreams))
-            .Throttle(SyncDelay)
-            .ObserveOn(_uiContext ?? SynchronizationContext.Current!)
-            .Subscribe(ignored =>
-            {
-                _ = SyncDomainFromTreeAsync();
-            });
-
-        var uiContext = _uiContext ?? SynchronizationContext.Current!;
-        var modNodes = roots
-            .Concat(groupNodes.SelectMany(group => group.ObservableChildren))
-            .OfType<ModEntryNodeViewModel>()
-            .ToList();
-        _nodeActionSubscription = new CompositeDisposable
+        _syncHooks.Dispose();
+        _syncHooks = new CompositeDisposable();
+        _nodeActionHooks.Dispose();
+        _nodeActionHooks = new CompositeDisposable();
+        _syncHooks.Add(StreamOf(roots).Subscribe(_ => _structureChanged.OnNext(Unit.Default)));
+        foreach (var node in roots)
         {
-            Observable
-                .Merge(modNodes.Select(node => node.RemoveRequested.Select(_ => node)))
-                .ObserveOn(uiContext)
-                .Subscribe(node =>
-                {
-                    _ = RemoveModNodeAsync(node);
-                }),
-            Observable
-                .Merge(groupNodes.Select(group => group.DissolveRequested.Select(_ => group)))
-                .ObserveOn(uiContext)
-                .Subscribe(group =>
-                {
-                    _ = DissolveGroupNodeAsync(group);
-                }),
-            GetActiveSubscription(modNodes),
-            GetPrioritySubscription(modNodes),
-        };
-
-        static IObservable<EventPattern<NotifyCollectionChangedEventArgs>> StreamOf(
-            ObservableCollection<TreeNodeViewModel> collection
-        ) =>
-            Observable.FromEventPattern<
-                NotifyCollectionChangedEventHandler,
-                NotifyCollectionChangedEventArgs
-            >(
-                handler => collection.CollectionChanged += handler,
-                handler => collection.CollectionChanged -= handler
-            );
+            switch (node)
+            {
+                case GroupHeaderNodeViewModel group:
+                    HookGroupNode(group);
+                    break;
+                case ModEntryNodeViewModel entry:
+                    HookModNode(entry);
+                    break;
+            }
+        }
     }
 
-    private IDisposable GetPrioritySubscription(
-        List<ModEntryNodeViewModel> modEntryNodeViewModels
+    private static IObservable<EventPattern<NotifyCollectionChangedEventArgs>> StreamOf(
+        ObservableCollection<TreeNodeViewModel> collection
     ) =>
-        Observable
-            .Merge(
-                modEntryNodeViewModels.Select(node =>
-                    node.WhenAnyValue(n => n.PriorityValue).Skip(1).Select(_ => node)
-                )
-            )
-            .ObserveOn(TaskPoolScheduler.Default)
-            .Subscribe(node =>
-            {
-                try
-                {
-                    _modSerializer.Save(node.Model);
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine(ex);
-                }
-            });
+        Observable.FromEventPattern<
+            NotifyCollectionChangedEventHandler,
+            NotifyCollectionChangedEventArgs
+        >(
+            handler => collection.CollectionChanged += handler,
+            handler => collection.CollectionChanged -= handler
+        );
 
-    private IDisposable GetActiveSubscription(List<ModEntryNodeViewModel> modEntryNodeViewModels) =>
-        Observable
-            .Merge(
-                modEntryNodeViewModels.Select(node =>
-                    node.WhenAnyValue(n => n.Active).Skip(1).Select(_ => node)
-                )
-            )
-            .ObserveOn(TaskPoolScheduler.Default)
-            .Subscribe(node =>
-            {
-                try
-                {
-                    _modSerializer.Save(node.Model);
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine(ex);
-                }
-            });
+    private void HookModNode(ModEntryNodeViewModel node)
+    {
+        var uiContext = _uiContext ?? SynchronizationContext.Current!;
+        _syncHooks.Add(node.RenameCommitted.Subscribe(_ => _structureChanged.OnNext(Unit.Default)));
+        _nodeActionHooks.Add(
+            node.RemoveRequested.Select(_ => node)
+                .ObserveOn(uiContext)
+                .Subscribe(target => _ = RemoveModNodeAsync(target))
+        );
+        _nodeActionHooks.Add(
+            node.WhenAnyValue(n => n.Active)
+                .Skip(1)
+                .ObserveOn(TaskPoolScheduler.Default)
+                .Subscribe(_ => PersistMod(node))
+        );
+        _nodeActionHooks.Add(
+            node.WhenAnyValue(n => n.PriorityValue)
+                .Skip(1)
+                .ObserveOn(TaskPoolScheduler.Default)
+                .Subscribe(_ => PersistMod(node))
+        );
+    }
+
+    private void HookGroupNode(GroupHeaderNodeViewModel group)
+    {
+        var uiContext = _uiContext ?? SynchronizationContext.Current!;
+        _syncHooks.Add(
+            StreamOf(group.ObservableChildren)
+                .Subscribe(_ => _structureChanged.OnNext(Unit.Default))
+        );
+        _nodeActionHooks.Add(
+            group
+                .DissolveRequested.Select(_ => group)
+                .ObserveOn(uiContext)
+                .Subscribe(target => _ = DissolveGroupNodeAsync(target))
+        );
+        foreach (var child in group.ObservableChildren.OfType<ModEntryNodeViewModel>())
+        {
+            HookModNode(child);
+        }
+    }
+
+    private void PersistMod(ModEntryNodeViewModel node)
+    {
+        try
+        {
+            _modSerializer.Save(node.Model);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex);
+        }
+    }
 
     private async Task OpenFileNode(FileLeafNodeViewModel node)
     {
-        var processStartInfo = new ProcessStartInfo
+        try
         {
-            FileName = node.AbsolutePath,
-            UseShellExecute = true,
-            WorkingDirectory = Path.GetDirectoryName(node.AbsolutePath),
-        };
-        Process.Start(processStartInfo);
+            var processStartInfo = new ProcessStartInfo
+            {
+                FileName = node.AbsolutePath,
+                UseShellExecute = true,
+                WorkingDirectory = Path.GetDirectoryName(node.AbsolutePath),
+            };
+            Process.Start(processStartInfo);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex);
+        }
+        await Task.CompletedTask;
     }
 
     private async Task SyncDomainFromTreeAsync()

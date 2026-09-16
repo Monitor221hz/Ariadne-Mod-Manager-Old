@@ -7,7 +7,6 @@ namespace Daedalus.Mods;
 public sealed class LibraryMod : ILibraryMod
 {
     private readonly IReadOnlyList<IArchiveReader> _archiveReaders;
-    private VirtualNode<ModFileEntry>? _content;
 
     public IModInfo Info { get; }
     public DirectoryInfo Directory { get; private set; }
@@ -22,11 +21,20 @@ public sealed class LibraryMod : ILibraryMod
         Info = info;
         Directory = directory;
         _archiveReaders = archiveReaders;
+        _content = new Lazy<VirtualNode<ModFileEntry>>(
+            BuildContentTree,
+            LazyThreadSafetyMode.ExecutionAndPublication
+        );
     }
 
-    public VirtualNode<ModFileEntry> Content => _content ??= BuildContentTree();
+    private Lazy<VirtualNode<ModFileEntry>> _content;
+    public VirtualNode<ModFileEntry> Content => _content.Value;
 
-    public void RefreshContent() => _content = BuildContentTree();
+    public void RefreshContent() =>
+        _content = new Lazy<VirtualNode<ModFileEntry>>(
+            BuildContentTree,
+            LazyThreadSafetyMode.ExecutionAndPublication
+        );
 
     public void RenameTo(string newName)
     {

@@ -33,11 +33,17 @@ public sealed class GroupHeaderNodeViewModel : TreeNodeViewModel
     public override string SizeText
     {
         get => _sizeText;
-        set => this.RaiseAndSetIfChanged(ref _sizeText, value);
     }
 
-    public override long SizeBytes => Children.Sum(c => c.SizeBytes);
+    public override long SizeBytes => Children.Sum(c => c.SizeBytes < 0 ? 0 : c.SizeBytes);
     public override bool RenameAllowed => true;
+
+    public void RefreshSizeText() =>
+        this.RaiseAndSetIfChanged(
+            ref _sizeText,
+            ByteSize.FromBytes(SizeBytes).ToString(),
+            nameof(SizeText)
+        );
 
     public GroupHeaderNodeViewModel(IModGroup group)
     {
@@ -54,7 +60,7 @@ public sealed class GroupHeaderNodeViewModel : TreeNodeViewModel
             this.RaisePropertyChanged(nameof(ExpanderVisible));
         };
         IsExpanded = HasChildren;
-        _sizeText = ByteSize.FromBytes(SizeBytes).ToString();
+        _sizeText = "↺";
         DissolveCommand = ReactiveCommand.Create(() => _dissolveRequested.OnNext(Unit.Default));
 
         _sizeSubscription = Observable
@@ -66,7 +72,11 @@ public sealed class GroupHeaderNodeViewModel : TreeNodeViewModel
                 handler => _children.CollectionChanged -= handler
             )
             .Select(_ => ByteSize.FromBytes(SizeBytes).ToString())
-            .Subscribe(text => SizeText = text);
+            .Subscribe(text =>
+            {
+                _sizeText = text;
+                this.RaisePropertyChanged(nameof(SizeText));
+            });
     }
 
     public IObservable<Unit> DissolveRequested => _dissolveRequested;

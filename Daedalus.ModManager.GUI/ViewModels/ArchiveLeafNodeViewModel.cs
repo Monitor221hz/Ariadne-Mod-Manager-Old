@@ -19,7 +19,6 @@ public sealed class ArchiveLeafNodeViewModel : TreeNodeViewModel
     public override string SizeText
     {
         get => _sizeText;
-        set => this.RaiseAndSetIfChanged(ref _sizeText, value);
     }
     public override long SizeBytes =>
         _node.Data!.Size + (HasChildren ? _node.Children.Sum(c => c.Data?.Size ?? 0) : 0);

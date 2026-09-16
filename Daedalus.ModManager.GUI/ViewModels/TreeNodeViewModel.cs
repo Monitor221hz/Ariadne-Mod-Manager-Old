@@ -25,7 +25,7 @@ public abstract class TreeNodeViewModel : ViewModelBase
     public abstract string DisplayName { get; set; }
     public virtual uint? PriorityValue => null;
     public virtual string? VersionText => null;
-    public abstract string SizeText { get; set; }
+    public abstract string SizeText { get; }
     public abstract long SizeBytes { get; }
     private static readonly IReadOnlyList<TreeNodeViewModel> NoChildren = [];
 

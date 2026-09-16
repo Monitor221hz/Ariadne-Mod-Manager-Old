@@ -18,7 +18,6 @@ public sealed class DirectoryNodeViewModel : TreeNodeViewModel
     public override string SizeText
     {
         get => _sizeText;
-        set => this.RaiseAndSetIfChanged(ref _sizeText, value);
     }
     public override bool RenameAllowed => false;
 
