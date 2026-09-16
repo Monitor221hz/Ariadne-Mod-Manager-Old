@@ -1,0 +1,23 @@
+{
+  "Id": "rose-pine-dawn",
+  "Name": "Rosé Pine Dawn",
+  "Variant": "Light",
+  "Base": "#FFFAF4ED",
+  "Mantle": "#FFF4EDE8",
+  "Darker": "#FFF2E9E1",
+  "Elevated": "#FFDFDAD9",
+  "Selection": "#40B4637A",
+  "Hover": "#FFDFDAD9",
+  "ActiveList": "#FFCECACD",
+  "FgBase": "#FF575279",
+  "FgMuted": "#FF797593",
+  "FgDimmed": "#FF9893A5",
+  "FgBright": "#FF464261",
+  "AccentPrimary": "#FFB4637A",
+  "AccentSoft": "#FF907AA9",
+  "Border": "#FFDFDAD9",
+  "GlassPanel": "#ECFAF4ED",
+  "GlassBorder": "#40575279",
+  "ToolbarBorder": "#40DFDAD9",
+  "CardShadow": "0 4 20 0 #28575279"
+}

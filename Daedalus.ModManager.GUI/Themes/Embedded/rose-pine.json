@@ -1,0 +1,23 @@
+{
+  "Id": "rose-pine",
+  "Name": "Rosé Pine",
+  "Variant": "Dark",
+  "Base": "#FF191724",
+  "Mantle": "#FF14121C",
+  "Darker": "#FF0E0C14",
+  "Elevated": "#FF26233A",
+  "Selection": "#40EB6F92",
+  "Hover": "#FF403D52",
+  "ActiveList": "#FF524F67",
+  "FgBase": "#FFE0DEF4",
+  "FgMuted": "#FF908CAA",
+  "FgDimmed": "#FF6E6A86",
+  "FgBright": "#FFEBBCBA",
+  "AccentPrimary": "#FFEB6F92",
+  "AccentSoft": "#FFC4A7E7",
+  "Border": "#FF21202E",
+  "GlassPanel": "#E61F1D2E",
+  "GlassBorder": "#1FE0DEF4",
+  "ToolbarBorder": "#4021202E",
+  "CardShadow": "0 8 40 0 #88000000"
+}
