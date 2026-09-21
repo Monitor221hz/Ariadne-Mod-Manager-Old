@@ -22,20 +22,13 @@ public sealed class LibraryMod : ILibraryMod
         Info = info;
         Directory = directory;
         _archiveReaders = archiveReaders;
-        _content = new Lazy<VirtualNode<ModFileEntry>>(
-            BuildContentTree,
-            LazyThreadSafetyMode.ExecutionAndPublication
-        );
+        _content = NewContentLazy();
     }
 
     private Lazy<VirtualNode<ModFileEntry>> _content;
     public VirtualNode<ModFileEntry> Content => _content.Value;
 
-    public void RefreshContent() =>
-        _content = new Lazy<VirtualNode<ModFileEntry>>(
-            BuildContentTree,
-            LazyThreadSafetyMode.ExecutionAndPublication
-        );
+    public void RefreshContent() => _content = NewContentLazy();
 
     public void RenameTo(string newName)
     {
@@ -67,8 +60,11 @@ public sealed class LibraryMod : ILibraryMod
 
         Directory.MoveTo(destinationPath);
         Directory = new DirectoryInfo(destinationPath);
-        _content = null;
+        _content = NewContentLazy();
     }
+
+    private Lazy<VirtualNode<ModFileEntry>> NewContentLazy() =>
+        new(BuildContentTree, LazyThreadSafetyMode.ExecutionAndPublication);
 
     private VirtualNode<ModFileEntry> BuildContentTree()
     {
