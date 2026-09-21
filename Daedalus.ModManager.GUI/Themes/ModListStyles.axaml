@@ -2,15 +2,17 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:converters="using:Daedalus.ModManager.GUI.Converters"
         xmlns:fi="using:FluentIcons.Avalonia"
+        xmlns:hier="using:Avalonia.Controls.DataGridHierarchical"
+        xmlns:vm="using:Daedalus.ModManager.GUI.ViewModels"
         xmlns:pdg="clr-namespace:Avalonia.Controls;assembly=Avalonia.Controls.DataGrid"
         xmlns:xlang="using:System"
         x:DataType="xlang:Object">
 
     <Styles.Resources>
         <ResourceDictionary>
-            <converters:GroupBandBrushConverter x:Key="GroupBandBrush" />
             <converters:NodeChevronIconConverter x:Key="NodeChevronIconGeometry" />
             <converters:NodeChevronIconSizeConverter x:Key="NodeChevronIconSize" />
+            <converters:RowVisualBrushConverter x:Key="RowVisualBrush" />
 
 
             <ControlTheme x:Key="DaedalusHierarchyExpanderToggle" TargetType="ToggleButton">
@@ -80,8 +82,13 @@
         </ResourceDictionary>
     </Styles.Resources>
 
-    <Style Selector="DataGridRow">
-        <Setter Property="Background" Value="{Binding Converter={StaticResource GroupBandBrush}}" />
+    <Style Selector="DataGrid#ModsGrid DataGridRow">
+        <Setter Property="Background">
+            <MultiBinding Converter="{StaticResource RowVisualBrush}" x:DataType="hier:HierarchicalNode">
+                <Binding Path="Item" />
+                <Binding Path="((vm:TreeNodeViewModel)Item).ConflictVerdict" />
+            </MultiBinding>
+        </Setter>
     </Style>
 
     <Style Selector="Menu Separator">

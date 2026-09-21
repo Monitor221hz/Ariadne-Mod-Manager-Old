@@ -177,6 +177,20 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
         );
     }
 
+    public void ApplyVerdicts(IReadOnlyDictionary<ILibraryMod, SelectedModVerdict> verdicts)
+    {
+        if (_roots is null)
+        {
+            return;
+        }
+        foreach (var entry in _roots.SelectMany(FlattenEntries))
+        {
+            entry.ConflictVerdict = verdicts.TryGetValue(entry.Model, out var verdict)
+                ? verdict
+                : null;
+        }
+    }
+
     public Task InitializeAsync()
     {
         Model = BuildModel(_profile.ModList);

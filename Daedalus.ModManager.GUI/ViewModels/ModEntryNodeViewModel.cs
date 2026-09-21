@@ -16,6 +16,7 @@ public sealed class ModEntryNodeViewModel : TreeNodeViewModel
     private readonly Subject<Unit> _removeRequested = new();
     private uint _priorityValue;
     private bool _active;
+    private SelectedModVerdict? _conflictVerdict;
     private readonly Subject<CancellationToken> _beginLoad = new();
     private readonly ObservableAsPropertyHelper<VirtualNode<ModFileEntry>?> _content;
     private readonly ObservableAsPropertyHelper<string> _sizeText;
@@ -36,6 +37,12 @@ public sealed class ModEntryNodeViewModel : TreeNodeViewModel
     {
         get => _displayName;
         set => this.RaiseAndSetIfChanged(ref _displayName, value);
+    }
+
+    public override SelectedModVerdict? ConflictVerdict
+    {
+        get => _conflictVerdict;
+        set => this.RaiseAndSetIfChanged(ref _conflictVerdict, value);
     }
     public override bool RenameAllowed => true;
     public override long SizeBytes =>

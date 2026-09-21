@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Daedalus.Contracts.Mods;
+using Daedalus.Mods.Serialization;
 using Daedalus.VFS;
 
 namespace Daedalus.Mods;
@@ -98,6 +99,10 @@ public sealed class LibraryMod : ILibraryMod
                 continue;
             }
             var file = (FileInfo)entry;
+            if (file.Name.Equals(LibraryModSerializer.FileName, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
             var reader = FindArchiveReader(file.Extension);
             var data = new ModFileEntry(
                 file.Name,

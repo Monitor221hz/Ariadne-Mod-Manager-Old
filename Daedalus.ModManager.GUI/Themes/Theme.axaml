@@ -25,6 +25,9 @@
 
     <SolidColorBrush x:Key="GlassPanelBrush" Color="{DynamicResource GlassPanel}" />
 
+    <SolidColorBrush x:Key="ConflictWinBrush" Color="#33A6E3A1" />
+    <SolidColorBrush x:Key="ConflictLoseBrush" Color="#33F38BA8" />
+
     <!-- Menu / flyout tokens -->
     <SolidColorBrush x:Key="MenuFlyoutPresenterBackground" Color="{DynamicResource GlassPanel}" />
     <SolidColorBrush x:Key="MenuFlyoutPresenterBorderBrush" Color="{DynamicResource BorderColor}" />

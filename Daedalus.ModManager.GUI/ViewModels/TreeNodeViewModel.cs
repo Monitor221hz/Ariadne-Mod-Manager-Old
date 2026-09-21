@@ -27,6 +27,7 @@ public abstract class TreeNodeViewModel : ViewModelBase
     public virtual string? VersionText => null;
     public abstract string SizeText { get; }
     public abstract long SizeBytes { get; }
+    public virtual SelectedModVerdict? ConflictVerdict { get; set; }
     private static readonly IReadOnlyList<TreeNodeViewModel> NoChildren = [];
 
     public virtual IEnumerable<TreeNodeViewModel> Children => NoChildren;
