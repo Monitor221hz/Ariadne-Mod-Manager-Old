@@ -17,6 +17,7 @@ using Daedalus.Contracts.Mods;
 using Daedalus.ModManager.Serialization;
 using Daedalus.Mods;
 using ReactiveUI;
+using ReactiveUI.Avalonia;
 
 namespace Daedalus.ModManager.GUI.ViewModels;
 
@@ -29,7 +30,6 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
     private readonly ILibraryModSerializer _modSerializer;
     private readonly IModManagerPaths _paths;
     private readonly IModProfileEditor _editor;
-    private readonly SynchronizationContext? _uiContext = SynchronizationContext.Current;
     private CancellationTokenSource? _loadContentCts;
 
     private HierarchicalModel<TreeNodeViewModel>? _model;
@@ -80,7 +80,7 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
     )
     {
         TreeNodeViewModel
-            .FileOpenRequested.ObserveOn(_uiContext ?? SynchronizationContext.Current!)
+            .FileOpenRequested.ObserveOn(AvaloniaScheduler.Instance)
             .Subscribe(node =>
             {
                 if (node is FileLeafNodeViewModel leaf)
@@ -103,7 +103,7 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
         LoadInsertedRow.ThrownExceptions.Subscribe(ex => Debug.WriteLine(ex));
         _syncSubscription = _structureChanged
             .Throttle(SyncDelay)
-            .ObserveOn(_uiContext ?? SynchronizationContext.Current!)
+            .ObserveOn(AvaloniaScheduler.Instance)
             .Subscribe(signal =>
             {
                 _ = SyncDomainFromTreeAsync();
@@ -432,11 +432,10 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
 
     private void HookModNode(ModEntryNodeViewModel node)
     {
-        var uiContext = _uiContext ?? SynchronizationContext.Current!;
         _syncHooks.Add(node.RenameCommitted.Subscribe(_ => _structureChanged.OnNext(Unit.Default)));
         _nodeActionHooks.Add(
             node.RemoveRequested.Select(_ => node)
-                .ObserveOn(uiContext)
+                .ObserveOn(AvaloniaScheduler.Instance)
                 .Subscribe(target => _ = RemoveModNodeAsync(target))
         );
         _nodeActionHooks.Add(
@@ -455,7 +454,6 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
 
     private void HookGroupNode(GroupHeaderNodeViewModel group)
     {
-        var uiContext = _uiContext ?? SynchronizationContext.Current!;
         _syncHooks.Add(
             StreamOf(group.ObservableChildren)
                 .Subscribe(_ => _structureChanged.OnNext(Unit.Default))
@@ -463,7 +461,7 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
         _nodeActionHooks.Add(
             group
                 .DissolveRequested.Select(_ => group)
-                .ObserveOn(uiContext)
+                .ObserveOn(AvaloniaScheduler.Instance)
                 .Subscribe(target => _ = DissolveGroupNodeAsync(target))
         );
         foreach (var child in group.ObservableChildren.OfType<ModEntryNodeViewModel>())
