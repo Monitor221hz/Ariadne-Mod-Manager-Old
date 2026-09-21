@@ -6,6 +6,8 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Daedalus.Contracts.Games;
 using Daedalus.Contracts.ModManager;
 using Daedalus.Contracts.Mods;
+using Daedalus.ModManager.Serialization;
+using Daedalus.Mods;
 using ReactiveUI;
 
 namespace Daedalus.ModManager.GUI.ViewModels;
@@ -19,13 +21,61 @@ public class MainViewModel : ViewModelBase
     private readonly IModProfileEditor? _editor;
     private readonly IGameCatalog? _catalog;
     private readonly IGameLocator? _locator;
+    private readonly ILoadOrderBuilder? _loadOrderBuilder;
 
     private object? _currentViewModel;
+    private ProfileViewModel? _activeProfile;
+    private string? _selectedProfileName;
+    private string? _currentGameText;
+    private bool _suppressProfileSwitch;
 
     public object? CurrentViewModel
     {
         get => _currentViewModel;
-        private set => this.RaiseAndSetIfChanged(ref _currentViewModel, value);
+        private set
+        {
+            if (Equals(_currentViewModel, value))
+            {
+                return;
+            }
+            (_currentViewModel as IDisposable)?.Dispose();
+            this.RaiseAndSetIfChanged(ref _currentViewModel, value);
+            this.RaisePropertyChanged(nameof(WorkspaceVisible));
+        }
+    }
+
+    public ProfileViewModel? ActiveProfile
+    {
+        get => _activeProfile;
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref _activeProfile, value);
+            this.RaisePropertyChanged(nameof(WorkspaceVisible));
+        }
+    }
+
+    public bool WorkspaceVisible =>
+        ActiveProfile is not null && CurrentViewModel is WorkspaceViewModel;
+
+    public ObservableCollection<string> ProfileNames { get; } = [];
+
+    public string? SelectedProfileName
+    {
+        get => _selectedProfileName;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _selectedProfileName, value);
+            if (value is not null && !_suppressProfileSwitch && value != ActiveProfile?.Name)
+            {
+                LoadProfile(value);
+            }
+        }
+    }
+
+    public string? CurrentGameText
+    {
+        get => _currentGameText;
+        private set => this.RaiseAndSetIfChanged(ref _currentGameText, value);
     }
 
     public ObservableCollection<InstanceEntryViewModel> Instances { get; } = [];
@@ -38,7 +88,6 @@ public class MainViewModel : ViewModelBase
     public ReactiveCommand<string, Unit> SwitchInstanceCommand { get; }
     public ReactiveCommand<string, Unit> AskDeleteCommand { get; }
 
-    // Design-time ctor.
     public MainViewModel()
     {
         InitializeCommand = ReactiveCommand.Create(() => { });
@@ -54,7 +103,8 @@ public class MainViewModel : ViewModelBase
         IInstanceService instances,
         IModProfileEditor editor,
         IGameCatalog catalog,
-        IGameLocator locator
+        IGameLocator locator,
+        ILoadOrderBuilder loadOrderBuilder
     )
     {
         _profileSerializer = profileSerializer;
@@ -64,6 +114,7 @@ public class MainViewModel : ViewModelBase
         _editor = editor;
         _catalog = catalog;
         _locator = locator;
+        _loadOrderBuilder = loadOrderBuilder;
 
         foreach (var theme in AppTheme.All)
         {
@@ -76,23 +127,46 @@ public class MainViewModel : ViewModelBase
         }
 
         InitializeCommand = ReactiveCommand.CreateFromTask(InitializeAsync);
+        InitializeCommand.ThrownExceptions.Subscribe(ex => Debug.WriteLine(ex));
         ExitCommand = ReactiveCommand.Create(Quit);
         SwitchInstanceCommand = ReactiveCommand.Create<string>(SwitchInstance);
         AskDeleteCommand = ReactiveCommand.CreateFromTask<string>(RemoveInstanceAsync);
     }
 
-    private Task InitializeAsync()
+    private async Task InitializeAsync()
     {
         RefreshInstances();
-        if (_instances!.CurrentFolder is null)
+        if (_instances!.Current is null)
         {
             ShowGameSelection();
+            return;
         }
-        else
+        var profilesRoot = _paths!.ProfilesFolder;
+        var (profile, currentGame) = await Task.Run(() =>
         {
-            ShowWorkspace();
-        }
-        return Task.CompletedTask;
+            profilesRoot.Create();
+            var latestProfileFile = profilesRoot
+                .EnumerateDirectories()
+                .Select(dir => new FileInfo(Path.Join(dir.FullName, ModProfileSerializer.FileName)))
+                .Where(file => file.Exists)
+                .OrderByDescending(file => file.LastWriteTimeUtc)
+                .FirstOrDefault();
+            var loaded = latestProfileFile is not null
+                ? _profileSerializer!.Load(latestProfileFile)
+                : CreateDefaultProfile(
+                    new DirectoryInfo(Path.Join(profilesRoot.FullName, "Default"))
+                );
+            NormalizePriorities(loaded);
+            return (loaded, _instances.Current?.Game);
+        });
+        ActiveProfile = new ProfileViewModel(profile);
+        RefreshProfileNames();
+        SyncSelectedProfile(profile.ProfileFolder.Name);
+        CurrentGameText =
+            currentGame != null
+                ? $"{currentGame.Configuration.Name} — {currentGame.InstallPath.FullName}"
+                : null;
+        ShowWorkspace();
     }
 
     private void ShowGameSelection()
@@ -114,24 +188,106 @@ public class MainViewModel : ViewModelBase
             .WhenAnyValue(x => x.CompletedName)
             .WhereNotNull()
             .Take(1)
-            .Subscribe(_ =>
+            .Subscribe(completedName =>
             {
                 RefreshInstances();
-                ShowWorkspace();
+                _ = InitializeAsync();
             });
     }
 
     private void ShowWorkspace()
     {
-        var viewModel = new ModListViewModel(
+        var viewModel = new WorkspaceViewModel(
+            ActiveProfile!.Model,
             _profileSerializer!,
             _modSerializer!,
             _paths!,
-            _instances!,
-            _editor!
+            _editor!,
+            _loadOrderBuilder!,
+            _instances!
         );
         CurrentViewModel = viewModel;
-        viewModel.InitializeCommand.Execute().Subscribe();
+        _ = viewModel
+            .InitializeAsync()
+            .ContinueWith(t => Debug.WriteLine(t.Exception), TaskContinuationOptions.OnlyOnFaulted);
+    }
+
+    private void LoadProfile(string name)
+    {
+        if (_paths is null || _profileSerializer is null)
+        {
+            return;
+        }
+        var profileFolder = new DirectoryInfo(Path.Join(_paths.ProfilesFolder.FullName, name));
+        var profile = _profileSerializer.Load(profileFolder);
+        NormalizePriorities(profile);
+        ActiveProfile = new ProfileViewModel(profile);
+        ShowWorkspace();
+    }
+
+    private void RefreshProfileNames()
+    {
+        ProfileNames.Clear();
+        var profilesRoot = _paths!.ProfilesFolder;
+        profilesRoot.Refresh();
+        if (!profilesRoot.Exists)
+        {
+            return;
+        }
+        foreach (
+            var dir in profilesRoot
+                .EnumerateDirectories()
+                .Where(dir => File.Exists(Path.Join(dir.FullName, ModProfileSerializer.FileName)))
+                .OrderBy(dir => dir.Name, StringComparer.OrdinalIgnoreCase)
+        )
+        {
+            ProfileNames.Add(dir.Name);
+        }
+    }
+
+    private void SyncSelectedProfile(string? name)
+    {
+        _suppressProfileSwitch = true;
+        try
+        {
+            SelectedProfileName = name;
+        }
+        finally
+        {
+            _suppressProfileSwitch = false;
+        }
+    }
+
+    private IModProfile CreateDefaultProfile(DirectoryInfo profileFolder)
+    {
+        var profile = new ModProfile(
+            "Default",
+            new ModList([], []),
+            new Version(1, 0),
+            profileFolder
+        );
+        profile.InitializeDisk();
+        _profileSerializer!.Save(profile);
+        return profile;
+    }
+
+    internal static void NormalizePriorities(IModProfile profile)
+    {
+        var modList = profile.ModList;
+        ModOrderSync.ApplyOrder(
+            modList.LooseMods.ToList(),
+            modList.ModGroups.ToList(),
+            modList.ModGroups.Select(group => (IReadOnlyList<ILibraryMod>)group.ToList()).ToList(),
+            modList
+        );
+    }
+
+    public void SaveActiveProfile()
+    {
+        if (ActiveProfile is not null)
+        {
+            _profileSerializer!.Save(ActiveProfile.Model);
+        }
     }
 
     private void RefreshInstances()
@@ -149,14 +305,14 @@ public class MainViewModel : ViewModelBase
         )
         {
             Instances.Add(
-                new InstanceEntryViewModel(name, folder.FullName, name == _instances.CurrentName)
+                new InstanceEntryViewModel(name, folder.FullName, name == _instances.Current?.Name)
             );
         }
     }
 
     private void SwitchInstance(string name)
     {
-        if (_instances is null || name == _instances.CurrentName)
+        if (_instances is null || name == _instances.Current?.Name)
         {
             return;
         }
@@ -181,10 +337,7 @@ public class MainViewModel : ViewModelBase
 
     public void SaveActiveInstance()
     {
-        if (CurrentViewModel is ModListViewModel workspace)
-        {
-            workspace.SaveActiveProfile();
-        }
+        SaveActiveProfile();
     }
 
     private static void Quit()

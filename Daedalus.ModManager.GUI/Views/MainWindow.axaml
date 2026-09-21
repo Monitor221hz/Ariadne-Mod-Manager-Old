@@ -13,7 +13,7 @@
 
     <Design.DataContext>
         <!-- This only sets the DataContext for the previewer in an IDE,
-             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
+        to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
         <vm:MainViewModel />
     </Design.DataContext>
 
@@ -30,6 +30,26 @@
                 </MenuItem>
                 <MenuItem x:Name="ThemeItem" Header="_Theme" />
             </Menu>
+
+            <Border DockPanel.Dock="Top"
+                    IsVisible="{Binding WorkspaceVisible}"
+                    Background="{DynamicResource DaedalusToolbarBackground}"
+                    BorderBrush="{DynamicResource DaedalusToolbarBorder}"
+                    BorderThickness="0,0,0,1"
+                    Padding="12,8">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock VerticalAlignment="Center"
+                               FontWeight="SemiBold"
+                               Text="Profile:" />
+                    <ComboBox MinWidth="160"
+                              VerticalAlignment="Center"
+                              ItemsSource="{Binding ProfileNames}"
+                              SelectedItem="{Binding SelectedProfileName}" />
+                    <TextBlock VerticalAlignment="Center"
+                               Foreground="{DynamicResource FgDimmedBrush}"
+                               Text="{Binding CurrentGameText, TargetNullValue='', StringFormat='({0})'}" />
+                </StackPanel>
+            </Border>
 
             <ContentControl Content="{Binding CurrentViewModel}" />
         </DockPanel>

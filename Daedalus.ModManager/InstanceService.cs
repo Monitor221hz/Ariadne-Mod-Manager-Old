@@ -22,12 +22,18 @@ public sealed class InstanceService : IInstanceService
 
     public IReadOnlyDictionary<string, DirectoryInfo> Instances => _store.Instances;
 
-    public string? CurrentName =>
-        _store.LastActive is { } name && _store.Instances.ContainsKey(name) ? name : null;
-
-    public DirectoryInfo? CurrentFolder => CurrentName is { } name ? _store.Instances[name] : null;
-
-    public IInstalledGame? CurrentGame => CurrentName is { } name ? ResolveGame(name) : null;
+    public CurrentInstance? Current
+    {
+        get
+        {
+            var name = _store.LastActive;
+            if (name is null || !_store.Instances.TryGetValue(name, out var folder))
+            {
+                return null;
+            }
+            return new CurrentInstance(name, folder, ResolveGame(name));
+        }
+    }
 
     public DirectoryInfo Create(string name, DirectoryInfo folder, IInstalledGame game)
     {
@@ -35,12 +41,12 @@ public sealed class InstanceService : IInstanceService
         {
             throw new ArgumentException("Instance name must not be empty.", nameof(name));
         }
-        _store.Add(name, folder);
         folder.Create();
         Directory.CreateDirectory(Path.Join(folder.FullName, "Mods"));
         Directory.CreateDirectory(Path.Join(folder.FullName, "Profiles"));
         Directory.CreateDirectory(Path.Join(folder.FullName, "Staging"));
         _gameSerializer.Save(game, folder);
+        _store.Add(name, folder);
         _store.SetLastActive(name);
         return folder;
     }

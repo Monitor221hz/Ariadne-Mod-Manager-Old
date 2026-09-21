@@ -52,7 +52,8 @@ public partial class ModListView : UserControl
 
     private void SyncSelectedNodes(ModListViewModel viewModel)
     {
-        if (ModsGrid.Selection is not { } selection)
+        var selection = ModsGrid.Selection;
+        if (selection == null)
         {
             return;
         }

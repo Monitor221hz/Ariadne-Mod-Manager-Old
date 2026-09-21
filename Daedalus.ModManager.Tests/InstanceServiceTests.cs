@@ -62,8 +62,8 @@ public class InstanceServiceTests : IDisposable
         Assert.True(Directory.Exists(Path.Combine(folder.FullName, "Mods")));
         Assert.True(Directory.Exists(Path.Combine(folder.FullName, "Profiles")));
         Assert.True(Directory.Exists(Path.Combine(folder.FullName, "Staging")));
-        Assert.Equal("Default", sut.CurrentName);
-        Assert.Equal(folder.FullName, sut.CurrentFolder!.FullName);
+        Assert.Equal("Default", sut.Current?.Name);
+        Assert.Equal(folder.FullName, sut.Current!.Folder.FullName);
         Assert.True(File.Exists(Path.Combine(folder.FullName, "steam_489830.json")));
     }
 
@@ -84,9 +84,9 @@ public class InstanceServiceTests : IDisposable
         sut.Create("A", new DirectoryInfo(_temp.Combine("A")), CreateGame());
         sut.Create("B", new DirectoryInfo(_temp.Combine("B")), CreateGame());
 
-        Assert.Equal("B", sut.CurrentName);
+        Assert.Equal("B", sut.Current?.Name);
         sut.Switch("A");
-        Assert.Equal("A", sut.CurrentName);
+        Assert.Equal("A", sut.Current?.Name);
         Assert.Throws<ArgumentException>(() => sut.Switch("C"));
     }
 
@@ -134,7 +134,7 @@ public class InstanceServiceTests : IDisposable
 
         Assert.True(Directory.Exists(folder.FullName));
         Assert.Empty(sut.Instances);
-        Assert.Null(sut.CurrentFolder);
+        Assert.Null(sut.Current);
     }
 
     [Fact]
@@ -166,8 +166,6 @@ public class InstanceServiceTests : IDisposable
             new GameCatalog([])
         );
 
-        Assert.Null(service.CurrentName);
-        Assert.Null(service.CurrentFolder);
-        Assert.Null(service.CurrentGame);
+        Assert.Null(service.Current);
     }
 }

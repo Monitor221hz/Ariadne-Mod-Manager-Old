@@ -50,6 +50,13 @@ public sealed class InstanceSetupViewModel : ViewModelBase
     {
         _instances = instances;
         Game = game;
+        var baseName = "Default";
+        InstanceName = baseName;
+        var suffix = 2;
+        while (_instances.Instances.Keys.Contains(InstanceName, StringComparer.OrdinalIgnoreCase))
+        {
+            InstanceName = $"{baseName} {suffix++}";
+        }
         InstanceFolder = Path.Join(paths.AssemblyFolder.FullName, "Instances", InstanceName);
 
         CreateCommand = ReactiveCommand.CreateFromTask(

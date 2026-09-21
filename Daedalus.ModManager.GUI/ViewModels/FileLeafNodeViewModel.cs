@@ -20,8 +20,7 @@ public sealed class FileLeafNodeViewModel : TreeNodeViewModel
     {
         get => _sizeText;
     }
-    public override long SizeBytes =>
-        _node.Data!.Size + (HasChildren ? _node.Children.Sum(c => c.Data?.Size ?? 0) : 0);
+    public override long SizeBytes => _node.SelfAndDescendants().Sum(c => c.Data?.Size ?? 0);
     public ModEntryKind Kind => _node.Data!.Kind;
 
     public string AbsolutePath => _node.Data!.AbsolutePath;

@@ -14,7 +14,7 @@
     <Application.Resources>
         <ResourceDictionary>
             <FontFamily x:Key="ContentControlThemeFontFamily">avares://Mortex/Assets/Fonts/AtkinsonHyperlegible#Atkinson Hyperlegible, $Default</FontFamily>
-            <sys:Double x:Key="ContentControlThemeFontSize">15</sys:Double>
+            <sys:Double x:Key="ContentControlThemeFontSize">16</sys:Double>
             <converters:BandContrastForegroundConverter x:Key="BandContrastForeground" />
             <ResourceDictionary.MergedDictionaries>
                 <ResourceInclude Source="avares://Mortex/Themes/Theme.axaml" />

@@ -21,7 +21,7 @@ public sealed class DirectoryNodeViewModel : TreeNodeViewModel
     }
     public override bool RenameAllowed => false;
 
-    public override long SizeBytes => Children.Sum(c => c.SizeBytes);
+    public override long SizeBytes => _node.SelfAndDescendants().Sum(n => n.Data?.Size ?? 0);
 
     public override IEnumerable<TreeNodeViewModel> Children =>
         _node.Children.Select(ContentNodeViewModel.Wrap);

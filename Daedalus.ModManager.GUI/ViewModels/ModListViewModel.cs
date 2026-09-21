@@ -20,23 +20,19 @@ using ReactiveUI;
 
 namespace Daedalus.ModManager.GUI.ViewModels;
 
-public sealed class ModListViewModel : ViewModelBase
+public sealed class ModListViewModel : ViewModelBase, IDisposable
 {
     private static readonly TimeSpan SyncDelay = TimeSpan.FromMilliseconds(300);
 
+    private readonly IModProfile _profile;
     private readonly IModProfileSerializer _profileSerializer;
     private readonly ILibraryModSerializer _modSerializer;
     private readonly IModManagerPaths _paths;
-    private readonly IInstanceService _instances;
     private readonly IModProfileEditor _editor;
     private readonly SynchronizationContext? _uiContext = SynchronizationContext.Current;
     private CancellationTokenSource? _loadContentCts;
 
-    private ProfileViewModel? _activeProfile;
     private HierarchicalModel<TreeNodeViewModel>? _model;
-    private string? _currentGameText;
-    private string? _selectedProfileName;
-    private bool _suppressProfileSwitch;
     private ObservableCollection<TreeNodeViewModel>? _roots;
     private readonly Subject<Unit> _structureChanged = new();
     private IDisposable? _syncSubscription;
@@ -44,14 +40,22 @@ public sealed class ModListViewModel : ViewModelBase
     private CompositeDisposable _nodeActionHooks = new();
     private readonly SemaphoreSlim _syncGate = new(1, 1);
 
-    public ReactiveCommand<Unit, Unit> InitializeCommand { get; }
     public ReactiveCommand<Unit, Unit> CreateModCommand { get; }
     public ReactiveCommand<Unit, Unit> CreateGroupCommand { get; }
     public ReactiveCommand<Unit, Unit> ClearSortCommand { get; }
     public Interaction<ModEntryNodeViewModel, bool> ConfirmRemoveMod { get; } = new();
     public ReactiveCommand<ModEntryNodeViewModel, Unit> LoadInsertedRow { get; }
 
-    public ObservableCollection<string> ProfileNames { get; } = [];
+    public void Dispose()
+    {
+        _loadContentCts?.Cancel();
+        _loadContentCts?.Dispose();
+        _syncHooks.Dispose();
+        _nodeActionHooks.Dispose();
+        _syncSubscription?.Dispose();
+        _ = SyncDomainFromTreeAsync();
+    }
+
     public ObservableCollection<TreeNodeViewModel> SelectedNodes { get; } = [];
 
     public HierarchicalModel<TreeNodeViewModel>? Model
@@ -67,36 +71,11 @@ public sealed class ModListViewModel : ViewModelBase
 
     public bool SortActive => SortingModel.Descriptors.Count > 0;
 
-    public ProfileViewModel? ActiveProfile
-    {
-        get => _activeProfile;
-        private set => this.RaiseAndSetIfChanged(ref _activeProfile, value);
-    }
-
-    public string? SelectedProfileName
-    {
-        get => _selectedProfileName;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _selectedProfileName, value);
-            if (value is not null && !_suppressProfileSwitch && value != ActiveProfile?.Name)
-            {
-                LoadProfile(value);
-            }
-        }
-    }
-
-    public string? CurrentGameText
-    {
-        get => _currentGameText;
-        private set => this.RaiseAndSetIfChanged(ref _currentGameText, value);
-    }
-
     public ModListViewModel(
+        IModProfile profile,
         IModProfileSerializer profileSerializer,
         ILibraryModSerializer modSerializer,
         IModManagerPaths paths,
-        IInstanceService instances,
         IModProfileEditor editor
     )
     {
@@ -109,17 +88,14 @@ public sealed class ModListViewModel : ViewModelBase
                     _ = OpenFileNode(leaf);
                 }
             });
+        _profile = profile;
         _profileSerializer = profileSerializer;
         _modSerializer = modSerializer;
         _paths = paths;
-        _instances = instances;
         _editor = editor;
 
-        InitializeCommand = ReactiveCommand.CreateFromTask(InitializeAsync);
-        var hasActiveProfile = this.WhenAnyValue(x => x.ActiveProfile)
-            .Select(profile => profile is not null);
-        CreateModCommand = ReactiveCommand.CreateFromTask(CreateEmptyMod, hasActiveProfile);
-        CreateGroupCommand = ReactiveCommand.Create(CreateGroup, hasActiveProfile);
+        CreateModCommand = ReactiveCommand.CreateFromTask(CreateEmptyMod);
+        CreateGroupCommand = ReactiveCommand.Create(CreateGroup);
         ClearSortCommand = ReactiveCommand.Create(() => SortingModel.Clear());
         LoadInsertedRow = ReactiveCommand.CreateFromTask<ModEntryNodeViewModel>(
             LoadInsertedRowAsync
@@ -139,7 +115,8 @@ public sealed class ModListViewModel : ViewModelBase
         );
         SortingModel.SortingChanged += (_, args) =>
         {
-            if (Model is { } model)
+            var model = Model;
+            if (model != null)
             {
                 model.ApplySiblingComparer(BuildComparer(args.NewDescriptors), recursive: true);
                 if (args.NewDescriptors.Count == 0)
@@ -200,110 +177,10 @@ public sealed class ModListViewModel : ViewModelBase
         );
     }
 
-    private Task InitializeAsync() =>
-        Task.Run(() =>
-        {
-            var profilesRoot = _paths.ProfilesFolder;
-            profilesRoot.Create();
-            var latestProfileFile = profilesRoot
-                .EnumerateDirectories()
-                .Select(dir => new FileInfo(Path.Join(dir.FullName, ModProfileSerializer.FileName)))
-                .Where(file => file.Exists)
-                .OrderByDescending(file => file.LastWriteTimeUtc)
-                .FirstOrDefault();
-
-            var profile = latestProfileFile is not null
-                ? _profileSerializer.Load(latestProfileFile)
-                : CreateDefaultProfile(
-                    new DirectoryInfo(Path.Join(profilesRoot.FullName, "Default"))
-                );
-
-            NormalizePriorities(profile);
-            var currentGame = _instances.CurrentGame;
-            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-            {
-                ActiveProfile = new ProfileViewModel(profile);
-                Model = BuildModel(profile.ModList);
-                RefreshProfileNames();
-                SyncSelectedProfile(profile.ProfileFolder.Name);
-                CurrentGameText = currentGame is { } game
-                    ? $"{game.Configuration.Name} — {game.InstallPath.FullName}"
-                    : null;
-            });
-        });
-
-    private IModProfile CreateDefaultProfile(DirectoryInfo profileFolder)
+    public Task InitializeAsync()
     {
-        var profile = new ModProfile(
-            "Default",
-            new ModList([], []),
-            new Version(1, 0),
-            profileFolder
-        );
-        profile.InitializeDisk();
-        _profileSerializer.Save(profile);
-        return profile;
-    }
-
-    private void LoadProfile(string name)
-    {
-        var profileFolder = new DirectoryInfo(Path.Join(_paths.ProfilesFolder.FullName, name));
-        var profile = _profileSerializer.Load(profileFolder);
-        NormalizePriorities(profile);
-        ActiveProfile = new ProfileViewModel(profile);
-        Model = BuildModel(profile.ModList);
-    }
-
-    private static void NormalizePriorities(IModProfile profile)
-    {
-        var modList = profile.ModList;
-        ModOrderSync.ApplyOrder(
-            modList.LooseMods.ToList(),
-            modList.ModGroups.ToList(),
-            modList.ModGroups.Select(group => (IReadOnlyList<ILibraryMod>)group.ToList()).ToList(),
-            modList
-        );
-    }
-
-    private void RefreshProfileNames()
-    {
-        ProfileNames.Clear();
-        var profilesRoot = _paths.ProfilesFolder;
-        profilesRoot.Refresh();
-        if (!profilesRoot.Exists)
-        {
-            return;
-        }
-        foreach (
-            var dir in profilesRoot
-                .EnumerateDirectories()
-                .Where(dir => File.Exists(Path.Join(dir.FullName, ModProfileSerializer.FileName)))
-                .OrderBy(dir => dir.Name, StringComparer.OrdinalIgnoreCase)
-        )
-        {
-            ProfileNames.Add(dir.Name);
-        }
-    }
-
-    private void SyncSelectedProfile(string? name)
-    {
-        _suppressProfileSwitch = true;
-        try
-        {
-            SelectedProfileName = name;
-        }
-        finally
-        {
-            _suppressProfileSwitch = false;
-        }
-    }
-
-    public void SaveActiveProfile()
-    {
-        if (ActiveProfile is not null)
-        {
-            _profileSerializer.Save(ActiveProfile.Model);
-        }
+        Model = BuildModel(_profile.ModList);
+        return Task.CompletedTask;
     }
 
     private Task CreateEmptyMod() =>
@@ -317,7 +194,7 @@ public sealed class ModListViewModel : ViewModelBase
                     "1.0.0",
                     [],
                     "",
-                    (uint)(ActiveProfile!.Model.ModList.Count + 1),
+                    (uint)(_profile.ModList.Count + 1),
                     false
                 ),
                 folder,
@@ -328,8 +205,8 @@ public sealed class ModListViewModel : ViewModelBase
 
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
-                ActiveProfile!.AddLooseMod(mod);
-                _profileSerializer.Save(ActiveProfile.Model);
+                _profile.ModList.Add(mod);
+                _profileSerializer.Save(_profile);
                 var vm = new ModEntryNodeViewModel(mod);
                 int insertAt = _roots!.TakeWhile(n => n is ModEntryNodeViewModel).Count();
                 _roots!.Insert(insertAt, vm);
@@ -343,13 +220,13 @@ public sealed class ModListViewModel : ViewModelBase
         var baseName = "New Group";
         var name = baseName;
         var suffix = 2;
-        while (ActiveProfile!.Model.ModList.ModGroups.Any(group => group.Name == name))
+        while (_profile.ModList.ModGroups.Any(group => group.Name == name))
         {
             name = $"{baseName} {suffix++}";
         }
         var group = new ModGroup(name, [], RandomHeaderColor());
-        ActiveProfile.AddGroup(group);
-        _profileSerializer.Save(ActiveProfile.Model);
+        _profile.ModList.ModGroups.Add(group);
+        _profileSerializer.Save(_profile);
         var groupVm = new GroupHeaderNodeViewModel(group);
         _roots!.Add(groupVm);
         HookGroupNode(groupVm);
@@ -628,12 +505,12 @@ public sealed class ModListViewModel : ViewModelBase
 
     private async Task SyncDomainFromTreeAsync()
     {
-        if (ActiveProfile is null || _roots is null)
+        if (_roots is null)
         {
             return;
         }
 
-        var profile = ActiveProfile.Model;
+        var profile = _profile;
         var roots = _roots;
         var looseMods = roots.OfType<ModEntryNodeViewModel>().Select(node => node.Model).ToList();
         var groupNodes = roots.OfType<GroupHeaderNodeViewModel>().ToList();
@@ -677,7 +554,7 @@ public sealed class ModListViewModel : ViewModelBase
 
     private async Task RemoveModNodeAsync(ModEntryNodeViewModel node)
     {
-        if (ActiveProfile is null || _roots is null)
+        if (_roots is null)
         {
             return;
         }
@@ -704,7 +581,7 @@ public sealed class ModListViewModel : ViewModelBase
 
     private async Task RemoveSingleModNodeAsync(ModEntryNodeViewModel node)
     {
-        await _editor.RemoveModAsync(ActiveProfile!.Model, node.Model);
+        await _editor.RemoveModAsync(_profile, node.Model);
         if (_roots!.Remove(node))
         {
             return;
@@ -720,13 +597,13 @@ public sealed class ModListViewModel : ViewModelBase
 
     private async Task DissolveGroupNodeAsync(GroupHeaderNodeViewModel node)
     {
-        if (ActiveProfile is null || _roots is null)
+        if (_roots is null)
         {
             return;
         }
         try
         {
-            await _editor.DissolveGroupAsync(ActiveProfile.Model, node.Group);
+            await _editor.DissolveGroupAsync(_profile, node.Group);
             var index = _roots.IndexOf(node);
             if (index < 0)
             {

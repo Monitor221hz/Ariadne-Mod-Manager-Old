@@ -108,7 +108,7 @@ public class SkyrimSELoadOrderBuilderTests : IDisposable
 
         var builder = new SkyrimSELoadOrderBuilder();
 
-        var results = builder.Fetch(_game, [modA, modB]).ToList();
+        var results = builder.Fetch(_game, new ModList([modA, modB], [])).ToList();
 
         Assert.Equal(2, results.Count);
         var baseInfo = Assert.Single(results, r => ((IModKeyed)r).ModKey.FileName == "Base.esm");
@@ -132,7 +132,7 @@ public class SkyrimSELoadOrderBuilderTests : IDisposable
 
         var builder = new SkyrimSELoadOrderBuilder();
 
-        var results = builder.Fetch(_game, [modA, modB]).ToList();
+        var results = builder.Fetch(_game, new ModList([modA, modB], [])).ToList();
 
         var baseInfo = results.Single(r => ((IModKeyed)r).ModKey == baseKey);
         var depInfo = results.Single(r => ((IModKeyed)r).ModKey.FileName == "Dependent.esp");
@@ -151,7 +151,7 @@ public class SkyrimSELoadOrderBuilderTests : IDisposable
 
         var builder = new SkyrimSELoadOrderBuilder();
 
-        var results = builder.Fetch(_game, [modB]).ToList();
+        var results = builder.Fetch(_game, new ModList([modB], [])).ToList();
 
         var depInfo = Assert.Single(results);
         Assert.Empty(depInfo.Dependencies);
@@ -166,7 +166,7 @@ public class SkyrimSELoadOrderBuilderTests : IDisposable
 
         var builder = new SkyrimSELoadOrderBuilder();
 
-        Assert.Empty(builder.Fetch(_game, [mod]));
+        Assert.Empty(builder.Fetch(_game, new ModList([mod], [])));
     }
 
     [SkippableFact]
@@ -188,7 +188,7 @@ public class SkyrimSELoadOrderBuilderTests : IDisposable
         var inactiveFile = WritePlugin(dirB, "Inactive.esp");
 
         var builder = new SkyrimSELoadOrderBuilder();
-        var infos = builder.Fetch(_game, [modA, modB]).ToList();
+        var infos = builder.Fetch(_game, new ModList([modA, modB], [])).ToList();
         infos.Single(i => ((IModKeyed)i).ModKey == activeKey).Active = true;
         infos.Single(i => ((IModKeyed)i).ModKey == inactiveKey).Active = false;
 
@@ -233,6 +233,7 @@ public class SkyrimSELoadOrderBuilderTests : IDisposable
 
     private sealed class LoadOrderInfoStub(ILibraryMod origin) : ILoadOrderInfo
     {
+        public string Name => origin.Name;
         public IModInfo Origin { get; } = origin.Info;
         public IReadOnlyList<FileInfo> Artifacts { get; } = [];
         public IReadOnlyList<ILoadOrderInfo> Dependencies { get; } = [];

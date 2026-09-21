@@ -10,6 +10,26 @@ namespace Daedalus.ModManager.Bethesda;
 
 public class SkyrimSELoadOrderBuilder : ILoadOrderBuilder
 {
+    private const string PLUGINS_TXT = "plugins.txt";
+
+    private static void WriteLoadOrder(
+        IReadOnlyList<ILoadOrderInfo> loadOrderInfos,
+        string pluginsTxtPath
+    )
+    {
+        var listings = new List<LoadOrderListing>();
+        foreach (var lo in loadOrderInfos)
+        {
+            if (lo is not BethesdaPluginInfo pluginInfo)
+            {
+                continue;
+            }
+            listings.Add(new LoadOrderListing(pluginInfo.ModKey, lo.Active));
+        }
+        var loadOrder = LoadOrder.Import<ISkyrimModGetter>(listings, GameRelease.SkyrimSE);
+        LoadOrder.Write(pluginsTxtPath, GameRelease.SkyrimSE, loadOrder, false);
+    }
+
     public void Deploy(
         IInstalledGame game,
         IModDeploymentMethod deploymentMethod,
@@ -21,21 +41,11 @@ public class SkyrimSELoadOrderBuilder : ILoadOrderBuilder
         {
             return;
         }
-        var pluginsTxtPath = Path.Combine(appData.FullName, "plugins.txt");
-        var listings = new List<LoadOrderListing>();
-        foreach (var lo in loadOrderInfos)
-        {
-            if (lo is not BethesdaPluginInfo pluginInfo)
-            {
-                continue;
-            }
-            listings.Add(new LoadOrderListing(pluginInfo.ModKey, lo.Active));
-        }
-        var loadOrder = LoadOrder.Import<ISkyrimModGetter>(listings, GameRelease.SkyrimSE);
-        LoadOrder.Write(pluginsTxtPath, GameRelease.SkyrimSE, loadOrder, true);
+        var pluginsTxtPath = Path.Combine(appData.FullName, PLUGINS_TXT);
+        WriteLoadOrder(loadOrderInfos, pluginsTxtPath);
     }
 
-    public IEnumerable<ILoadOrderInfo> Fetch(IInstalledGame game, IReadOnlyList<ILibraryMod> mods)
+    public IEnumerable<ILoadOrderInfo> Fetch(IInstalledGame game, IModList mods)
     {
         Dictionary<ModKey, BethesdaPluginInfoStub> _depLookupMap = new();
         foreach (var mod in mods)
@@ -69,7 +79,7 @@ public class SkyrimSELoadOrderBuilder : ILoadOrderBuilder
                         false
                     ),
                 };
-                _depLookupMap.Add(modPlugin.ModKey, stub);
+                _depLookupMap.TryAdd(modPlugin.ModKey, stub);
             }
         }
         foreach (var stub in _depLookupMap.Values)
@@ -91,6 +101,53 @@ public class SkyrimSELoadOrderBuilder : ILoadOrderBuilder
             }
             stub.pluginInfo.Dependencies = dependencies;
             yield return stub.pluginInfo;
+        }
+    }
+
+    public void Save(IModProfile currentProfile, IReadOnlyList<ILoadOrderInfo> loadOrderInfos)
+    {
+        var filePath = Path.Join(currentProfile.ProfileFolder.FullName, PLUGINS_TXT);
+        WriteLoadOrder(loadOrderInfos, filePath);
+    }
+
+    public IEnumerable<ILoadOrderInfo> Sort(
+        IModProfile currentProfile,
+        IEnumerable<ILoadOrderInfo> loadOrderInfos
+    )
+    {
+        var filePath = Path.Join(currentProfile.ProfileFolder.FullName, PLUGINS_TXT);
+        if (!File.Exists(filePath))
+        {
+            foreach (var info in loadOrderInfos)
+            {
+                info.Active = true;
+                yield return info;
+            }
+            yield break;
+        }
+        string[] pluginLines = File.ReadAllLines(filePath);
+        Dictionary<ModKey, ILoadOrderInfo> pluginLookup = new();
+        foreach (var plugin in loadOrderInfos)
+        {
+            if (plugin is not BethesdaPluginInfo bethPlugin)
+            {
+                continue;
+            }
+            pluginLookup.Add(bethPlugin.ModKey, plugin);
+        }
+        foreach (var pluginLine in pluginLines)
+        {
+            bool active = pluginLine.StartsWith("*");
+            var pluginName = active ? pluginLine[1..] : pluginLine;
+            if (!ModKey.TryFromNameAndExtension(pluginName, out var modKey))
+            {
+                continue;
+            }
+            if (pluginLookup.TryGetValue(modKey, out var pluginInfo))
+            {
+                pluginInfo.Active = active;
+                yield return pluginInfo;
+            }
         }
     }
 }

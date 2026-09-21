@@ -15,7 +15,7 @@ public class ModManagerPaths : IModManagerPaths
     public DirectoryInfo AssemblyFolder { get; }
 
     public DirectoryInfo InstanceFolder =>
-        _instances.CurrentFolder
+        _instances.Current?.Folder
         ?? throw new InvalidOperationException(
             "No active instance. Create or select an instance first."
         );

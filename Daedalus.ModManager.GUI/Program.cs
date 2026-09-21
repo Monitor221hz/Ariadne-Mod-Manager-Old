@@ -15,6 +15,7 @@ sealed class Program
     {
         var services = new ServiceCollection();
         services.AddModManager(typeof(SkyrimSELoadOrderBuilder).Assembly);
+        services.AddBethesdaModManager();
         services.AddSingleton<ViewModels.MainViewModel>();
         App.Services = services.BuildServiceProvider();
 

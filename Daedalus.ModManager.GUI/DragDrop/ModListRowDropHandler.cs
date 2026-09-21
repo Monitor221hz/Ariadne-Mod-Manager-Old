@@ -96,9 +96,9 @@ public sealed class ModListRowDropHandler(
         targetGroup.IsExpanded = true;
         var model = getModel();
         var node = model?.FindNode(targetGroup);
-        if (node is { } typed)
+        if (node != null)
         {
-            model!.Refresh(typed);
+            model!.Refresh(node);
         }
         return true;
     }
@@ -110,8 +110,9 @@ public sealed class ModListRowDropHandler(
         var result = IsGroupInsideDrop(args)
             ? ExecuteFallback(args)
             : _reorder.Execute(args) || ExecuteFallback(args);
-        if (result && scrollViewer is not null && offset is { } restoreTo)
+        if (result && scrollViewer is not null && offset.HasValue)
         {
+            var restoreTo = offset.Value;
             Avalonia.Threading.Dispatcher.UIThread.Post(
                 () => scrollViewer.Offset = restoreTo,
                 Avalonia.Threading.DispatcherPriority.Loaded

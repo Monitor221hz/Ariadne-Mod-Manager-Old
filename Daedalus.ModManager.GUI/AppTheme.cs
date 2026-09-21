@@ -53,7 +53,8 @@ public static class AppTheme
         }
         Current = target;
 
-        if (Avalonia.Application.Current is { } app)
+        var app = Avalonia.Application.Current;
+        if (app != null)
         {
             AssignPalette(app.Resources, palette);
             app.RequestedThemeVariant = target.Variant;
