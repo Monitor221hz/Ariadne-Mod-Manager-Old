@@ -3,7 +3,6 @@
              xmlns:vm="using:Daedalus.ModManager.GUI.ViewModels"
              xmlns:views="using:Daedalus.ModManager.GUI.Views"
              xmlns:hier="using:Avalonia.Controls.DataGridHierarchical"
-             xmlns:fi="using:FluentIcons.Avalonia"
              x:Class="Daedalus.ModManager.GUI.Views.ModListView"
              x:DataType="vm:ModListViewModel">
 
@@ -31,29 +30,6 @@
 
     <Grid>
         <DockPanel>
-            <Border DockPanel.Dock="Top"
-                    Background="{DynamicResource DaedalusToolbarBackground}"
-                    BorderBrush="{DynamicResource DaedalusToolbarBorder}"
-                    BorderThickness="0,0,0,1"
-                    Padding="12,8">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Button ToolTip.Tip="Create">
-                        <Button.Flyout>
-                            <MenuFlyout Placement="BottomEdgeAlignedLeft">
-                                <MenuItem Header="Create Empty Mod" Command="{Binding CreateModCommand}" />
-                                <MenuItem Header="Create New Group" Command="{Binding CreateGroupCommand}" />
-                            </MenuFlyout>
-                        </Button.Flyout>
-                        <fi:SymbolIcon FontSize="16" Symbol="Add" />
-                    </Button>
-                    <Button IsVisible="{Binding SortActive}"
-                            Command="{Binding ClearSortCommand}"
-                            ToolTip.Tip="Column sorting hides the drag &amp; drop order; clear to restore it">
-                        <TextBlock Text="Clear Sort" />
-                    </Button>
-                </StackPanel>
-            </Border>
-
             <DataGrid x:Name="ModsGrid" HierarchicalModel="{Binding Model}"
                       HierarchicalRowsEnabled="True"
                       RowHeight="{DynamicResource DaedalusRowHeight}"
@@ -103,6 +79,17 @@
                 </DataGrid.Columns>
             </DataGrid>
         </DockPanel>
+
+        <Button IsVisible="{Binding SortActive}"
+                Command="{Binding ClearSortCommand}"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Bottom"
+                Margin="0,0,16,16"
+                Padding="12,6"
+                CornerRadius="16"
+                ToolTip.Tip="Column sorting hides the drag &amp; drop order; clear to restore it">
+            <TextBlock Text="Clear Sort" />
+        </Button>
 
         <Border x:Name="RemoveOverlay"
                 IsVisible="False"

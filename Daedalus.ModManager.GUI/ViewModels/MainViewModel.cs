@@ -87,6 +87,10 @@ public class MainViewModel : ViewModelBase
     public ReactiveCommand<Unit, Unit> ExitCommand { get; }
     public ReactiveCommand<string, Unit> SwitchInstanceCommand { get; }
     public ReactiveCommand<string, Unit> AskDeleteCommand { get; }
+    public ReactiveCommand<Unit, Unit> CreateModCommand { get; }
+    public ReactiveCommand<Unit, Unit> CreateGroupCommand { get; }
+
+    private ModListViewModel? ActiveModList => (CurrentViewModel as WorkspaceViewModel)?.ModList;
 
     public MainViewModel()
     {
@@ -94,6 +98,8 @@ public class MainViewModel : ViewModelBase
         ExitCommand = ReactiveCommand.Create(Quit);
         SwitchInstanceCommand = ReactiveCommand.Create<string>(_ => { });
         AskDeleteCommand = ReactiveCommand.Create<string>(_ => { });
+        CreateModCommand = ReactiveCommand.Create(() => { });
+        CreateGroupCommand = ReactiveCommand.Create(() => { });
     }
 
     public MainViewModel(
@@ -131,6 +137,17 @@ public class MainViewModel : ViewModelBase
         ExitCommand = ReactiveCommand.Create(Quit);
         SwitchInstanceCommand = ReactiveCommand.Create<string>(SwitchInstance);
         AskDeleteCommand = ReactiveCommand.CreateFromTask<string>(RemoveInstanceAsync);
+
+        var workspaceActive = this.WhenAnyValue(x => x.CurrentViewModel)
+            .Select(viewModel => viewModel is WorkspaceViewModel);
+        CreateModCommand = ReactiveCommand.CreateFromObservable(
+            () => ActiveModList!.CreateModCommand.Execute(),
+            workspaceActive
+        );
+        CreateGroupCommand = ReactiveCommand.CreateFromObservable(
+            () => ActiveModList!.CreateGroupCommand.Execute(),
+            workspaceActive
+        );
     }
 
     private async Task InitializeAsync()

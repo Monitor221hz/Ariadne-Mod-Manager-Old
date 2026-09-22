@@ -12,23 +12,35 @@
         Width="1000" Height="640" MinWidth="720" MinHeight="480">
 
     <Design.DataContext>
-        <!-- This only sets the DataContext for the previewer in an IDE,
-        to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
         <vm:MainViewModel />
     </Design.DataContext>
+
+    <Window.KeyBindings>
+        <KeyBinding Gesture="Ctrl+N" Command="{Binding CreateModCommand}" />
+        <KeyBinding Gesture="Ctrl+Shift+N" Command="{Binding CreateGroupCommand}" />
+    </Window.KeyBindings>
 
     <Grid>
         <DockPanel>
             <Menu DockPanel.Dock="Top"
                   BorderBrush="{DynamicResource DaedalusToolbarBorder}"
-                  BorderThickness="0,0,0,1">
+                  BorderThickness="0,0,0,1" FontSize="{DynamicResource UiFontSize}">
                 <MenuItem Header="_File">
                     <MenuItem x:Name="SwitchInstanceItem" Header="_Switch Instance" />
                     <MenuItem x:Name="RemoveInstanceItem" Header="_Remove Instance…" />
                     <Separator />
+                    <MenuItem x:Name="ThemeItem" Header="_Theme" />
+                    <Separator />
                     <MenuItem Header="E_xit" Command="{Binding ExitCommand}" />
                 </MenuItem>
-                <MenuItem x:Name="ThemeItem" Header="_Theme" />
+                <MenuItem Header="_Mods">
+                    <MenuItem Header="New Mod"
+                              Command="{Binding CreateModCommand}"
+                              InputGesture="Ctrl+N" />
+                    <MenuItem Header="New Group"
+                              Command="{Binding CreateGroupCommand}"
+                              InputGesture="Ctrl+Shift+N" />
+                </MenuItem>
             </Menu>
 
             <Border DockPanel.Dock="Top"
