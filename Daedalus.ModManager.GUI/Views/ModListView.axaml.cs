@@ -82,36 +82,47 @@ public partial class ModListView : UserControl
         {
             return;
         }
-        SyncSelectedNodes(viewModel);
+        SyncSelectedNodes(
+            viewModel,
+            UnwrapRows(e.RemovedItems),
+            UnwrapRows(e.AddedItems)
+        );
     }
 
-    private void SyncSelectedNodes(ModListViewModel viewModel)
+    private static List<TreeNodeViewModel> UnwrapRows(System.Collections.IList items)
     {
-        var selection = ModsGrid.Selection;
-        if (selection == null)
+        var rows = new List<TreeNodeViewModel>(items.Count);
+        foreach (var item in items)
         {
-            return;
-        }
-        var list = new List<TreeNodeViewModel>();
-        foreach (var item in selection.SelectedItems)
-        {
-            var node = item switch
+            var row = item switch
             {
                 TreeNodeViewModel direct => direct,
                 HierarchicalNode { Item: TreeNodeViewModel wrapped } => wrapped,
                 _ => null,
             };
-            if (node is not null)
+            if (row is not null)
             {
-                list.Add(node);
+                rows.Add(row);
             }
         }
-        var selected = viewModel.SelectedNodes;
-        var same = list.Count == selected.Count && list.All(selected.Contains);
+        return rows;
+    }
+
+    private void SyncSelectedNodes(
+        ModListViewModel viewModel,
+        List<TreeNodeViewModel> removed,
+        List<TreeNodeViewModel> added
+    )
+    {
+        var list = viewModel.SelectedNodes.Except(removed).Concat(added).Distinct().ToList();
+        var same =
+            list.Count == viewModel.SelectedNodes.Count
+            && list.All(viewModel.SelectedNodes.Contains);
         if (same)
         {
             return;
         }
+        var selected = viewModel.SelectedNodes;
         selected.Clear();
         if (list.Count > 0)
         {
