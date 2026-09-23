@@ -107,8 +107,8 @@ public class GameCatalogTests : IDisposable
         Assert.Equal(2, platform.Executables.Count);
         Assert.Equal("SkyrimSELauncher.exe", platform.Executables[0].File.Name);
 
-        Assert.True(game.ContainsKey("AppData"));
-        var appData = game["AppData"];
+        Assert.True(game.ContainsKey("_appData"));
+        var appData = game["_appData"];
         Assert.True(Path.IsPathFullyQualified(appData.DirectoryPath));
 
         var data = Assert.Single(game.InstallTargets);

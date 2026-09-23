@@ -31,6 +31,7 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
     private readonly ILibraryModSerializer _modSerializer;
     private readonly IModManagerPaths _paths;
     private readonly IModProfileEditor _editor;
+    private readonly IInstanceService _instanceService;
     private CancellationTokenSource? _loadContentCts;
 
     private HierarchicalModel<TreeNodeViewModel>? _model;
@@ -40,6 +41,9 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
     private CompositeDisposable _syncHooks = new();
     private CompositeDisposable _nodeActionHooks = new();
     private readonly SemaphoreSlim _syncGate = new(1, 1);
+
+    private readonly Subject<Unit> _domainSynchronized = new();
+    public IObservable<Unit> DomainSynchronized => _domainSynchronized;
 
     public ReactiveCommand<Unit, Unit> CreateModCommand { get; }
     public ReactiveCommand<Unit, Unit> CreateGroupCommand { get; }
@@ -84,7 +88,8 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
         IModProfileSerializer profileSerializer,
         ILibraryModSerializer modSerializer,
         IModManagerPaths paths,
-        IModProfileEditor editor
+        IModProfileEditor editor,
+        IInstanceService instanceService
     )
     {
         TreeNodeViewModel
@@ -101,6 +106,7 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
         _modSerializer = modSerializer;
         _paths = paths;
         _editor = editor;
+        _instanceService = instanceService;
 
         CreateModCommand = ReactiveCommand.CreateFromTask(CreateEmptyMod);
         CreateGroupCommand = ReactiveCommand.Create(CreateGroup);
@@ -568,6 +574,7 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
                 _syncGate.Release();
             }
             RefreshPriorities(roots);
+            _domainSynchronized.OnNext(Unit.Default);
         }
         catch (Exception ex)
         {

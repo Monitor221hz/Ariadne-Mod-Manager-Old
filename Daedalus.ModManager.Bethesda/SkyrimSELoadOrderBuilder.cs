@@ -79,7 +79,7 @@ public class SkyrimSELoadOrderBuilder : ILoadOrderBuilder
                         false
                     ),
                 };
-                _depLookupMap.TryAdd(modPlugin.ModKey, stub);
+                _depLookupMap[modPlugin.ModKey] = stub;
             }
         }
         foreach (var stub in _depLookupMap.Values)

@@ -16,10 +16,11 @@ public sealed class NodeChevronIconConverter : IMultiValueConverter
         CultureInfo culture
     )
     {
-        if (values.Count != 2 || values[1] is not bool isChecked)
+        if (values.Count != 2)
         {
             return null;
         }
+        bool isChecked = values[1] is bool isCheckedValue && isCheckedValue;
         var node = values[0] is HierarchicalNode wrapper ? wrapper.Item : values[0];
         return (node, isChecked) switch
         {
@@ -31,6 +32,11 @@ public sealed class NodeChevronIconConverter : IMultiValueConverter
             (DirectoryNodeViewModel, false) => Icon.Folder,
             (ArchiveLeafNodeViewModel, true) => Icon.FolderOpen,
             (ArchiveLeafNodeViewModel, false) => Icon.FolderZip,
+            (DeployedRowViewModel { IsArchive: true }, true) => Icon.FolderOpen,
+            (DeployedRowViewModel { IsArchive: true }, false) => Icon.FolderZip,
+            (DeployedRowViewModel { IsDirectory: true }, true) => Icon.FolderOpen,
+            (DeployedRowViewModel { IsDirectory: true }, false) => Icon.Folder,
+            (DeployedRowViewModel, _) => Icon.Document,
             _ => null,
         };
     }

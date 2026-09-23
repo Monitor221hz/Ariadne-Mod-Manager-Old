@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Reactive;
+using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.Controls.DataGridDragDrop;
@@ -50,7 +51,7 @@ public sealed class LoadOrderViewModel : ViewModelBase, IWorkspaceTab, IDisposab
         _instanceService = instanceService;
         var orderSubscription = _loadOrder
             .Stream.Throttle(SyncDelay)
-            .ObserveOn(AvaloniaScheduler.Instance)
+            .ObserveOn(TaskPoolScheduler.Default)
             .Subscribe(signal => _ = SyncLoadOrderAsync());
 
         _syncHooks.Add(orderSubscription);
@@ -64,7 +65,7 @@ public sealed class LoadOrderViewModel : ViewModelBase, IWorkspaceTab, IDisposab
         var activeSubscription = vm.WhenAnyValue(v => v.Active)
             .Skip(1)
             .Throttle(SyncDelay)
-            .ObserveOn(AvaloniaScheduler.Instance)
+            .ObserveOn(TaskPoolScheduler.Default)
             .Subscribe(signal => _ = SyncLoadOrderAsync());
         _syncHooks.Add(activeSubscription);
     }

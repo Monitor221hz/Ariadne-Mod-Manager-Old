@@ -30,6 +30,7 @@ public sealed class WorkspaceViewModel : ViewModelBase, IDisposable
     private readonly IModProfile _profile;
     private readonly IDisposable[] _tabLifetime;
     private readonly LoadOrderViewModel _loadOrderTab;
+    private readonly DeployedViewModel _deployedTab;
     private readonly CompositeDisposable _subscriptions = new();
     private IReadOnlyDictionary<
         IModInfo,
@@ -74,9 +75,18 @@ public sealed class WorkspaceViewModel : ViewModelBase, IDisposable
     )
     {
         _profile = profile;
-        ModList = new ModListViewModel(profile, profileSerializer, modSerializer, paths, editor);
+        ModList = new ModListViewModel(
+            profile,
+            profileSerializer,
+            modSerializer,
+            paths,
+            editor,
+            instances
+        );
         _loadOrderTab = new LoadOrderViewModel(profile, loadOrderBuilder, instances);
+        _deployedTab = new DeployedViewModel(profile, instances);
         SidePanelTabs.Add(_loadOrderTab);
+        SidePanelTabs.Add(_deployedTab);
         _tabLifetime = [_loadOrderTab];
 
         ModList.SelectedNodes.CollectionChanged += OnModSelectionChanged;
@@ -85,6 +95,7 @@ public sealed class WorkspaceViewModel : ViewModelBase, IDisposable
         _subscriptions.Add(
             _loadOrderTab.LoadOrder.Stream.Subscribe(_ => _pluginRowsByOrigin = null)
         );
+        _subscriptions.Add(ModList.DomainSynchronized.Subscribe(_ => RefreshDeployed()));
         _subscriptions.Add(
             this.WhenAnyValue(x => x.SelectedMod)
                 .Select(mod => Observable.FromAsync(() => ComputeVerdictsAsync(mod)))
@@ -179,6 +190,11 @@ public sealed class WorkspaceViewModel : ViewModelBase, IDisposable
             return false;
         }
         return new HashSet<T>(current, ReferenceEqualityComparer.Instance).SetEquals(targets);
+    }
+
+    private void RefreshDeployed()
+    {
+        _ = _deployedTab.RefreshAsync();
     }
 
     private void PropagateSelection(Action apply)

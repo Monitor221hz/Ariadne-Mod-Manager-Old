@@ -10,6 +10,7 @@ public enum ModEntryKind
 public sealed record class ModFileEntry(
     string Name,
     ModEntryKind Kind,
+    IModInfo Origin,
     string AbsolutePath,
     long Size,
     DateTimeOffset LastModifiedUtc

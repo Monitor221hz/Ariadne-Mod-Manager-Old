@@ -21,13 +21,13 @@
     "GOG": 0
   },
   "Root": {
-    "Key": "Root",
+    "Key": "_root",
     "DirectoryPath": "",
     "Patterns": []
   },
   "Deployments": [
     {
-      "Key": "AppData",
+      "Key": "_appData",
       "DirectoryPath": "%LOCALAPPDATA%\\Skyrim Special Edition",
       "Patterns": []
     }
@@ -36,8 +36,14 @@
     {
       "Key": "Data",
       "DirectoryPath": "Data",
-      "Patterns": [],
-      "BasedOn": "Root"
+      "Patterns": ["Data/*", "*.esp", "*.esm", "*.esl", "*.bsa"],
+      "BasedOn": "_root"
+    }, 
+    {
+      "Key": "Root",
+      "DirectoryPath":"",
+      "Patterns":["skse64*.dll", "skse64*loader.exe", "skse64*loader.dll"],
+      "BasedOn":"_root"
     }
   ]
 }

@@ -16,6 +16,7 @@ public sealed class NodeChevronIconSizeConverter : IValueConverter
             GroupHeaderNodeViewModel => 16.0,
             ModEntryNodeViewModel => 16.0,
             DirectoryNodeViewModel => 20.0,
+            DeployedRowViewModel deployedRow => deployedRow.IsDirectory ? 20.0 : 16.0,
             _ => 20.0,
         };
     }

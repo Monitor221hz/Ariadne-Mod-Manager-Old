@@ -53,9 +53,11 @@ public class NodeMenuItemsTests
     [Fact]
     public void File_Nodes_Get_Open()
     {
+        var mod = new FakeMod("M");
         var entry = new ModFileEntry(
             "file.txt",
             ModEntryKind.File,
+            mod.Info,
             "C:/tmp/file.txt",
             1,
             DateTimeOffset.Now

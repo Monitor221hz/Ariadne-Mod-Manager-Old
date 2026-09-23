@@ -10,21 +10,44 @@ namespace Daedalus.ModManager.GUI.Tests;
 
 public class FileIconConverterTests
 {
+    private static readonly IModInfo Origin = new ModInfo(
+        0,
+        SourceType.Local,
+        "1.0",
+        [],
+        "",
+        0,
+        false
+    );
+
     private static FileLeafNodeViewModel FileNode(string name)
     {
-        var entry = new ModFileEntry(name, ModEntryKind.File, $"/tmp/{name}", 1, DateTimeOffset.Now);
+        var entry = new ModFileEntry(
+            name,
+            ModEntryKind.File,
+            Origin,
+            $"/tmp/{name}",
+            1,
+            DateTimeOffset.Now
+        );
         return new FileLeafNodeViewModel(
-            new Daedalus.VFS.VirtualNode<ModFileEntry>(name, Daedalus.VFS.NodeFlags.None, null, entry)
+            new Daedalus.VFS.VirtualNode<ModFileEntry>(
+                name,
+                Daedalus.VFS.NodeFlags.None,
+                null,
+                entry
+            )
         );
     }
 
     private static Icon IconFor(FileLeafNodeViewModel node) =>
-        (Icon)new FileIconConverter().Convert(
-            node,
-            typeof(Icon),
-            null,
-            CultureInfo.InvariantCulture
-        )!;
+        (Icon)
+            new FileIconConverter().Convert(
+                node,
+                typeof(Icon),
+                null,
+                CultureInfo.InvariantCulture
+            )!;
 
     [Theory]
     [InlineData("settings.json", Icon.DocumentText)]
@@ -41,7 +64,8 @@ public class FileIconConverterTests
     [InlineData("wine.wav", Icon.MusicNote1)]
     [InlineData("script.pex", Icon.Code)]
     [InlineData("unknown.xyz", Icon.Document)]
-    public void Extension_Map_(string name, Icon expected) => Assert.Equal(expected, IconFor(FileNode(name)));
+    public void Extension_Map_(string name, Icon expected) =>
+        Assert.Equal(expected, IconFor(FileNode(name)));
 
     [Fact]
     public void Archive_Inner_File_Uses_Inner_Name_Extension()
@@ -49,6 +73,7 @@ public class FileIconConverterTests
         var entry = new ModFileEntry(
             "meshes/sword.nif",
             ModEntryKind.File,
+            Origin,
             "/tmp/pack.zip",
             1,
             DateTimeOffset.Now

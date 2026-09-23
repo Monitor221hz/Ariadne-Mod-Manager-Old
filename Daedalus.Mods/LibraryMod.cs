@@ -77,12 +77,16 @@ public sealed class LibraryMod : ILibraryMod
         );
         if (Directory.Exists)
         {
-            AddChildren(root, Directory);
+            AddChildren(Info, root, Directory);
         }
         return root;
     }
 
-    private void AddChildren(VirtualNode<ModFileEntry> node, DirectoryInfo directory)
+    private void AddChildren(
+        IModInfo modInfo,
+        VirtualNode<ModFileEntry> node,
+        DirectoryInfo directory
+    )
     {
         foreach (
             var entry in directory.EnumerateFileSystemInfos("*", SearchOption.TopDirectoryOnly)
@@ -91,7 +95,7 @@ public sealed class LibraryMod : ILibraryMod
             if (entry is DirectoryInfo subDirectory)
             {
                 var childDirectory = node.AddDirectory(subDirectory.Name);
-                AddChildren(childDirectory, subDirectory);
+                AddChildren(modInfo, childDirectory, subDirectory);
                 continue;
             }
             var file = (FileInfo)entry;
@@ -103,6 +107,7 @@ public sealed class LibraryMod : ILibraryMod
             var data = new ModFileEntry(
                 file.Name,
                 reader is not null ? ModEntryKind.Archive : ModEntryKind.File,
+                modInfo,
                 file.FullName,
                 file.Length,
                 new DateTimeOffset(file.LastWriteTimeUtc)
@@ -110,7 +115,7 @@ public sealed class LibraryMod : ILibraryMod
             var child = node.AddFile(file.Name, data, NodeFlags.None);
             if (reader is not null)
             {
-                foreach (var archiveEntry in reader.Read(file))
+                foreach (var archiveEntry in reader.Read(modInfo, file))
                 {
                     child.SetChild(archiveEntry);
                 }

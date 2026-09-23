@@ -18,18 +18,23 @@ public sealed class SharpCompressArchiveReader : IArchiveReader
 
     public IReadOnlyCollection<string> SupportedExtensions => Extensions;
 
-    public IReadOnlyList<VirtualNode<ModFileEntry>> Read(FileInfo archiveFile)
+    public IReadOnlyList<VirtualNode<ModFileEntry>> Read(IModInfo modInfo, FileInfo archiveFile)
     {
         var root = new VirtualNode<ModFileEntry>("", NodeFlags.Directory, null, default);
         using var archive = ArchiveFactory.OpenArchive(archiveFile.FullName);
         foreach (var entry in archive.Entries.Where(entry => !entry.IsDirectory))
         {
+            if (entry is null || entry.Key == null)
+            {
+                continue;
+            }
             var path = entry.Key.Replace('\\', '/');
             root.AddFile(
                 path,
                 new ModFileEntry(
                     path[(path.LastIndexOf('/') + 1)..],
                     ModEntryKind.File,
+                    modInfo,
                     path,
                     entry.Size,
                     entry.LastModifiedTime ?? DateTimeOffset.MinValue

@@ -15,9 +15,12 @@ public sealed class FileIconConverter : IValueConverter
         object? parameter,
         CultureInfo culture
     ) =>
-        value is FileLeafNodeViewModel file
-            ? ForExtension(Path.GetExtension(file.DisplayName))
-            : null;
+        value switch
+        {
+            FileLeafNodeViewModel file => ForExtension(Path.GetExtension(file.DisplayName)),
+            DeployedRowViewModel row => ForExtension(Path.GetExtension(row.Name)),
+            _ => Icon.Document,
+        };
 
     private static Icon ForExtension(string extension) =>
         extension.ToLowerInvariant() switch
