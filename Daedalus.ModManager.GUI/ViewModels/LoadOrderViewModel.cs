@@ -27,7 +27,12 @@ public sealed class LoadOrderViewModel : ViewModelBase, IWorkspaceTab, IDisposab
     public string Title => "Load Order";
     public ReactiveList<LoadOrderInfoViewModel> LoadOrder => _loadOrder;
     public IDataGridRowDropHandler DropHandler { get; }
+    public event Action<IReadOnlyList<LoadOrderInfoViewModel>>? SelectionRequested;
 
+    public void RequestSelection(IReadOnlyList<LoadOrderInfoViewModel> rows) =>
+        SelectionRequested?.Invoke(rows);
+
+    public ReactiveList<LoadOrderInfoViewModel> SelectedNodes { get; } = [];
     public string? StatusText
     {
         get => _statusText;

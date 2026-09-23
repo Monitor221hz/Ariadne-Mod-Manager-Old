@@ -3,6 +3,7 @@
              xmlns:vm="using:Daedalus.ModManager.GUI.ViewModels"
              xmlns:views="using:Daedalus.ModManager.GUI.Views"
              xmlns:hier="using:Avalonia.Controls.DataGridHierarchical"
+             xmlns:conv="using:Avalonia.Data.Converters"
              x:Class="Daedalus.ModManager.GUI.Views.ModListView"
              x:DataType="vm:ModListViewModel">
 
@@ -53,8 +54,8 @@
                                                 x:DataType="hier:HierarchicalNode"
                                                 Binding="{Binding Item}">
                         <DataGridHierarchicalColumn.CellTemplate>
-                            <DataTemplate x:DataType="vm:TreeNodeViewModel">
-                                <ContentControl Content="{Binding}" />
+                            <DataTemplate x:DataType="hier:HierarchicalNode">
+                                <ContentControl Content="{Binding Item}" />
                             </DataTemplate>
                         </DataGridHierarchicalColumn.CellTemplate>
                     </DataGridHierarchicalColumn>

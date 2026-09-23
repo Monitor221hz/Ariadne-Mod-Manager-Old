@@ -12,6 +12,7 @@ using Avalonia.Controls.DataGridDragDrop;
 using Avalonia.Controls.DataGridHierarchical;
 using Avalonia.Controls.DataGridSorting;
 using ByteSizeLib;
+using CP.Reactive.Collections;
 using Daedalus.Contracts.ModManager;
 using Daedalus.Contracts.Mods;
 using Daedalus.ModManager.Serialization;
@@ -56,7 +57,14 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
         _ = SyncDomainFromTreeAsync();
     }
 
-    public ObservableCollection<TreeNodeViewModel> SelectedNodes { get; } = [];
+    public ReactiveList<TreeNodeViewModel> SelectedNodes { get; } = [];
+
+    public IObservable<Unit> StructureChanged => _structureChanged;
+
+    public event Action<IReadOnlyList<TreeNodeViewModel>>? SelectionRequested;
+
+    public void RequestSelection(IReadOnlyList<TreeNodeViewModel> rows) =>
+        SelectionRequested?.Invoke(rows);
 
     public HierarchicalModel<TreeNodeViewModel>? Model
     {
@@ -177,13 +185,16 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
         );
     }
 
+    public IEnumerable<ModEntryNodeViewModel> EnumerateModEntries() =>
+        _roots?.SelectMany(FlattenEntries) ?? Enumerable.Empty<ModEntryNodeViewModel>();
+
     public void ApplyVerdicts(IReadOnlyDictionary<ILibraryMod, SelectedModVerdict> verdicts)
     {
         if (_roots is null)
         {
             return;
         }
-        foreach (var entry in _roots.SelectMany(FlattenEntries))
+        foreach (var entry in EnumerateModEntries())
         {
             entry.ConflictVerdict = verdicts.TryGetValue(entry.Model, out var verdict)
                 ? verdict

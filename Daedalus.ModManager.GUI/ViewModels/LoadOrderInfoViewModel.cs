@@ -20,6 +20,7 @@ public sealed class LoadOrderInfoViewModel : ViewModelBase
             this.RaiseAndSetIfChanged(ref _active, value);
         }
     }
+
     public ObservableCollection<LoadOrderInfoViewModel> Dependencies { get; } = new();
 
     public LoadOrderInfoViewModel(ILoadOrderInfo info)

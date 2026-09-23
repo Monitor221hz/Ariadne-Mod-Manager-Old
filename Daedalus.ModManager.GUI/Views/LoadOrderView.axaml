@@ -17,6 +17,7 @@
                   RowDropHandler="{Binding DropHandler}"
                   SelectionMode="Extended"
                   SelectionUnit="FullRow"
+                  SelectionChanged="LoadOrderGrid_SelectionChanged"
                   AutoGenerateColumns="False"
                   BorderThickness="0">
             <DataGrid.Columns>
@@ -35,11 +36,16 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTextColumn Header="Name"
-                                    ColumnKey="name"
-                                    Width="*"
-                                    x:DataType="vm:LoadOrderInfoViewModel"
-                                    Binding="{Binding Name}" />
+                <DataGridTemplateColumn Header="Name"
+                                        ColumnKey="name"
+                                        Width="*">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:LoadOrderInfoViewModel">
+                            <TextBlock Text="{Binding Name}"
+                                       VerticalAlignment="Center" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
             </DataGrid.Columns>
         </DataGrid>
         <Border IsVisible="{Binding StatusText, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
