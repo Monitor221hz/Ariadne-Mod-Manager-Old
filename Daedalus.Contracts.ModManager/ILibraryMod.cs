@@ -1,6 +1,6 @@
 using Daedalus.VFS;
 
-namespace Daedalus.Contracts.Mods;
+namespace Daedalus.Contracts.ModManager;
 
 public interface ILibraryMod : IEqualityComparer<ILibraryMod>, IEquatable<ILibraryMod>
 {

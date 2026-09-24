@@ -1,9 +1,8 @@
-using Daedalus.Contracts.Mods;
-using Daedalus.Mods;
-using Daedalus.Mods.Serialization;
+using Daedalus.Contracts.ModManager;
+using Daedalus.ModManager;
 using Xunit;
 
-namespace Daedalus.Mods.Tests;
+namespace Daedalus.ModManager.Tests;
 
 public sealed class LibraryModTests : IDisposable
 {

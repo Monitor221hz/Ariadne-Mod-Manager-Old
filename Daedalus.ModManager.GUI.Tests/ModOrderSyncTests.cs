@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
-using Daedalus.Contracts.Mods;
-using Daedalus.Mods;
+using Daedalus.Contracts.ModManager;
+using Daedalus.ModManager;
+using Daedalus.ModManager.GUI.ViewModels;
 using Xunit;
 
 namespace Daedalus.ModManager.GUI.Tests;

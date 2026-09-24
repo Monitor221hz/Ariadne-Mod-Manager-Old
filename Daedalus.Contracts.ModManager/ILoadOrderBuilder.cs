@@ -1,5 +1,4 @@
 using Daedalus.Contracts.Games;
-using Daedalus.Contracts.Mods;
 
 namespace Daedalus.Contracts.ModManager;
 

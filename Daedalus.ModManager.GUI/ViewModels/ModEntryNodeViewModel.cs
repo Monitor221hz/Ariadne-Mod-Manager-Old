@@ -3,7 +3,7 @@ using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using ByteSizeLib;
-using Daedalus.Contracts.Mods;
+using Daedalus.Contracts.ModManager;
 using Daedalus.VFS;
 using ReactiveUI;
 using ReactiveUI.Avalonia;

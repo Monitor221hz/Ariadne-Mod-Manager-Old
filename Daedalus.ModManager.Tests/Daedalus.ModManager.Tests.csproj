@@ -18,7 +18,6 @@
   <ItemGroup>
     <ProjectReference Include="..\Daedalus.Games\Daedalus.Games.csproj" />
     <ProjectReference Include="..\Daedalus.ModManager\Daedalus.ModManager.csproj" />
-    <ProjectReference Include="..\Daedalus.Mods\Daedalus.Mods.csproj" />
   </ItemGroup>
 
 </Project>

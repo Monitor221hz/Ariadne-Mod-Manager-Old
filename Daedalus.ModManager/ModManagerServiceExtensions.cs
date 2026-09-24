@@ -2,7 +2,6 @@ using System.Reflection;
 using Daedalus.Contracts.ModManager;
 using Daedalus.Games;
 using Daedalus.ModManager.Serialization;
-using Daedalus.Mods;
 using Daedalus.VFS;
 using Daedalus.VFS.Services;
 using Microsoft.Extensions.DependencyInjection;

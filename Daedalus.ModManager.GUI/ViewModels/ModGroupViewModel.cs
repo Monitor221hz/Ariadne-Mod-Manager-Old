@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
 using Avalonia.Media;
-using Daedalus.Contracts.Mods;
+using Daedalus.Contracts.ModManager;
 using ReactiveUI;
 
 namespace Daedalus.ModManager.GUI.ViewModels;

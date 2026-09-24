@@ -5,10 +5,8 @@ using System.Reactive.Linq;
 using Avalonia.Controls.ApplicationLifetimes;
 using Daedalus.Contracts.Games;
 using Daedalus.Contracts.ModManager;
-using Daedalus.Contracts.Mods;
 using Daedalus.Downloads;
 using Daedalus.ModManager.Serialization;
-using Daedalus.Mods;
 using ReactiveUI;
 
 namespace Daedalus.ModManager.GUI.ViewModels;

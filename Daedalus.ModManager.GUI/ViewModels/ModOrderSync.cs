@@ -1,6 +1,6 @@
-using Daedalus.Contracts.Mods;
+using Daedalus.Contracts.ModManager;
 
-namespace Daedalus.ModManager.GUI;
+namespace Daedalus.ModManager.GUI.ViewModels;
 
 public static class ModOrderSync
 {

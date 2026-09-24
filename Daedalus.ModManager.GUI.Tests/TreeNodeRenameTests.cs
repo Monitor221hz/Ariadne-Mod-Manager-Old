@@ -2,7 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
-using Daedalus.Contracts.Mods;
+using Daedalus.Contracts.ModManager;
 using Daedalus.ModManager.GUI.ViewModels;
 using Xunit;
 
@@ -13,7 +13,7 @@ public class TreeNodeRenameTests
     private sealed class FakeMod(string name) : ILibraryMod
     {
         public IModInfo Info { get; } =
-            new Mods.ModInfo(0, SourceType.Local, "1.0", [], "", 0, false);
+            new ModManager.ModInfo(0, SourceType.Local, "1.0", [], "", 0, false);
         public string Name { get; private set; } = name;
         public DirectoryInfo Directory => new(".");
         public Daedalus.VFS.VirtualNode<ModFileEntry> Content { get; } =

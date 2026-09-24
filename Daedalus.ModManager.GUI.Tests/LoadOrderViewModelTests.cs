@@ -1,9 +1,7 @@
 using System.Reactive.Linq;
 using Daedalus.Contracts.Games;
 using Daedalus.Contracts.ModManager;
-using Daedalus.Contracts.Mods;
 using Daedalus.ModManager.GUI.ViewModels;
-using Daedalus.Mods;
 using Xunit;
 
 namespace Daedalus.ModManager.GUI.Tests;

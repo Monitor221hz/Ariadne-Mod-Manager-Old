@@ -1,8 +1,8 @@
-using Daedalus.Contracts.Mods;
+using Daedalus.Contracts.ModManager;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace Daedalus.Mods.Tests;
+namespace Daedalus.ModManager.Tests;
 
 public class ModsServiceExtensionsTests
 {

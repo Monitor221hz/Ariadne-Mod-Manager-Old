@@ -1,6 +1,5 @@
-using Daedalus.Contracts.Mods;
+using Daedalus.Contracts.ModManager;
 using Daedalus.Games;
-using Daedalus.Mods;
 using Xunit;
 
 namespace Daedalus.ModManager.Tests;

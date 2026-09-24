@@ -1,6 +1,6 @@
 using System.Drawing;
 
-namespace Daedalus.Contracts.Mods;
+namespace Daedalus.Contracts.ModManager;
 
 public interface IModGroup : IList<ILibraryMod>
 {

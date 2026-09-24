@@ -1,9 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
-using Daedalus.Contracts.Mods;
-using Daedalus.Mods.Serialization;
+using Daedalus.Contracts.ModManager;
 using Daedalus.VFS;
 
-namespace Daedalus.Mods;
+namespace Daedalus.ModManager;
 
 public sealed class LibraryMod : ILibraryMod
 {

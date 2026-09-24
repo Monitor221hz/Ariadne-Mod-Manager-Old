@@ -5,7 +5,6 @@
   <Project Path="Daedalus.VFS.WinFsp/Daedalus.VFS.WinFsp.csproj" />
   <Project Path="Daedalus.VFS/Daedalus.VFS.csproj" />
   <Project Path="Daedalus.Contracts.ModManager/Daedalus.Contracts.ModManager.csproj" />
-  <Project Path="Daedalus.Contracts.Mods/Daedalus.Contracts.Mods.csproj" />
   <Project Path="Daedalus.Games/Daedalus.Games.csproj" />
   <Project Path="Daedalus.Games.Tests/Daedalus.Games.Tests.csproj" />
   <Project Path="Daedalus.ModManager.Bethesda/Daedalus.ModManager.Bethesda.csproj" />
@@ -17,8 +16,6 @@
   <Project Path="Daedalus.ModManager/Daedalus.ModManager.csproj" />
   <Project Path="Daedalus.ModManager.GUI/Daedalus.ModManager.GUI.csproj" />
   <Project Path="Daedalus.ModManager.Tests/Daedalus.ModManager.Tests.csproj" />
-  <Project Path="Daedalus.Mods/Daedalus.Mods.csproj" />
-  <Project Path="Daedalus.Mods.Tests/Daedalus.Mods.Tests.csproj" />
   <Project Path="Daedalus.VFS.Services/Daedalus.VFS.Services.csproj" />
   <Project Path="Daedalus.VFS.Tests/Daedalus.VFS.Tests.csproj" />
   <Project Path="Daedalus.VFS.WinFsp.Tests/Daedalus.VFS.WinFsp.Tests.csproj" />

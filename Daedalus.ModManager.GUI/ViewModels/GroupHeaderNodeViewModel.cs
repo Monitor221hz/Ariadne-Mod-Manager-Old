@@ -5,7 +5,7 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using Avalonia.Media;
 using ByteSizeLib;
-using Daedalus.Contracts.Mods;
+using Daedalus.Contracts.ModManager;
 using ReactiveUI;
 
 namespace Daedalus.ModManager.GUI.ViewModels;

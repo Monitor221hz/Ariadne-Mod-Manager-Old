@@ -1,4 +1,4 @@
-using Daedalus.Contracts.Mods;
+using Daedalus.Contracts.ModManager;
 using Mutagen.Bethesda.Plugins;
 
 namespace Daedalus.ModManager.Bethesda;

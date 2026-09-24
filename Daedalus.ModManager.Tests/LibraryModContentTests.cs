@@ -1,7 +1,8 @@
-using Daedalus.Contracts.Mods;
+using Daedalus.Contracts.ModManager;
+using Daedalus.ModManager;
 using Xunit;
 
-namespace Daedalus.Mods.Tests;
+namespace Daedalus.ModManager.Tests;
 
 public class LibraryModContentTests : IDisposable
 {

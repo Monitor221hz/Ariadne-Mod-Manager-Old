@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Daedalus.Contracts.Games\Daedalus.Contracts.Games.csproj" />
-    <ProjectReference Include="..\Daedalus.Contracts.Mods\Daedalus.Contracts.Mods.csproj" />
     <ProjectReference Include="..\Daedalus.VFS\Daedalus.VFS.csproj" />
   </ItemGroup>
 

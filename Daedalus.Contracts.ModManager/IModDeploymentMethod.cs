@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using Daedalus.Contracts.Games;
-using Daedalus.Contracts.Mods;
 using Daedalus.VFS;
 
 namespace Daedalus.Contracts.ModManager;

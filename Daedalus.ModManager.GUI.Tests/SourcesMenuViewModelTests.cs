@@ -10,6 +10,7 @@ using Xunit;
 
 namespace Daedalus.ModManager.GUI.Tests;
 
+[Collection("EnvironmentSensitive")]
 public class SourcesMenuViewModelTests
 {
     private sealed class FakeNxmRegistration : INxmProtocolRegistration
@@ -225,8 +226,12 @@ public class SourcesMenuViewModelTests
         }
     }
 
-    private sealed class Fixture
+    private sealed class Fixture : IDisposable
     {
+#if DEBUG
+        private readonly string? _priorDevKey;
+#endif
+
         public FakeNxmRegistration Nxm { get; } = new();
         public FakeModlRegistration Modl { get; } = new();
         public FakeSsoFactory Sso { get; } = new();
@@ -238,6 +243,15 @@ public class SourcesMenuViewModelTests
 
         public Fixture()
         {
+#if DEBUG
+            _priorDevKey = Environment.GetEnvironmentVariable(
+                SourcesMenuViewModel.DevKeyEnvironmentVariable
+            );
+            Environment.SetEnvironmentVariable(
+                SourcesMenuViewModel.DevKeyEnvironmentVariable,
+                null
+            );
+#endif
             ViewModel = new SourcesMenuViewModel(
                 Nxm,
                 Modl,
@@ -247,6 +261,16 @@ public class SourcesMenuViewModelTests
                 Launcher,
                 AccountCache
             );
+        }
+
+        public void Dispose()
+        {
+#if DEBUG
+            Environment.SetEnvironmentVariable(
+                SourcesMenuViewModel.DevKeyEnvironmentVariable,
+                _priorDevKey
+            );
+#endif
         }
     }
 
@@ -463,11 +487,10 @@ public class SourcesMenuViewModelTests
     [Fact]
     public async Task Refresh_WithEnvironmentKey_SignsInMarkingDevSource()
     {
+        var fixture = new Fixture();
         SetDevKey("dev-key");
         try
         {
-            var fixture = new Fixture();
-
             await fixture.ViewModel.RefreshCommand.Execute();
 
             Assert.True(fixture.ViewModel.SignedIn);
@@ -489,10 +512,10 @@ public class SourcesMenuViewModelTests
     [Fact]
     public async Task Refresh_WithRejectedEnvironmentKey_SignsOutWithError()
     {
+        var fixture = new Fixture();
         SetDevKey("dev-key");
         try
         {
-            var fixture = new Fixture();
             fixture.Accounts.Account = null;
 
             await fixture.ViewModel.RefreshCommand.Execute();
@@ -512,10 +535,10 @@ public class SourcesMenuViewModelTests
     [Fact]
     public async Task SignIn_WithEnvironmentKey_DoesNotStartSso()
     {
+        var fixture = new Fixture();
         SetDevKey("dev-key");
         try
         {
-            var fixture = new Fixture();
             await fixture.ViewModel.RefreshCommand.Execute();
 
             await fixture.ViewModel.SignInCommand.Execute();
@@ -536,10 +559,10 @@ public class SourcesMenuViewModelTests
     [Fact]
     public async Task SignOut_WithEnvironmentKey_RemainsSignedInWithNotice()
     {
+        var fixture = new Fixture();
         SetDevKey("dev-key");
         try
         {
-            var fixture = new Fixture();
             await fixture.ViewModel.RefreshCommand.Execute();
 
             await fixture.ViewModel.SignOutCommand.Execute();

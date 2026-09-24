@@ -1,8 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
-using Daedalus.Contracts.Mods;
+using Daedalus.Contracts.ModManager;
+using Daedalus.ModManager;
 using Xunit;
 
-namespace Daedalus.Mods.Tests;
+namespace Daedalus.ModManager.Tests;
 
 public class ModListTests
 {
@@ -11,7 +12,7 @@ public class ModListTests
         public IModInfo Info { get; } = new ModInfo(0, SourceType.Local, "1.0", [], "", 0, false);
         public string Name { get; } = name;
         public DirectoryInfo Directory => new(".");
-        public Daedalus.VFS.VirtualNode<ModFileEntry> Content { get; } =
+        public VFS.VirtualNode<ModFileEntry> Content { get; } =
             new("", Daedalus.VFS.NodeFlags.Directory, null, default);
 
         public bool Equals(ILibraryMod? x, ILibraryMod? y)

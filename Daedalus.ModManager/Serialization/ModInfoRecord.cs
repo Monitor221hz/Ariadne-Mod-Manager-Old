@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
-using Daedalus.Contracts.Mods;
+using Daedalus.Contracts.ModManager;
 
-namespace Daedalus.Mods.Serialization;
+namespace Daedalus.ModManager.Serialization;
 
 public sealed record class ModInfoRecord(
     ulong ID,

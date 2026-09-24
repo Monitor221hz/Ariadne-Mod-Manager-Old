@@ -6,7 +6,6 @@ using System.Reactive.Linq;
 using Avalonia.Controls.DataGridDragDrop;
 using CP.Reactive.Collections;
 using Daedalus.Contracts.ModManager;
-using Daedalus.Contracts.Mods;
 using Daedalus.ModManager.GUI.DragDrop;
 using ReactiveUI;
 using ReactiveUI.Avalonia;

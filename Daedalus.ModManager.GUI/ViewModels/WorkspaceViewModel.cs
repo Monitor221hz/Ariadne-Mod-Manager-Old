@@ -6,7 +6,6 @@ using System.Reactive.Linq;
 using Avalonia.Threading;
 using CP.Reactive.Collections;
 using Daedalus.Contracts.ModManager;
-using Daedalus.Contracts.Mods;
 using Daedalus.Downloads;
 using Daedalus.VFS;
 using ReactiveUI;

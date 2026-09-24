@@ -1,8 +1,8 @@
-using Daedalus.Contracts.Mods;
+using Daedalus.Contracts.ModManager;
 using Daedalus.VFS;
 using SharpCompress.Archives;
 
-namespace Daedalus.Mods;
+namespace Daedalus.ModManager;
 
 public sealed class SharpCompressArchiveReader : IArchiveReader
 {

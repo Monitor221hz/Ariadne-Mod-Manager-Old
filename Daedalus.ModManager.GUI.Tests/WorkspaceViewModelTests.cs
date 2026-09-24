@@ -1,8 +1,7 @@
 using Daedalus.Contracts.Games;
 using Daedalus.Contracts.ModManager;
-using Daedalus.Contracts.Mods;
+using Daedalus.ModManager;
 using Daedalus.ModManager.GUI.ViewModels;
-using Daedalus.Mods;
 using Xunit;
 
 namespace Daedalus.ModManager.GUI.Tests;
@@ -12,7 +11,7 @@ public sealed class WorkspaceViewModelTests
     private sealed class FakeMod(string name, uint priority, bool active = true) : ILibraryMod
     {
         public IModInfo Info { get; } =
-            new Mods.ModInfo(0, SourceType.Local, "1.0", [], "", priority, active);
+            new ModManager.ModInfo(0, SourceType.Local, "1.0", [], "", priority, active);
         public string Name { get; private set; } = name;
         public DirectoryInfo Directory => new(".");
         public Daedalus.VFS.VirtualNode<ModFileEntry> Content { get; set; } =

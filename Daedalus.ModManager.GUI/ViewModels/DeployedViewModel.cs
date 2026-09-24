@@ -4,7 +4,6 @@ using Avalonia.Controls.DataGridSorting;
 using CP.Reactive.Collections;
 using Daedalus.Contracts.Games;
 using Daedalus.Contracts.ModManager;
-using Daedalus.Contracts.Mods;
 using Daedalus.VFS;
 using ReactiveUI;
 

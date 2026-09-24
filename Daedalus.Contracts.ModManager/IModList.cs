@@ -1,4 +1,4 @@
-namespace Daedalus.Contracts.Mods;
+namespace Daedalus.Contracts.ModManager;
 
 public interface IModList : IList<ILibraryMod>
 {

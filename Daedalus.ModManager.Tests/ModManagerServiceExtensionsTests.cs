@@ -1,7 +1,6 @@
 using Daedalus.Contracts.Games;
 using Daedalus.Contracts.ModManager;
-using Daedalus.Contracts.Mods;
-using Daedalus.Mods;
+using Daedalus.ModManager;
 using Daedalus.VFS;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -11,7 +10,10 @@ namespace Daedalus.ModManager.Tests;
 public class ModManagerServiceExtensionsTests
 {
     private static void SkipNonWindows() =>
-        Skip.If(!OperatingSystem.IsWindows(), "Requires VFS support not implemented on this platform");
+        Skip.If(
+            !OperatingSystem.IsWindows(),
+            "Requires VFS support not implemented on this platform"
+        );
 
     private static ModProfile CreateProfile(string name) =>
         new(

@@ -1,4 +1,3 @@
-using Daedalus.Mods;
 using Xunit;
 
 namespace Daedalus.ModManager.Tests;

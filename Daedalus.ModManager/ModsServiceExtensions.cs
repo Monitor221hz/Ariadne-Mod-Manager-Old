@@ -1,8 +1,7 @@
-using Daedalus.Contracts.Mods;
-using Daedalus.Mods.Serialization;
+using Daedalus.Contracts.ModManager;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Daedalus.Mods;
+namespace Daedalus.ModManager;
 
 public static class ModsServiceExtensions
 {

@@ -1,8 +1,8 @@
 using System.Globalization;
-using Daedalus.Contracts.Mods;
+using Daedalus.Contracts.ModManager;
+using Daedalus.ModManager;
 using Daedalus.ModManager.GUI.Converters;
 using Daedalus.ModManager.GUI.ViewModels;
-using Daedalus.Mods;
 using FluentIcons.Common;
 using Xunit;
 

@@ -1,5 +1,5 @@
 using System.Collections.ObjectModel;
-using Daedalus.Contracts.Mods;
+using Daedalus.Contracts.ModManager;
 using ReactiveUI;
 
 namespace Daedalus.ModManager.GUI.ViewModels;

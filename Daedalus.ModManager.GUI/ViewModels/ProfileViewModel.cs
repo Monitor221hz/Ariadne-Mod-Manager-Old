@@ -1,5 +1,4 @@
 using Daedalus.Contracts.ModManager;
-using Daedalus.Contracts.Mods;
 using ReactiveUI;
 
 namespace Daedalus.ModManager.GUI.ViewModels;

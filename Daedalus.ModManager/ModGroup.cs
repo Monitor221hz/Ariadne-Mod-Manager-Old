@@ -1,8 +1,8 @@
 using System.Collections;
 using System.Drawing;
-using Daedalus.Contracts.Mods;
+using Daedalus.Contracts.ModManager;
 
-namespace Daedalus.Mods;
+namespace Daedalus.ModManager;
 
 public class ModGroup : IModGroup
 {

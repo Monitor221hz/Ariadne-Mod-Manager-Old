@@ -1,11 +1,11 @@
-using Daedalus.Contracts.Mods;
+using Daedalus.Contracts.ModManager;
 using Daedalus.VFS;
 using Mutagen.Bethesda;
 using Mutagen.Bethesda.Archives;
 
 namespace Daedalus.ModManager.Bethesda;
 
-using IArchiveReader = Daedalus.Contracts.Mods.IArchiveReader;
+using IArchiveReader = Daedalus.Contracts.ModManager.IArchiveReader;
 
 public class BethesdaArchiveReader : IArchiveReader
 {

@@ -1,7 +1,6 @@
 ﻿using System.Globalization;
 using Avalonia.Controls.DataGridHierarchical;
 using Avalonia.Data.Converters;
-using Daedalus.Contracts.Mods;
 using Daedalus.ModManager.GUI.ViewModels;
 
 namespace Daedalus.ModManager.GUI.Converters;

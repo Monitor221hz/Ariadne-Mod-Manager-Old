@@ -1,5 +1,5 @@
 using ByteSizeLib;
-using Daedalus.Contracts.Mods;
+using Daedalus.Contracts.ModManager;
 
 namespace Daedalus.ModManager.GUI.ViewModels;
 

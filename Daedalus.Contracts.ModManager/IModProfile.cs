@@ -1,5 +1,3 @@
-using Daedalus.Contracts.Mods;
-
 namespace Daedalus.Contracts.ModManager;
 
 public interface IModProfile

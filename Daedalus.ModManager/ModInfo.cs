@@ -1,6 +1,6 @@
-using Daedalus.Contracts.Mods;
+using Daedalus.Contracts.ModManager;
 
-namespace Daedalus.Mods;
+namespace Daedalus.ModManager;
 
 public sealed class ModInfo : IModInfo
 {

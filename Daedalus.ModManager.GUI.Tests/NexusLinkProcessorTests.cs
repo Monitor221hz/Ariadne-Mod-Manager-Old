@@ -10,6 +10,7 @@ using Xunit;
 
 namespace Daedalus.ModManager.GUI.Tests;
 
+[Collection("EnvironmentSensitive")]
 public class NexusLinkProcessorTests
 {
     private const string SkyrimNexusDomain = "skyrimspecialedition";
@@ -250,6 +251,15 @@ public class NexusLinkProcessorTests
 
         public Fixture(ISupportedGame? currentInstanceGame = null, IModManagerPaths? paths = null)
         {
+#if DEBUG
+            _priorDevKey = Environment.GetEnvironmentVariable(
+                SourcesMenuViewModel.DevKeyEnvironmentVariable
+            );
+            Environment.SetEnvironmentVariable(
+                SourcesMenuViewModel.DevKeyEnvironmentVariable,
+                null
+            );
+#endif
             Skyrim = new SupportedGame(
                 "Skyrim Special Edition",
                 [],
@@ -281,9 +291,19 @@ public class NexusLinkProcessorTests
             Processor.Notification += (_, message) => Notifications.Add(message);
         }
 
+#if DEBUG
+        private readonly string? _priorDevKey;
+#endif
+
         public void Dispose()
         {
             Processor.Dispose();
+#if DEBUG
+            Environment.SetEnvironmentVariable(
+                SourcesMenuViewModel.DevKeyEnvironmentVariable,
+                _priorDevKey
+            );
+#endif
             try
             {
                 Paths.DownloadsFolder.Refresh();
@@ -511,15 +531,14 @@ public class NexusLinkProcessorTests
     [Fact]
     public void ModLink_WithDevKey_UsesEnvironmentKeyOverStore()
     {
+        using var fixture = new Fixture();
+        fixture.AccountCache.Write("dev-key", new NexusAccount("Tester", true, null));
         Environment.SetEnvironmentVariable(
             SourcesMenuViewModel.DevKeyEnvironmentVariable,
             "dev-key"
         );
         try
         {
-            using var fixture = new Fixture();
-            fixture.AccountCache.Write("dev-key", new NexusAccount("Tester", true, null));
-
             fixture.Buffer.Enqueue(ModLink());
 
             Assert.True(WaitUntil(() => fixture.Queue.Enqueued.Count == 1));

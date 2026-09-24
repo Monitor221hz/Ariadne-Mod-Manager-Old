@@ -14,9 +14,7 @@ using Avalonia.Controls.DataGridSorting;
 using ByteSizeLib;
 using CP.Reactive.Collections;
 using Daedalus.Contracts.ModManager;
-using Daedalus.Contracts.Mods;
 using Daedalus.ModManager.Serialization;
-using Daedalus.Mods;
 using ReactiveUI;
 using ReactiveUI.Avalonia;
 

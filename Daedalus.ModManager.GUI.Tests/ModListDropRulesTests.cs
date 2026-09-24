@@ -1,9 +1,9 @@
 using Avalonia.Controls.DataGridDragDrop;
 using Avalonia.Input;
-using Daedalus.Contracts.Mods;
+using Daedalus.Contracts.ModManager;
+using Daedalus.ModManager;
 using Daedalus.ModManager.GUI.DragDrop;
 using Daedalus.ModManager.GUI.ViewModels;
-using Daedalus.Mods;
 using Xunit;
 
 namespace Daedalus.ModManager.GUI.Tests;
@@ -13,7 +13,7 @@ public class ModListDropRulesTests
     private sealed class FakeMod(string name) : ILibraryMod
     {
         public IModInfo Info { get; } =
-            new Mods.ModInfo(0, SourceType.Local, "1.0", [], "", 0, false);
+            new ModManager.ModInfo(0, SourceType.Local, "1.0", [], "", 0, false);
         public string Name { get; } = name;
         public DirectoryInfo Directory => new(".");
         public Daedalus.VFS.VirtualNode<ModFileEntry> Content { get; } =

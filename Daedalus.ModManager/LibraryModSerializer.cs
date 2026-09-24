@@ -1,7 +1,8 @@
 using System.Text.Json;
-using Daedalus.Contracts.Mods;
+using Daedalus.Contracts.ModManager;
+using Daedalus.ModManager.Serialization;
 
-namespace Daedalus.Mods.Serialization;
+namespace Daedalus.ModManager;
 
 public sealed class LibraryModSerializer(IReadOnlyList<IArchiveReader> archiveReaders)
     : ILibraryModSerializer

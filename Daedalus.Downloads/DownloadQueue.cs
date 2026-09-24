@@ -141,17 +141,17 @@ public sealed class DownloadQueue : IDownloadQueue, IDisposable
     {
         while (!_disposed)
         {
-            DownloadJob? job;
+            Task running;
             lock (_sync)
             {
-                if (_runningCount >= _maxParallelJobs || !_pending.TryDequeue(out job))
+                if (_runningCount >= _maxParallelJobs || !_pending.TryDequeue(out var job))
                 {
                     return;
                 }
                 _runningCount++;
+                running = ExecuteAsync(job);
             }
-
-            _ = ExecuteAsync(job);
+            _ = running;
         }
     }
 

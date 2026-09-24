@@ -1,4 +1,4 @@
-using Daedalus.Contracts.Mods;
+using Daedalus.Contracts.ModManager;
 using Daedalus.VFS;
 
 namespace Daedalus.ModManager.GUI.ViewModels;
@@ -6,9 +6,7 @@ namespace Daedalus.ModManager.GUI.ViewModels;
 internal static class ContentNodeViewModel
 {
     public static TreeNodeViewModel Wrap(VirtualNode<ModFileEntry> node) =>
-        node.IsDirectory
-            ? new DirectoryNodeViewModel(node)
-            : node.Data!.Kind == ModEntryKind.Archive
-                ? new ArchiveLeafNodeViewModel(node)
-                : new FileLeafNodeViewModel(node);
+        node.IsDirectory ? new DirectoryNodeViewModel(node)
+        : node.Data!.Kind == ModEntryKind.Archive ? new ArchiveLeafNodeViewModel(node)
+        : new FileLeafNodeViewModel(node);
 }

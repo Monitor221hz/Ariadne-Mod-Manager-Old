@@ -1,8 +1,7 @@
 using Daedalus.Contracts.Games;
 using Daedalus.Contracts.ModManager;
-using Daedalus.Contracts.Mods;
 using Daedalus.Games;
-using Daedalus.Mods;
+using Daedalus.ModManager;
 using Daedalus.VFS;
 using Mutagen.Bethesda;
 using Mutagen.Bethesda.Plugins;

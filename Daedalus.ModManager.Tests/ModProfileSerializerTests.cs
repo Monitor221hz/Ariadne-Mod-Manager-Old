@@ -1,8 +1,6 @@
 using System.Drawing;
-using Daedalus.Contracts.Mods;
+using Daedalus.Contracts.ModManager;
 using Daedalus.ModManager.Serialization;
-using Daedalus.Mods;
-using Daedalus.Mods.Serialization;
 using Xunit;
 
 namespace Daedalus.ModManager.Tests;

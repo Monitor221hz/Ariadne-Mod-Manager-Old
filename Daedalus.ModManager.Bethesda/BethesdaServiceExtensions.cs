@@ -1,5 +1,4 @@
 using Daedalus.Contracts.ModManager;
-using Daedalus.Contracts.Mods;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Daedalus.ModManager.Bethesda;
