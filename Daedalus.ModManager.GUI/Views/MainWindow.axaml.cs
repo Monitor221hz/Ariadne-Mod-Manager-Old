@@ -1,3 +1,4 @@
+using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
 using Avalonia;
@@ -25,6 +26,12 @@ public partial class MainWindow : Window
         viewModel.ConfirmDeleteInstance.RegisterHandler(HandleDeletePrompt);
         RebuildInstanceMenus(viewModel);
         viewModel.Instances.CollectionChanged += (_, _) => RebuildInstanceMenus(viewModel);
+
+        if (viewModel.Sources is { } sources)
+        {
+            sources.ShowInfo.RegisterHandler(HandleInfoPrompt);
+            SourcesItem.SubmenuOpened += (_, _) => sources.RefreshCommand.Execute().Subscribe();
+        }
 
         ThemeItem.ItemsSource = viewModel
             .Themes.Select(entry =>
@@ -68,6 +75,18 @@ public partial class MainWindow : Window
             .ToTask();
         DeleteOverlay.IsVisible = false;
         context.SetOutput(choice);
+    }
+
+    private async Task HandleInfoPrompt(
+        IInteractionContext<(string Title, string Text), Unit> context
+    )
+    {
+        InfoTitleText.Text = context.Input.Title;
+        InfoContentText.Text = context.Input.Text;
+        InfoOverlay.IsVisible = true;
+        await ButtonObservables.ClicksOf(InfoOkButton).FirstAsync().ToTask();
+        InfoOverlay.IsVisible = false;
+        context.SetOutput(Unit.Default);
     }
 
     private void RebuildInstanceMenus(MainViewModel viewModel)

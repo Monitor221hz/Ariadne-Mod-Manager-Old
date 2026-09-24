@@ -6,7 +6,9 @@ public interface ISupportedGame : IReadOnlyDictionary<string, IGamePath>
 
     // maybe just scan for executables
     //IReadOnlyList<IPlatformConfiguration> Platforms { get; }
+
     IVendorInfo Vendors { get; }
+    IReadOnlyDictionary<string, string> ProtocolGameIds { get; }
     IGamePath Root { get; }
     IReadOnlyList<IGamePath> Deployments { get; }
     IReadOnlyList<IGamePath> InstallTargets { get; }

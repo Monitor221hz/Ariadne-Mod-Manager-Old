@@ -7,6 +7,7 @@ using Avalonia.Threading;
 using CP.Reactive.Collections;
 using Daedalus.Contracts.ModManager;
 using Daedalus.Contracts.Mods;
+using Daedalus.Downloads;
 using Daedalus.VFS;
 using ReactiveUI;
 using ReactiveUI.Avalonia;
@@ -31,6 +32,7 @@ public sealed class WorkspaceViewModel : ViewModelBase, IDisposable
     private readonly IDisposable[] _tabLifetime;
     private readonly LoadOrderViewModel _loadOrderTab;
     private readonly DeployedViewModel _deployedTab;
+    private readonly DownloadListViewModel? _downloadTab;
     private readonly CompositeDisposable _subscriptions = new();
     private IReadOnlyDictionary<
         IModInfo,
@@ -71,7 +73,8 @@ public sealed class WorkspaceViewModel : ViewModelBase, IDisposable
         IModManagerPaths paths,
         IModProfileEditor editor,
         ILoadOrderBuilder loadOrderBuilder,
-        IInstanceService instances
+        IInstanceService instances,
+        IDownloadQueue? downloads = null
     )
     {
         _profile = profile;
@@ -85,8 +88,16 @@ public sealed class WorkspaceViewModel : ViewModelBase, IDisposable
         );
         _loadOrderTab = new LoadOrderViewModel(profile, loadOrderBuilder, instances);
         _deployedTab = new DeployedViewModel(profile, instances);
+        if (downloads is not null)
+        {
+            _downloadTab = new DownloadListViewModel(downloads, paths);
+        }
         SidePanelTabs.Add(_loadOrderTab);
         SidePanelTabs.Add(_deployedTab);
+        if (_downloadTab is not null)
+        {
+            SidePanelTabs.Add(_downloadTab);
+        }
         _tabLifetime = [_loadOrderTab];
 
         ModList.SelectedNodes.CollectionChanged += OnModSelectionChanged;

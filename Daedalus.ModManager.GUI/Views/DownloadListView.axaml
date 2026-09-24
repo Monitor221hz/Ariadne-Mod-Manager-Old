@@ -1,0 +1,67 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Daedalus.ModManager.GUI.ViewModels"
+             xmlns:dc="using:Avalonia.Data.Converters"
+             x:Class="Daedalus.ModManager.GUI.Views.DownloadListView"
+             x:DataType="vm:DownloadListViewModel">
+
+    <DockPanel>
+        <Border DockPanel.Dock="Top"
+                Background="{DynamicResource DaedalusToolbarBackground}"
+                BorderBrush="{DynamicResource DaedalusToolbarBorder}"
+                BorderThickness="0,0,0,1"
+                Padding="12,8">
+            <TextBlock VerticalAlignment="Center"
+                       FontWeight="SemiBold"
+                       Text="{Binding SummaryText}" />
+        </Border>
+
+        <TextBlock Text="No downloads yet"
+                   Foreground="{DynamicResource FgDimmedBrush}"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   IsVisible="{Binding HasRows, Converter={x:Static dc:BoolConverters.Not}}" />
+
+        <ScrollViewer>
+            <ItemsControl ItemsSource="{Binding Rows}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="vm:DownloadRowViewModel">
+                        <Border BorderBrush="{DynamicResource DaedalusToolbarBorder}"
+                                BorderThickness="0,0,0,1"
+                                Padding="12,8">
+                            <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Row="0"
+                                           Grid.Column="0"
+                                           FontWeight="SemiBold"
+                                           Text="{Binding DisplayName}"
+                                           TextTrimming="CharacterEllipsis" />
+                                <TextBlock Grid.Row="0"
+                                           Grid.Column="1"
+                                           Foreground="{DynamicResource FgDimmedBrush}"
+                                           Text="{Binding StatusText}" />
+                                <ProgressBar Grid.Row="1"
+                                             Grid.Column="0"
+                                             Grid.ColumnSpan="2"
+                                             Margin="0,6,0,6"
+                                             Minimum="0"
+                                             Maximum="100"
+                                             Value="{Binding Percentage}"
+                                             IsVisible="{Binding IsRunning}" />
+                                <TextBlock Grid.Row="2"
+                                           Grid.Column="0"
+                                           Foreground="{DynamicResource FgDimmedBrush}"
+                                           Text="{Binding DetailText}"
+                                           IsVisible="{Binding IsFinished, Converter={x:Static dc:BoolConverters.Not}}" />
+                                <Button Grid.Row="2"
+                                        Grid.Column="1"
+                                        Content="Cancel"
+                                        Command="{Binding CancelCommand}"
+                                        IsVisible="{Binding IsFinished, Converter={x:Static dc:BoolConverters.Not}}" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

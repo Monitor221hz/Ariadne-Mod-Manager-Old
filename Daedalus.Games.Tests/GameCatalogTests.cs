@@ -100,6 +100,8 @@ public class GameCatalogTests : IDisposable
 
         Assert.Equal("Skyrim Special Edition", game.Name);
         Assert.Equal(489830u, game.Vendors.Steam);
+        Assert.Equal("skyrimspecialedition", game.ProtocolGameIds[ProtocolSchemes.Nxm]);
+        Assert.Equal("skyrimse", game.ProtocolGameIds[ProtocolSchemes.Modl]);
 
         var concrete = Assert.IsType<SupportedGame>(game);
         var platform = Assert.Single(concrete.Platforms);
@@ -111,9 +113,8 @@ public class GameCatalogTests : IDisposable
         var appData = game["_appData"];
         Assert.True(Path.IsPathFullyQualified(appData.DirectoryPath));
 
-        var data = Assert.Single(game.InstallTargets);
-        Assert.Equal("Data", data.Key);
-        Assert.Equal("Root", data.BasedOn);
+        var data = Assert.Single(game.InstallTargets, target => target.Key == "Data");
+        Assert.Equal("_root", data.BasedOn);
         var installed = new InstalledGame(new DirectoryInfo(@"C:\Games\SkyrimSE"), game);
         Assert.Equal(
             System.IO.Path.Combine(@"C:\Games\SkyrimSE", "Data"),

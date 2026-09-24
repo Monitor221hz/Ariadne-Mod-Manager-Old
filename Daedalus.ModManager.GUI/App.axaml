@@ -13,11 +13,11 @@
 
     <Application.Resources>
         <ResourceDictionary>
-            <FontFamily x:Key="ContentControlThemeFontFamily">avares://Mortex/Assets/Fonts/AtkinsonHyperlegible#Atkinson Hyperlegible, $Default</FontFamily>
+            <FontFamily x:Key="ContentControlThemeFontFamily">avares://Ariadne/Assets/Fonts/AtkinsonHyperlegible#Atkinson Hyperlegible, $Default</FontFamily>
             <sys:Double x:Key="ContentControlThemeFontSize">16</sys:Double>
             <converters:BandContrastForegroundConverter x:Key="BandContrastForeground" />
             <ResourceDictionary.MergedDictionaries>
-                <ResourceInclude Source="avares://Mortex/Themes/Theme.axaml" />
+                <ResourceInclude Source="avares://Ariadne/Themes/Theme.axaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>
@@ -25,8 +25,8 @@
     <Application.Styles>
         <FluentTheme />
         <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.v2.xaml" />
-        <StyleInclude Source="avares://Mortex/Themes/ModListStyles.axaml" />
-        <StyleInclude Source="avares://Mortex/Themes/ControlStyles.axaml" />
+        <StyleInclude Source="avares://Ariadne/Themes/ModListStyles.axaml" />
+        <StyleInclude Source="avares://Ariadne/Themes/ControlStyles.axaml" />
         <StyleInclude Source="avares://Avalonia.Controls.ColorPicker/Themes/Fluent/Fluent.xaml" />
     </Application.Styles>
 </Application>

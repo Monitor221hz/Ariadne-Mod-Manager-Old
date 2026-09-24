@@ -7,4 +7,5 @@ public interface IModManagerPaths
     DirectoryInfo StagingFolder { get; }
     DirectoryInfo ModsFolder { get; }
     DirectoryInfo ProfilesFolder { get; }
+    DirectoryInfo DownloadsFolder { get; }
 }

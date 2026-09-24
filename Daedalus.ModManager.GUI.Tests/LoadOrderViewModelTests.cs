@@ -66,6 +66,8 @@ public class LoadOrderViewModelTests
     {
         public string Name => name;
         public IVendorInfo Vendors => null!;
+        public IReadOnlyDictionary<string, string> ProtocolGameIds =>
+            new Dictionary<string, string>();
         public IGamePath Root => null!;
         public IReadOnlyList<IGamePath> Deployments => [];
         public IReadOnlyList<IGamePath> InstallTargets => [];

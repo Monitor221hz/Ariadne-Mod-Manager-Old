@@ -20,6 +20,10 @@
     "Steam": 489830,
     "GOG": 0
   },
+  "ProtocolGameIds": {
+    "nxm": "skyrimspecialedition",
+    "modl": "skyrimse"
+  },
   "Root": {
     "Key": "_root",
     "DirectoryPath": "",

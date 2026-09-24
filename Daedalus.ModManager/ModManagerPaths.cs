@@ -23,6 +23,7 @@ public class ModManagerPaths : IModManagerPaths
     public DirectoryInfo StagingFolder => Child("Staging");
     public DirectoryInfo ModsFolder => Child("Mods");
     public DirectoryInfo ProfilesFolder => Child("Profiles");
+    public DirectoryInfo DownloadsFolder => Child("Downloads");
 
     private DirectoryInfo Child(string name) => new(Path.Join(InstanceFolder.FullName, name));
 }

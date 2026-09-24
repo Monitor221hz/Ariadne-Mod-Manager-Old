@@ -13,6 +13,7 @@ public class SupportedGame : ISupportedGame
     public IReadOnlyList<IGamePath> Deployments { get; }
     public IReadOnlyList<IGamePath> InstallTargets { get; }
     public IEnumerable<string> Keys => _pathNameMap.Keys;
+    public IReadOnlyDictionary<string, string> ProtocolGameIds => _protocolGameIds;
 
     public IEnumerable<IGamePath> Values => _pathNameMap.Values;
 
@@ -22,13 +23,16 @@ public class SupportedGame : ISupportedGame
 
     private readonly Dictionary<string, IGamePath> _pathNameMap;
 
+    private readonly Dictionary<string, string> _protocolGameIds;
+
     public SupportedGame(
         string name,
         IReadOnlyList<IPlatformConfiguration> platforms,
         IVendorInfo vendors,
         IGamePath root,
         IReadOnlyList<IGamePath> deployments,
-        IReadOnlyList<IGamePath> installTargets
+        IReadOnlyList<IGamePath> installTargets,
+        IReadOnlyDictionary<string, string>? protocolGameIds = null
     )
     {
         Name = name;
@@ -39,6 +43,13 @@ public class SupportedGame : ISupportedGame
         InstallTargets = installTargets;
         var paths = Deployments.Concat(InstallTargets).Prepend(root);
         _pathNameMap = paths.ToDictionary(t => t.Key, t => t);
+        _protocolGameIds = (
+            protocolGameIds ?? (IReadOnlyDictionary<string, string>)new Dictionary<string, string>()
+        ).ToDictionary(
+            pair => pair.Key.ToLowerInvariant(),
+            pair => pair.Value.ToLowerInvariant(),
+            StringComparer.Ordinal
+        );
     }
 
     public bool ContainsKey(string key)

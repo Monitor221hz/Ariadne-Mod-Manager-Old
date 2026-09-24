@@ -2,11 +2,11 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Daedalus GUI (Mortex)",
+            "name": "Daedalus GUI (Ariadne)",
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build-gui",
-            "program": "${workspaceFolder}/Daedalus.ModManager.GUI/bin/Debug/net10.0/Mortex.exe",
+            "program": "${workspaceFolder}/Daedalus.ModManager.GUI/bin/Debug/net10.0/Ariadne.exe",
             "args": [],
             "cwd": "${workspaceFolder}/Daedalus.ModManager.GUI/bin/Debug/net10.0",
             "console": "internalConsole",

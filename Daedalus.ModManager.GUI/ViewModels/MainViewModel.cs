@@ -6,6 +6,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Daedalus.Contracts.Games;
 using Daedalus.Contracts.ModManager;
 using Daedalus.Contracts.Mods;
+using Daedalus.Downloads;
 using Daedalus.ModManager.Serialization;
 using Daedalus.Mods;
 using ReactiveUI;
@@ -22,6 +23,7 @@ public class MainViewModel : ViewModelBase
     private readonly IGameCatalog? _catalog;
     private readonly IGameLocator? _locator;
     private readonly ILoadOrderBuilder? _loadOrderBuilder;
+    private readonly IDownloadQueue? _downloads;
 
     private object? _currentViewModel;
     private ProfileViewModel? _activeProfile;
@@ -110,7 +112,9 @@ public class MainViewModel : ViewModelBase
         IModProfileEditor editor,
         IGameCatalog catalog,
         IGameLocator locator,
-        ILoadOrderBuilder loadOrderBuilder
+        ILoadOrderBuilder loadOrderBuilder,
+        SourcesMenuViewModel? sources = null,
+        IDownloadQueue? downloads = null
     )
     {
         _profileSerializer = profileSerializer;
@@ -121,6 +125,7 @@ public class MainViewModel : ViewModelBase
         _catalog = catalog;
         _locator = locator;
         _loadOrderBuilder = loadOrderBuilder;
+        _downloads = downloads;
 
         foreach (var theme in AppTheme.All)
         {
@@ -148,7 +153,15 @@ public class MainViewModel : ViewModelBase
             () => ActiveModList!.CreateGroupCommand.Execute(),
             workspaceActive
         );
+
+        if (sources is not null)
+        {
+            Sources = sources;
+            _ = sources.RefreshCommand.Execute().Subscribe();
+        }
     }
+
+    public SourcesMenuViewModel? Sources { get; }
 
     private async Task InitializeAsync()
     {
@@ -181,7 +194,7 @@ public class MainViewModel : ViewModelBase
         SyncSelectedProfile(profile.ProfileFolder.Name);
         CurrentGameText =
             currentGame != null
-                ? $"{currentGame.Configuration.Name} — {currentGame.InstallPath.FullName}"
+                ? $"{currentGame.Configuration.Name} - {currentGame.InstallPath.FullName}"
                 : null;
         ShowWorkspace();
     }
@@ -221,7 +234,8 @@ public class MainViewModel : ViewModelBase
             _paths!,
             _editor!,
             _loadOrderBuilder!,
-            _instances!
+            _instances!,
+            _downloads
         );
         CurrentViewModel = viewModel;
         _ = viewModel

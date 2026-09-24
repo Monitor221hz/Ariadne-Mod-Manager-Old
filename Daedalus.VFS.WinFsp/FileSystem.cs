@@ -408,7 +408,7 @@ public abstract class FileSystem<TNode, TDesc> : FileSystemBase
     public sealed override int SetVolumeLabel(string VolumeLabel, out VolumeInfo VolumeInfo)
     {
         Debug.WriteLine(
-            $"unimplemented call: SetVolumeLabel('{VolumeLabel}') — implement in {GetType().Name}"
+            $"unimplemented call: SetVolumeLabel('{VolumeLabel}') - implement in {GetType().Name}"
         );
         throw new NotImplementedException(nameof(SetVolumeLabel));
     }

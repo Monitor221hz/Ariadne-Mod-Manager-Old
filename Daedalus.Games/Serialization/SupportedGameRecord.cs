@@ -6,5 +6,6 @@ public sealed record class SupportedGameRecord(
     VendorInfoRecord Vendors,
     GamePathRecord Root,
     List<GamePathRecord> Deployments,
-    List<GamePathRecord> InstallTargets
+    List<GamePathRecord> InstallTargets,
+    Dictionary<string, string>? ProtocolGameIds = null
 );

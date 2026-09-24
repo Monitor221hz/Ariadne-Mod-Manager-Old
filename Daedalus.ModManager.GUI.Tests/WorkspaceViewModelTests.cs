@@ -56,6 +56,8 @@ public sealed class WorkspaceViewModelTests
     {
         public string Name => name;
         public IVendorInfo Vendors => null!;
+        public IReadOnlyDictionary<string, string> ProtocolGameIds =>
+            new Dictionary<string, string>();
         public IGamePath Root => null!;
         public IReadOnlyList<IGamePath> Deployments => [];
         public IReadOnlyList<IGamePath> InstallTargets => [];
@@ -140,6 +142,7 @@ public sealed class WorkspaceViewModelTests
         public DirectoryInfo StagingFolder => new(".");
         public DirectoryInfo ModsFolder => new(".");
         public DirectoryInfo ProfilesFolder => new(".");
+        public DirectoryInfo DownloadsFolder => new(".");
     }
 
     private sealed record Harness(
