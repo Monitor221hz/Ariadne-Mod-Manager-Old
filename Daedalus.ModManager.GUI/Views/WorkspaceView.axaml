@@ -5,7 +5,7 @@
              x:Class="Daedalus.ModManager.GUI.Views.WorkspaceView"
              x:DataType="vm:WorkspaceViewModel">
 
-    <Grid ColumnDefinitions="2*,Auto,380">
+    <Grid ColumnDefinitions="2*,Auto,512">
         <ContentControl Grid.Column="0" Content="{Binding ModList}" />
         <GridSplitter Grid.Column="1"
                       Width="4"

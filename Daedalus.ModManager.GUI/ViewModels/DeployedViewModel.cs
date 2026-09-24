@@ -142,7 +142,7 @@ public sealed class DeployedViewModel : ViewModelBase, IWorkspaceTab
                     t.Key.Equals(pp.Key, StringComparison.OrdinalIgnoreCase)
                 ) == true
             );
-            _selectedTarget = preferred?.Display ?? (TargetRoots.Count > 0 ? TargetRoots[0] : null);
+            SelectedTarget = preferred?.Display ?? (TargetRoots.Count > 0 ? TargetRoots[0] : null);
         }
         RebuildRows();
     }
