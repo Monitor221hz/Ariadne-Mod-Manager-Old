@@ -3,6 +3,7 @@ using Daedalus.Contracts.Games;
 using Daedalus.Contracts.ModManager;
 using Daedalus.Downloads;
 using Daedalus.Security;
+using Daedalus.WebProtocol;
 using Daedalus.WebProtocol.Nexus;
 
 namespace Daedalus.ModManager.GUI;
@@ -11,7 +12,7 @@ public sealed class NexusLinkProcessor : IDisposable
 {
     private const string ApiKeySecretName = "nexus-api-key";
 
-    private readonly NexusLinkBuffer _buffer;
+    private readonly WebLinkBuffer _buffer;
     private readonly IGameCatalog _catalog;
     private readonly IInstanceService _instances;
     private readonly IModManagerPaths _paths;
@@ -31,7 +32,7 @@ public sealed class NexusLinkProcessor : IDisposable
     public event EventHandler<string>? Notification;
 
     public NexusLinkProcessor(
-        NexusLinkBuffer buffer,
+        WebLinkBuffer buffer,
         IGameCatalog catalog,
         IInstanceService instances,
         IModManagerPaths paths,
@@ -62,16 +63,19 @@ public sealed class NexusLinkProcessor : IDisposable
         _downloads.JobCompleted -= OnDownloadCompleted;
     }
 
-    private void OnLinkEnqueued(object? sender, NxmLink link)
+    private void OnLinkEnqueued(object? sender, ISchemeLink link)
     {
-        _ = ProcessGuardedAsync(link);
+        if (link is NxmLink)
+        {
+            _ = ProcessGuardedAsync(link);
+        }
     }
 
-    private async Task ProcessGuardedAsync(NxmLink link)
+    private async Task ProcessGuardedAsync(ISchemeLink link)
     {
         try
         {
-            await ProcessAsync(link);
+            await ProcessAsync((NxmLink)link);
         }
         catch (Exception exception)
         {

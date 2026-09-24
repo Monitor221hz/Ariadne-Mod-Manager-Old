@@ -2,12 +2,11 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO.Pipes;
 using System.Text;
 
-namespace Daedalus.WebProtocol.Nexus;
+namespace Daedalus.WebProtocol;
 
-public sealed class NexusInstanceForwarder : IDisposable
+public sealed class InstanceForwarder : IDisposable
 {
     private const string ActivatePayload = "activate";
-    private const string LinkPayloadPrefix = "nxm ";
     private const int MaxPayloadBytes = 8192;
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(2);
@@ -18,27 +17,25 @@ public sealed class NexusInstanceForwarder : IDisposable
     private readonly string _pipeName;
     private readonly Task _listener;
 
-    public event EventHandler<NxmLink>? LinkReceived;
+    public event EventHandler<PayloadReceivedEventArgs>? PayloadReceived;
     public event EventHandler? ActivationRequested;
 
-    private NexusInstanceForwarder(FileInfo lockFile, FileStream instanceLock, string scope)
+    private InstanceForwarder(FileInfo lockFile, FileStream instanceLock, string pipeName)
     {
         _lockFile = lockFile;
         _instanceLock = instanceLock;
-        _pipeName = $"daedalus-nexus-{scope}";
+        _pipeName = pipeName;
         _listener = Task.Run(ListenAsync);
     }
 
     public static bool TryCreatePrimary(
         string instanceKey,
-        [NotNullWhen(true)] out NexusInstanceForwarder? forwarder
+        [NotNullWhen(true)] out InstanceForwarder? forwarder
     )
     {
         forwarder = null;
         var scope = ResolveScope(instanceKey);
-        var lockFile = new FileInfo(
-            Path.Combine(Path.GetTempPath(), $"daedalus-nexus-{scope}.lock")
-        );
+        var lockFile = new FileInfo(Path.Combine(Path.GetTempPath(), $"daedalus-{scope}.lock"));
 
         FileStream instanceLock;
         try
@@ -59,21 +56,24 @@ public sealed class NexusInstanceForwarder : IDisposable
             return false;
         }
 
-        forwarder = new NexusInstanceForwarder(lockFile, instanceLock, scope);
+        forwarder = new InstanceForwarder(lockFile, instanceLock, $"daedalus-{scope}");
         return true;
     }
 
-    public static bool Forward(string instanceKey, NexusLaunchIntent intent)
+    public static bool Forward(string instanceKey, LaunchIntent intent)
     {
         var scope = ResolveScope(instanceKey);
-        var payload = intent.Link is null ? ActivatePayload : $"{LinkPayloadPrefix}{intent.Link}";
+        var payload =
+            intent.Link is null || intent.Scheme is null
+                ? ActivatePayload
+                : $"{intent.Scheme} {intent.Link}";
         var payloadBytes = Encoding.UTF8.GetBytes(payload);
 
         try
         {
             using var client = new NamedPipeClientStream(
                 ".",
-                $"daedalus-nexus-{scope}",
+                $"daedalus-{scope}",
                 PipeDirection.Out
             );
             client.Connect((int)ConnectTimeout.TotalMilliseconds);
@@ -147,12 +147,13 @@ public sealed class NexusInstanceForwarder : IDisposable
                 return;
             }
 
-            if (
-                payload.StartsWith(LinkPayloadPrefix, StringComparison.Ordinal)
-                && NxmLink.TryParse(payload[LinkPayloadPrefix.Length..], out var link)
-            )
+            var separator = payload.IndexOf(' ');
+            if (separator > 0)
             {
-                LinkReceived?.Invoke(this, link);
+                PayloadReceived?.Invoke(
+                    this,
+                    new PayloadReceivedEventArgs(payload[..separator], payload[(separator + 1)..])
+                );
             }
         }
         catch (Exception) { }
@@ -185,7 +186,7 @@ public sealed class NexusInstanceForwarder : IDisposable
     {
         var key = Sanitize(instanceKey);
         var user = Sanitize(Environment.UserName, fallback: "user");
-        return $"{user}-{key}";
+        return $"{key}-{user}";
     }
 
     private static string Sanitize(string value, string? fallback = null)

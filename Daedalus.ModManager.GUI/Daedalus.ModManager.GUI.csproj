@@ -38,6 +38,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Daedalus.Downloads\Daedalus.Downloads.csproj" />
+    <ProjectReference Include="..\Daedalus.WebProtocol\Daedalus.WebProtocol.csproj" />
     <ProjectReference Include="..\Daedalus.ModManager.Bethesda\Daedalus.ModManager.Bethesda.csproj" />
     <ProjectReference Include="..\Daedalus.ModManager\Daedalus.ModManager.csproj" />
     <ProjectReference Include="..\Daedalus.Security.Dpapi\Daedalus.Security.Dpapi.csproj" />

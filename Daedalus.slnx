@@ -29,5 +29,7 @@
   <Project Path="Daedalus.Security.Tests/Daedalus.Security.Tests.csproj" />
   <Project Path="Daedalus.WebProtocol.Modl/Daedalus.WebProtocol.Modl.csproj" />
   <Project Path="Daedalus.WebProtocol.Modl.Tests/Daedalus.WebProtocol.Modl.Tests.csproj" />
+  <Project Path="Daedalus.WebProtocol/Daedalus.WebProtocol.csproj" />
+  <Project Path="Daedalus.WebProtocol.Tests/Daedalus.WebProtocol.Tests.csproj" />
   <Project Path="Daedalus.WebProtocol.Nexus/Daedalus.WebProtocol.Nexus.csproj" />
 </Solution>

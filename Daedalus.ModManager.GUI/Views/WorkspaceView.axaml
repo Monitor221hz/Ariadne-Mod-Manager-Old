@@ -10,7 +10,7 @@
         <GridSplitter Grid.Column="1"
                       Width="4"
                       Background="{DynamicResource DaedalusToolbarBorder}" />
-        <TabControl Grid.Column="2" ItemsSource="{Binding SidePanelTabs}" SelectedItem="{Binding SelectedTab}">
+        <TabControl Grid.Column="2" ItemsSource="{Binding SidePanelTabs}" SelectedItem="{Binding SelectedTab}" Padding="0">
             <TabControl.Styles>
                 <Style Selector="TabItem" x:DataType="vm:IWorkspaceTab">
                     <Setter Property="Header" Value="{Binding Title}" />

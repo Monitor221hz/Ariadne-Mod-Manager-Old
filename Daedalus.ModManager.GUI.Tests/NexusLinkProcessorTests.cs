@@ -235,7 +235,7 @@ public class NexusLinkProcessorTests
 
     private sealed class Fixture : IDisposable
     {
-        public NexusLinkBuffer Buffer { get; } = new();
+        public WebLinkBuffer Buffer { get; } = new();
         public ISupportedGame Skyrim { get; }
         public InMemorySecrets Secrets { get; } = new();
         public FakeCatalog Catalog { get; }

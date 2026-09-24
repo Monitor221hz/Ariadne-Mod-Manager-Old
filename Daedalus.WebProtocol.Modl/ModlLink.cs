@@ -1,12 +1,20 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
+using Daedalus.WebProtocol;
 
 namespace Daedalus.WebProtocol.Modl;
 
-public sealed partial record ModlLink
+public sealed partial record ModlLink : ISchemeLink
 {
     public required string GameId { get; init; }
     public required Uri DownloadUri { get; init; }
+
+    public string Scheme => "modl";
+
+    public override string ToString()
+    {
+        return $"modl://{GameId}/?url={Uri.EscapeDataString(DownloadUri.AbsoluteUri)}";
+    }
 
     public static ModlLink Parse(string link)
     {

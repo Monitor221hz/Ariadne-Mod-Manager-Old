@@ -1,11 +1,14 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
+using Daedalus.WebProtocol;
 
 namespace Daedalus.WebProtocol.Nexus;
 
-public abstract partial record NxmLink
+public abstract partial record NxmLink : ISchemeLink
 {
     public required string GameDomain { get; init; }
+
+    public string Scheme => "nxm";
 
     public abstract override string ToString();
 

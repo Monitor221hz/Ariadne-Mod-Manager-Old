@@ -1,10 +1,10 @@
 using System.Collections.Concurrent;
-using Daedalus.WebProtocol.Nexus;
+using Daedalus.WebProtocol;
 using Xunit;
 
-namespace Daedalus.WebProtocol.Nexus.Tests;
+namespace Daedalus.WebProtocol.Tests;
 
-public class NexusInstanceForwarderTests
+public class InstanceForwarderTests
 {
     private static readonly TimeSpan EventTimeout = TimeSpan.FromSeconds(10);
 
@@ -13,16 +13,9 @@ public class NexusInstanceForwarderTests
         return $"tests-{Guid.NewGuid():N}";
     }
 
-    private static NxmLink SampleLink()
+    private static InstanceForwarder CreatePrimary(string key)
     {
-        return NxmLink.Parse(
-            "nxm://stardewvalley/mods/2400/files/123456?key=abc&expires=1893456000&user_id=42"
-        );
-    }
-
-    private static NexusInstanceForwarder CreatePrimary(string key)
-    {
-        Assert.True(NexusInstanceForwarder.TryCreatePrimary(key, out var forwarder));
+        Assert.True(InstanceForwarder.TryCreatePrimary(key, out var forwarder));
         return forwarder;
     }
 
@@ -32,27 +25,31 @@ public class NexusInstanceForwarderTests
         var key = NewKey();
         using var primary = CreatePrimary(key);
 
-        var acquired = NexusInstanceForwarder.TryCreatePrimary(key, out var secondary);
+        var acquired = InstanceForwarder.TryCreatePrimary(key, out var secondary);
 
         Assert.False(acquired);
         Assert.Null(secondary);
     }
 
     [Fact]
-    public async Task Forward_LinkIntent_RaisesLinkReceivedOnPrimary()
+    public async Task Forward_LinkIntent_RaisesPayloadReceivedWithScheme()
     {
         var key = NewKey();
         using var primary = CreatePrimary(key);
-        var received = new TaskCompletionSource<NxmLink>(
+        var received = new TaskCompletionSource<PayloadReceivedEventArgs>(
             TaskCreationOptions.RunContinuationsAsynchronously
         );
-        primary.LinkReceived += (_, link) => received.TrySetResult(link);
+        primary.PayloadReceived += (_, payload) => received.TrySetResult(payload);
 
-        var link = SampleLink();
-        var forwarded = NexusInstanceForwarder.Forward(key, new NexusLaunchIntent { Link = link });
+        var forwarded = InstanceForwarder.Forward(
+            key,
+            new LaunchIntent { Scheme = "modl", Link = "modl://skyrim/?url=x" }
+        );
 
         Assert.True(forwarded);
-        Assert.Equal(link, await received.Task.WaitAsync(EventTimeout));
+        var payload = await received.Task.WaitAsync(EventTimeout);
+        Assert.Equal("modl", payload.Scheme);
+        Assert.Equal("modl://skyrim/?url=x", payload.Payload);
     }
 
     [Fact]
@@ -65,14 +62,14 @@ public class NexusInstanceForwarderTests
         );
         primary.ActivationRequested += (_, _) => activated.TrySetResult();
 
-        var forwarded = NexusInstanceForwarder.Forward(key, new NexusLaunchIntent { Link = null });
+        var forwarded = InstanceForwarder.Forward(key, new LaunchIntent());
 
         Assert.True(forwarded);
         await activated.Task.WaitAsync(EventTimeout);
     }
 
     [Fact]
-    public async Task Forward_SequentialLinks_AllArriveInOrder()
+    public async Task Forward_SequentialIntents_AllArriveInOrder()
     {
         var key = NewKey();
         using var primary = CreatePrimary(key);
@@ -80,41 +77,37 @@ public class NexusInstanceForwarderTests
         var allReceived = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously
         );
-        primary.LinkReceived += (_, link) =>
+        primary.PayloadReceived += (_, payload) =>
         {
-            received.Enqueue(link.ToString());
+            received.Enqueue($"{payload.Scheme}:{payload.Payload}");
             if (received.Count == 3)
             {
                 allReceived.TrySetResult();
             }
         };
 
-        var links = new[]
+        var payload = new[] { "nxm:link-a", "modl:link-b", "nxm:link-c" };
+        foreach (var item in payload)
         {
-            "nxm://stardewvalley/mods/1001/files/10001?key=a&expires=1893456000&user_id=1",
-            "nxm://skyrim/mods/2002/files/20002?key=b&expires=1893456000&user_id=2",
-            "nxm://starfield/collections/abc123/revisions/7",
-        };
-        foreach (var link in links)
-        {
+            var scheme = item.Split(':', 2);
             Assert.True(
-                NexusInstanceForwarder.Forward(
+                InstanceForwarder.Forward(
                     key,
-                    new NexusLaunchIntent { Link = NxmLink.Parse(link) }
+                    new LaunchIntent { Scheme = scheme[0], Link = scheme[1] }
                 )
             );
         }
 
         await allReceived.Task.WaitAsync(EventTimeout);
-        Assert.Equal(links, received.ToArray());
+        Assert.Equal(payload, received.ToArray());
     }
 
     [Fact]
     public void Forward_WithoutPrimary_ReturnsFalse()
     {
-        var forwarded = NexusInstanceForwarder.Forward(
+        var forwarded = InstanceForwarder.Forward(
             NewKey(),
-            new NexusLaunchIntent { Link = SampleLink() }
+            new LaunchIntent { Scheme = "nxm", Link = "x" }
         );
 
         Assert.False(forwarded);
@@ -127,15 +120,13 @@ public class NexusInstanceForwarderTests
 
         CreatePrimary(key).Dispose();
 
-        Assert.True(NexusInstanceForwarder.TryCreatePrimary(key, out var second));
+        Assert.True(InstanceForwarder.TryCreatePrimary(key, out var second));
         second.Dispose();
     }
 
     [Fact]
     public void TryCreatePrimary_UnusableKey_ThrowsArgumentException()
     {
-        Assert.Throws<ArgumentException>(() =>
-            NexusInstanceForwarder.TryCreatePrimary("!!!", out _)
-        );
+        Assert.Throws<ArgumentException>(() => InstanceForwarder.TryCreatePrimary("!!!", out _));
     }
 }

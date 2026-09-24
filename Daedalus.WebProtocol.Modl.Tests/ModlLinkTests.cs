@@ -116,4 +116,33 @@ public class ModlLinkTests
     {
         Assert.Throws<FormatException>(() => ModlLink.Parse("not a link"));
     }
+
+    [Fact]
+    public void ToString_RoundTripsThroughParse()
+    {
+        var link = ModlLink.Parse(
+            "modl://falloutnv/?url=https%3A%2F%2Feddoursul.win%2FCyberware%20TTW%20Patch.7z"
+        );
+
+        Assert.Equal(link, ModlLink.Parse(link.ToString()));
+    }
+
+    [Fact]
+    public void ToString_InnerUrlWithReservedCharacters_EscapesAndRoundTrips()
+    {
+        var link = ModlLink.Parse(
+            "modl://skyrimse/?url=https%3A%2F%2Fexample.com%2Ffile%3Fversion%3D1%26mode%3Dfast"
+        );
+
+        Assert.Equal("https://example.com/file?version=1&mode=fast", link.DownloadUri.AbsoluteUri);
+        Assert.Equal(link, ModlLink.Parse(link.ToString()));
+    }
+
+    [Fact]
+    public void Scheme_IsModl()
+    {
+        var link = ModlLink.Parse("modl://other/?url=https%3A%2F%2Fexample.com%2Fa.zip");
+
+        Assert.Equal("modl", link.Scheme);
+    }
 }
