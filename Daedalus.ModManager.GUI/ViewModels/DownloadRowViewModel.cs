@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Reactive;
 using ByteSizeLib;
+using Daedalus.Contracts.ModManager;
 using Daedalus.Downloads;
 using ReactiveUI;
 
@@ -15,6 +16,10 @@ public sealed class DownloadRowViewModel : ViewModelBase
     private string _speedText = "";
     private string _etaText = "--";
     private string _detailText = "";
+    private bool _isInstalling;
+    private bool _didInstall;
+    private bool _installFailed;
+    private double _installPercentage;
 
     public DownloadRowViewModel(DownloadJob job, Action<Guid> cancelHandler)
     {
@@ -24,6 +29,7 @@ public sealed class DownloadRowViewModel : ViewModelBase
         {
             cancelHandler(job.Id);
         });
+        InstallCommand = ReactiveCommand.Create(() => { });
     }
 
     public DownloadJob Job => _job;
@@ -67,6 +73,67 @@ public sealed class DownloadRowViewModel : ViewModelBase
 
     public ReactiveCommand<Unit, Unit> CancelCommand { get; }
 
+    public ReactiveCommand<Unit, Unit> InstallCommand { get; set; }
+
+    public bool IsInstalling
+    {
+        get => _isInstalling;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _isInstalling, value);
+            this.RaisePropertyChanged(nameof(InstallVisible));
+            this.RaisePropertyChanged(nameof(ProgressVisible));
+            this.RaisePropertyChanged(nameof(ProgressValue));
+        }
+    }
+
+    public double InstallPercentage
+    {
+        get => _installPercentage;
+        private set => this.RaiseAndSetIfChanged(ref _installPercentage, value);
+    }
+
+    public void SetInstallProgress(InstallProgress progress)
+    {
+        DetailText = progress.EntryPath.Length > 0
+            ? $"Installing {progress.EntryPath}"
+            : "Installing";
+        if (progress.ProgressPercentage is { } percentage)
+        {
+            InstallPercentage = percentage;
+            this.RaisePropertyChanged(nameof(ProgressValue));
+        }
+    }
+
+    public double ProgressValue => IsInstalling ? InstallPercentage : Percentage;
+
+    public bool ProgressVisible => IsRunning || IsInstalling;
+
+    public bool DidInstall
+    {
+        get => _didInstall;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _didInstall, value);
+            this.RaisePropertyChanged(nameof(InstallVisible));
+            this.RaisePropertyChanged(nameof(StatusText));
+        }
+    }
+
+    public bool InstallFailed
+    {
+        get => _installFailed;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _installFailed, value);
+            this.RaisePropertyChanged(nameof(StatusText));
+        }
+    }
+
+    public bool IsCompleted => _job.Status is DownloadJobStatus.Completed;
+
+    public bool InstallVisible => IsCompleted && !IsInstalling && !DidInstall;
+
     public bool IsRunning => _job.Status is DownloadJobStatus.Running;
     public bool IsQueued => _job.Status is DownloadJobStatus.Queued;
     public bool IsFinished =>
@@ -77,15 +144,19 @@ public sealed class DownloadRowViewModel : ViewModelBase
                 or DownloadJobStatus.IntegrityMismatch;
 
     public string StatusText =>
-        _job.Status switch
-        {
-            DownloadJobStatus.Queued => "Queued",
-            DownloadJobStatus.Running => "Downloading",
-            DownloadJobStatus.Completed => "Completed",
-            DownloadJobStatus.Cancelled => "Cancelled",
-            DownloadJobStatus.IntegrityMismatch => "Checksum mismatch",
-            _ => $"Failed: {_job.Error}",
-        };
+        DidInstall
+            ? "Installed"
+            : InstallFailed
+                ? "Install failed"
+                : _job.Status switch
+                {
+                DownloadJobStatus.Queued => "Queued",
+                DownloadJobStatus.Running => "Downloading",
+                DownloadJobStatus.Completed => "Completed",
+                DownloadJobStatus.Cancelled => "Cancelled",
+                DownloadJobStatus.IntegrityMismatch => "Checksum mismatch",
+                _ => $"Failed: {_job.Error}",
+            };
 
     public void Apply(DownloadJob job)
     {
@@ -107,6 +178,8 @@ public sealed class DownloadRowViewModel : ViewModelBase
         this.RaisePropertyChanged(nameof(IsRunning));
         this.RaisePropertyChanged(nameof(IsQueued));
         this.RaisePropertyChanged(nameof(IsFinished));
+        this.RaisePropertyChanged(nameof(IsCompleted));
+        this.RaisePropertyChanged(nameof(InstallVisible));
         this.RaisePropertyChanged(nameof(StatusText));
     }
 

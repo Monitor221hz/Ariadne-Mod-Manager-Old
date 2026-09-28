@@ -8,6 +8,7 @@ public class GamePath : IGamePath
     public string Key { get; }
     public string? BasedOn { get; set; }
     public string DirectoryPath { get; }
+    public IReadOnlyCollection<string> Aliases { get; set; }
     public IReadOnlyList<string> Patterns { get; }
     private bool _isAbsolute;
     private string? _cachedAbsolutePath;
@@ -15,12 +16,14 @@ public class GamePath : IGamePath
     public GamePath(
         string key,
         string directoryPath,
+        IReadOnlyList<string>? aliases,
         IReadOnlyList<string> patterns,
         string? basedOn = null
     )
     {
         Key = key;
         DirectoryPath = Environment.ExpandEnvironmentVariables(directoryPath);
+        Aliases = aliases?.ToHashSet(StringComparer.OrdinalIgnoreCase) ?? [];
         _isAbsolute = Path.IsPathFullyQualified(DirectoryPath);
         Patterns = patterns;
         BasedOn = basedOn;

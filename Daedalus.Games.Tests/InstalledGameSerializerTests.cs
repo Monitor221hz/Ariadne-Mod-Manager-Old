@@ -34,7 +34,7 @@ public class InstalledGameSerializerTests : IDisposable
             "Test Game",
             [],
             new VendorInfo(steam, gog),
-            new GamePath("Root", "", []),
+            new GamePath("Root", "", [], []),
             [],
             []
         );

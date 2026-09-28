@@ -1,9 +1,10 @@
 namespace Daedalus.Contracts.ModManager;
 
+public sealed record ModID(ulong Value, SourceType Source);
+
 public interface IModInfo
 {
-    ulong ID { get; }
-    SourceType IDSource { get; }
+    ModID ID { get; }
     string Version { get; }
     List<string> Categories { get; }
     string Target { get; set; }

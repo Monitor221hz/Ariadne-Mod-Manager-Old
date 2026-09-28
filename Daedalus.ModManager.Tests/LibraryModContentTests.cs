@@ -89,7 +89,7 @@ public class LibraryModContentTests : IDisposable
     [Fact]
     public void Archive_GetExpandableContent_FromZip()
     {
-        var mod = CreateMod("mod", new SharpCompressArchiveReader());
+        var mod = CreateMod("mod", new StandardArchiveReader());
         var dir = mod.Directory;
         dir.Create();
         var zipPath = System.IO.Path.Combine(dir.FullName, "pack.zip");

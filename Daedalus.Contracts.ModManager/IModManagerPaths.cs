@@ -8,4 +8,5 @@ public interface IModManagerPaths
     DirectoryInfo ModsFolder { get; }
     DirectoryInfo ProfilesFolder { get; }
     DirectoryInfo DownloadsFolder { get; }
+    DirectoryInfo TemporaryFolder { get; }
 }

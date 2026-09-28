@@ -12,7 +12,7 @@ public class BethesdaArchiveReader : IArchiveReader
     public IReadOnlyCollection<string> SupportedExtensions { get; } =
         new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".bsa", ".ba2" };
 
-    public IReadOnlyList<VirtualNode<ModFileEntry>> Read(IModInfo modInfo, FileInfo archiveFile)
+    public VirtualNode<ModFileEntry> Read(IModInfo modInfo, FileInfo archiveFile)
     {
         var root = new VirtualNode<ModFileEntry>("", NodeFlags.Directory, null, default);
         var reader = Archive.CreateReader(GameRelease.SkyrimSE, archiveFile.FullName);
@@ -31,6 +31,6 @@ public class BethesdaArchiveReader : IArchiveReader
                 )
             );
         }
-        return root.Children.ToList();
+        return root;
     }
 }

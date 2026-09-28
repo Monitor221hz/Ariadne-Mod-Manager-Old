@@ -84,7 +84,7 @@ public class LibraryModSerializerTests : IDisposable
 
         Assert.Equal(mod.Info.ID, loaded.Info.ID);
         Assert.Equal(mod.Name, loaded.Name);
-        Assert.Equal(mod.Info.IDSource, loaded.Info.IDSource);
+        Assert.Equal(mod.Info.ID.Source, loaded.Info.ID.Source);
         Assert.Equal(mod.Info.Version, loaded.Info.Version);
         Assert.Equal(mod.Info.Categories, loaded.Info.Categories);
         Assert.Equal(mod.Info.Target, loaded.Info.Target);

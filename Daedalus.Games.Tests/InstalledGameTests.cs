@@ -13,6 +13,9 @@ public class InstalledGameTests
         public string? BasedOn => null;
         public string DirectoryPath => "FakeDir";
         public IReadOnlyList<string> Patterns => [];
+
+        public IReadOnlyCollection<string> Aliases => [];
+
         public int ResolveCount;
         public string Result = "initial";
 
@@ -22,7 +25,8 @@ public class InstalledGameTests
             return Result;
         }
 
-        public bool Equals(IGamePath? x, IGamePath? y) => x is not null && y is not null && x.Key == y.Key;
+        public bool Equals(IGamePath? x, IGamePath? y) =>
+            x is not null && y is not null && x.Key == y.Key;
 
         public int GetHashCode(IGamePath obj) => obj.Key.GetHashCode();
 
@@ -31,16 +35,9 @@ public class InstalledGameTests
 
     private static InstalledGame CreateGame()
     {
-        var root = new GamePath("Root", "", []);
-        var data = new GamePath("Data", "Data", [], basedOn: "Root");
-        var config = new SupportedGame(
-            "Test Game",
-            [],
-            new VendorInfo(0, 0),
-            root,
-            [],
-            [data]
-        );
+        var root = new GamePath("Root", "", [], []);
+        var data = new GamePath("Data", "Data", [], [], basedOn: "Root");
+        var config = new SupportedGame("Test Game", [], new VendorInfo(0, 0), root, [], [data]);
         return new InstalledGame(InstallPath, config);
     }
 

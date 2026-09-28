@@ -21,7 +21,9 @@ public class MainViewModel : ViewModelBase
     private readonly IGameCatalog? _catalog;
     private readonly IGameLocator? _locator;
     private readonly ILoadOrderBuilder? _loadOrderBuilder;
+    private readonly ILibraryModFactory? _modFactory;
     private readonly IDownloadQueue? _downloads;
+    private readonly IModInstallService? _installService;
 
     private object? _currentViewModel;
     private ProfileViewModel? _activeProfile;
@@ -112,7 +114,9 @@ public class MainViewModel : ViewModelBase
         IGameLocator locator,
         ILoadOrderBuilder loadOrderBuilder,
         SourcesMenuViewModel? sources = null,
-        IDownloadQueue? downloads = null
+        IDownloadQueue? downloads = null,
+        ILibraryModFactory? modFactory = null,
+        IModInstallService? installService = null
     )
     {
         _profileSerializer = profileSerializer;
@@ -124,6 +128,8 @@ public class MainViewModel : ViewModelBase
         _locator = locator;
         _loadOrderBuilder = loadOrderBuilder;
         _downloads = downloads;
+        _modFactory = modFactory;
+        _installService = installService;
 
         foreach (var theme in AppTheme.All)
         {
@@ -227,13 +233,15 @@ public class MainViewModel : ViewModelBase
     {
         var viewModel = new WorkspaceViewModel(
             ActiveProfile!.Model,
+            _modFactory!,
             _profileSerializer!,
             _modSerializer!,
             _paths!,
             _editor!,
             _loadOrderBuilder!,
             _instances!,
-            _downloads
+            _downloads,
+            _installService
         );
         CurrentViewModel = viewModel;
         _ = viewModel

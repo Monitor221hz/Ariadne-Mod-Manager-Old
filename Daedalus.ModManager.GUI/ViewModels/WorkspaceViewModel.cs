@@ -67,18 +67,21 @@ public sealed class WorkspaceViewModel : ViewModelBase, IDisposable
 
     public WorkspaceViewModel(
         IModProfile profile,
+        ILibraryModFactory modFactory,
         IModProfileSerializer profileSerializer,
         ILibraryModSerializer modSerializer,
         IModManagerPaths paths,
         IModProfileEditor editor,
         ILoadOrderBuilder loadOrderBuilder,
         IInstanceService instances,
-        IDownloadQueue? downloads = null
+        IDownloadQueue? downloads = null,
+        IModInstallService? installService = null
     )
     {
         _profile = profile;
         ModList = new ModListViewModel(
             profile,
+            modFactory,
             profileSerializer,
             modSerializer,
             paths,
@@ -89,7 +92,12 @@ public sealed class WorkspaceViewModel : ViewModelBase, IDisposable
         _deployedTab = new DeployedViewModel(profile, instances);
         if (downloads is not null)
         {
-            _downloadTab = new DownloadListViewModel(downloads, paths);
+            _downloadTab = new DownloadListViewModel(
+                downloads,
+                paths,
+                installService,
+                mod => ModList.RegisterMod(mod)
+            );
         }
         SidePanelTabs.Add(_loadOrderTab);
         SidePanelTabs.Add(_deployedTab);

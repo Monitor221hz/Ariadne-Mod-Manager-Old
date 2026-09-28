@@ -134,6 +134,21 @@ public sealed class WorkspaceViewModelTests
         public Task DissolveGroupAsync(IModProfile profile, IModGroup group) => Task.CompletedTask;
     }
 
+    private sealed class FakeModFactory : ILibraryModFactory
+    {
+        public ILibraryMod Create(string name, IModInfo info) => throw new InvalidOperationException();
+        public ILibraryMod Create(IModInfo info) => throw new InvalidOperationException();
+        public bool TryCreate(
+            string name,
+            IModInfo info,
+            out ILibraryMod? mod
+        )
+        {
+            mod = null;
+            return false;
+        }
+    }
+
     private sealed class FakePaths : IModManagerPaths
     {
         public DirectoryInfo AssemblyFolder => new(".");
@@ -141,6 +156,7 @@ public sealed class WorkspaceViewModelTests
         public DirectoryInfo StagingFolder => new(".");
         public DirectoryInfo ModsFolder => new(".");
         public DirectoryInfo ProfilesFolder => new(".");
+        public DirectoryInfo TemporaryFolder => new(".");
         public DirectoryInfo DownloadsFolder => new(".");
     }
 
@@ -169,6 +185,7 @@ public sealed class WorkspaceViewModelTests
         var modLog = new List<IReadOnlyList<TreeNodeViewModel>>();
         var ws = new WorkspaceViewModel(
             profile,
+            new FakeModFactory(),
             new NullProfileSerializer(),
             new NullModSerializer(),
             new FakePaths(),

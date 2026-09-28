@@ -114,7 +114,7 @@ public sealed class LibraryMod : ILibraryMod
             var child = node.AddFile(file.Name, data, NodeFlags.None);
             if (reader is not null)
             {
-                foreach (var archiveEntry in reader.Read(modInfo, file))
+                foreach (var archiveEntry in reader.Read(modInfo, file).Children)
                 {
                     child.SetChild(archiveEntry);
                 }

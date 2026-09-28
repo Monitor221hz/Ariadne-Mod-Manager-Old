@@ -1,10 +1,12 @@
+using System.Management;
+using System.Xml.Linq;
 using Daedalus.Contracts.ModManager;
 using Daedalus.VFS;
 using SharpCompress.Archives;
 
 namespace Daedalus.ModManager;
 
-public sealed class SharpCompressArchiveReader : IArchiveReader
+public sealed class StandardArchiveReader : IArchiveReader
 {
     private static readonly HashSet<string> Extensions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -18,7 +20,7 @@ public sealed class SharpCompressArchiveReader : IArchiveReader
 
     public IReadOnlyCollection<string> SupportedExtensions => Extensions;
 
-    public IReadOnlyList<VirtualNode<ModFileEntry>> Read(IModInfo modInfo, FileInfo archiveFile)
+    public VirtualNode<ModFileEntry> Read(IModInfo modInfo, FileInfo archiveFile)
     {
         var root = new VirtualNode<ModFileEntry>("", NodeFlags.Directory, null, default);
         using var archive = ArchiveFactory.OpenArchive(archiveFile.FullName);
@@ -41,6 +43,6 @@ public sealed class SharpCompressArchiveReader : IArchiveReader
                 )
             );
         }
-        return root.Children.ToList();
+        return root;
     }
 }

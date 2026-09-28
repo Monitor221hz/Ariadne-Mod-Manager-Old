@@ -88,6 +88,7 @@ public class NexusLinkProcessorTests
         public DirectoryInfo StagingFolder => new(".");
         public DirectoryInfo ModsFolder => new(".");
         public DirectoryInfo ProfilesFolder => new(".");
+        public DirectoryInfo TemporaryFolder => new(".");
         public DirectoryInfo DownloadsFolder { get; } =
             new(Path.Combine(Path.GetTempPath(), $"daedalus-processor-tests-{Guid.NewGuid():N}"));
     }
@@ -99,6 +100,7 @@ public class NexusLinkProcessorTests
         public DirectoryInfo StagingFolder => new(".");
         public DirectoryInfo ModsFolder => new(".");
         public DirectoryInfo ProfilesFolder => new(".");
+        public DirectoryInfo TemporaryFolder => new(".");
         public DirectoryInfo DownloadsFolder =>
             throw new InvalidOperationException("No active instance.");
     }
@@ -264,7 +266,7 @@ public class NexusLinkProcessorTests
                 "Skyrim Special Edition",
                 [],
                 new VendorInfo(0, 0),
-                new GamePath("Root", "", []),
+                new GamePath("Root", "", [], []),
                 [],
                 [],
                 new Dictionary<string, string> { [ProtocolSchemes.Nxm] = SkyrimNexusDomain }
@@ -391,7 +393,7 @@ public class NexusLinkProcessorTests
             "Oblivion",
             [],
             new VendorInfo(0, 0),
-            new GamePath("Root", "", []),
+            new GamePath("Root", "", [], []),
             [],
             [],
             new Dictionary<string, string> { [ProtocolSchemes.Nxm] = "oblivion" }

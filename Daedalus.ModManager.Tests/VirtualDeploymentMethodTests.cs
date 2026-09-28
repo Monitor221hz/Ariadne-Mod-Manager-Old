@@ -21,9 +21,9 @@ public class VirtualDeploymentMethodTests : IDisposable
         _overwriteDir = Directory.CreateDirectory(_temp.Combine("overwrite"));
         _stagingDir = Directory.CreateDirectory(_temp.Combine("staging"));
 
-        var root = new GamePath("Root", "", []);
-        var appData = new GamePath("AppData", _appDataDir.FullName, []);
-        var data = new GamePath("Data", "Data", [], basedOn: "Root");
+        var root = new GamePath("Root", "", [], []);
+        var appData = new GamePath("AppData", _appDataDir.FullName, [], []);
+        var data = new GamePath("Data", "Data", [], [], basedOn: "Root");
         _config = new SupportedGame("Test Game", [], new VendorInfo(0, 0), root, [appData], [data]);
     }
 

@@ -1,8 +1,10 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Reactive;
 using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using Daedalus.Contracts.Games;
 using Daedalus.Contracts.ModManager;
 using Daedalus.Downloads;
 using ReactiveUI;
@@ -16,6 +18,8 @@ public sealed class DownloadListViewModel : ViewModelBase, IWorkspaceTab, IDispo
 
     private readonly IDownloadQueue _queue;
     private readonly DirectoryInfo _downloadsFolder;
+    private readonly IModInstallService? _installService;
+    private readonly Action<ILibraryMod>? _onInstalled;
     private readonly Dictionary<Guid, DownloadRowViewModel> _rowsById = new();
     private readonly Dictionary<string, DownloadRowViewModel> _rowsByPath = new(
         StringComparer.OrdinalIgnoreCase
@@ -27,12 +31,16 @@ public sealed class DownloadListViewModel : ViewModelBase, IWorkspaceTab, IDispo
     public DownloadListViewModel(
         IDownloadQueue queue,
         IModManagerPaths paths,
+        IModInstallService? installService = null,
+        Action<ILibraryMod>? onInstalled = null,
         IScheduler? sampleScheduler = null,
         IScheduler? notifyScheduler = null
     )
     {
         _queue = queue;
         _downloadsFolder = paths.DownloadsFolder;
+        _installService = installService;
+        _onInstalled = onInstalled;
         sampleScheduler ??= Scheduler.Default;
         notifyScheduler ??= AvaloniaScheduler.Instance;
 
@@ -60,6 +68,20 @@ public sealed class DownloadListViewModel : ViewModelBase, IWorkspaceTab, IDispo
                 .ObserveOn(notifyScheduler)
                 .Subscribe(completion => OnJobChanged(completion.Job))
         );
+        if (installService is not null)
+        {
+            var installProgress = EventStream<InstallProgress>(
+                handler => installService.InstallProgressChanged += handler,
+                handler => installService.InstallProgressChanged -= handler
+            );
+            _subscriptions.Add(
+                installProgress
+                    .GroupBy(p => p.Archive.FullName)
+                    .SelectMany(group => group.Sample(ProgressSampleInterval, sampleScheduler))
+                    .ObserveOn(notifyScheduler)
+                    .Subscribe(ApplyInstallProgress)
+            );
+        }
         _subscriptions.Add(
             progress
                 .GroupBy(p => p.Id)
@@ -168,9 +190,77 @@ public sealed class DownloadListViewModel : ViewModelBase, IWorkspaceTab, IDispo
         }
     }
 
+    private void ApplyInstallProgress(InstallProgress progress)
+    {
+        if (!_rowsByPath.TryGetValue(progress.Archive.FullName, out var row))
+        {
+            return;
+        }
+
+        row.SetInstallProgress(progress);
+    }
+
+    private async Task InstallAsync(DownloadRowViewModel row)
+    {
+        if (_installService is null)
+        {
+            return;
+        }
+
+        row.IsInstalling = true;
+        try
+        {
+            var manifest = DownloadManifestStore.TryRead(row.Job.Destination);
+            var name = manifest?.FileName is { Length: > 0 } fileName
+                ? Path.GetFileNameWithoutExtension(fileName)
+                : Path.GetFileNameWithoutExtension(row.Job.Destination.Name);
+            var mod = await _installService.InstallAsync(
+                name,
+                manifest?.Version,
+                row.Job.Destination,
+                ManifestProvenance(manifest)
+            );
+            if (mod is null)
+            {
+                row.InstallFailed = true;
+                return;
+            }
+            row.DidInstall = true;
+            _onInstalled?.Invoke(mod);
+        }
+        finally
+        {
+            row.IsInstalling = false;
+        }
+    }
+
+    private static ModID? ManifestProvenance(DownloadManifest? manifest)
+    {
+        if (manifest?.ModId is not { } modId)
+        {
+            return null;
+        }
+
+        var source = manifest.Repository switch
+        {
+            "nxm" => SourceType.NexusMods,
+            "modl" => SourceType.ModPub,
+            _ => SourceType.Local,
+        };
+        return new ModID((ulong)modId, source);
+    }
+
     private void AddRow(DownloadJob job)
     {
         var row = new DownloadRowViewModel(job, id => _queue.Cancel(id));
+        if (_installService is not null)
+        {
+            row.InstallCommand = ReactiveCommand.CreateFromTask(
+                () => InstallAsync(row),
+                row.WhenAnyValue(r => r.InstallVisible)
+            );
+            row.InstallCommand.ThrownExceptions.Subscribe(_ => row.InstallFailed = true);
+        }
         _rowsById[job.Id] = row;
         _rowsByPath[job.Destination.FullName] = row;
         _rowSubscriptions[job.Id] = row.WhenAnyValue(x => x.IsFinished)

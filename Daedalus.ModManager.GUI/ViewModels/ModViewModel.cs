@@ -11,10 +11,10 @@ public class ModViewModel : ViewModelBase
 
     public ILibraryMod Model => _mod;
 
-    public ulong ID => _mod.Info.ID;
+    public ulong ID => _mod.Info.ID.Value;
     public string Name => _mod.Name;
     public string Version => _mod.Info.Version;
-    public SourceType IDSource => _mod.Info.IDSource;
+    public SourceType IDSource => _mod.Info.ID.Source;
     public IReadOnlyList<string> Categories => _mod.Info.Categories;
 
     public string Target

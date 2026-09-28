@@ -29,6 +29,16 @@ public static class ModManagerServiceExtensions
         services.AddSingleton<IDeploymentPathsFactory, DeploymentPathsFactory>();
         services.AddSingleton<IModProfileSerializer, ModProfileSerializer>();
         services.AddSingleton<IModProfileEditor, ModProfileEditor>();
+        services.AddSingleton<IArchiveExtractor, StandardArchiveExtractor>();
+        services.AddSingleton<IModTargeter, QuickPatternModTargeter>();
+        services.AddSingleton<IModInstaller, AliasedModInstaller>();
+        services.AddSingleton<IModInstallService, ModInstallService>();
+        services.AddSingleton<ILibraryModFactory, InstancedModFactory>(
+            sp => new InstancedModFactory(
+                sp.GetServices<IArchiveReader>().ToList(),
+                sp.GetRequiredService<IModManagerPaths>()
+            )
+        );
         services.AddSingleton<Func<IModProfile, IModDeploymentMethod>>(sp =>
             profile => new VirtualDeploymentMethod(
                 sp.GetRequiredService<IVirtualFileSystemFactory>(),

@@ -124,7 +124,7 @@ public partial class VirtualNode<TNodeData>
     {
         var current = this;
         ReadOnlySpan<char> final = default;
-        var components = new ComponentEnumerator(path);
+        var components = new PathComponentEnumerator(path);
         while (components.MoveNext())
         {
             if (!final.IsEmpty)
@@ -158,7 +158,7 @@ public partial class VirtualNode<TNodeData>
     public VirtualNode<TNodeData> AddDirectory(ReadOnlySpan<char> path)
     {
         var current = this;
-        var components = new ComponentEnumerator(path);
+        var components = new PathComponentEnumerator(path);
         while (components.MoveNext())
         {
             current = current.GetOrCreateDirectory(components.Current);
@@ -183,7 +183,7 @@ public partial class VirtualNode<TNodeData>
     public VirtualNode<TNodeData>? FindNode(ReadOnlySpan<char> path)
     {
         var current = this;
-        var components = new ComponentEnumerator(path);
+        var components = new PathComponentEnumerator(path);
         while (components.MoveNext())
         {
             if (!current.Alt.TryGetValue(components.Current, out var next))
@@ -198,7 +198,7 @@ public partial class VirtualNode<TNodeData>
     public void VisitPath(ReadOnlySpan<char> path, Action<VirtualNode<TNodeData>> visitor)
     {
         var current = this;
-        var components = new ComponentEnumerator(path);
+        var components = new PathComponentEnumerator(path);
         while (components.MoveNext())
         {
             if (!current.Alt.TryGetValue(components.Current, out var next))
@@ -302,43 +302,6 @@ public partial class VirtualNode<TNodeData>
         foreach (var child in Children)
         {
             child.Dump(writer, level + 1);
-        }
-    }
-
-    private ref struct ComponentEnumerator
-    {
-        private readonly ReadOnlySpan<char> _path;
-        private int _pos;
-
-        public ComponentEnumerator(ReadOnlySpan<char> path)
-        {
-            _path = path;
-            _pos = 0;
-            Current = default;
-        }
-
-        public ReadOnlySpan<char> Current { get; private set; }
-
-        public bool MoveNext()
-        {
-            while (_pos < _path.Length)
-            {
-                int start = _pos;
-                while (_pos < _path.Length && _path[_pos] is not ('/' or '\\'))
-                {
-                    _pos++;
-                }
-                var part = _path[start.._pos];
-                _pos++; // step over the separator
-                if (part.IsEmpty || part is ".")
-                {
-                    continue;
-                }
-                Current = part;
-                return true;
-            }
-            Current = default;
-            return false;
         }
     }
 }

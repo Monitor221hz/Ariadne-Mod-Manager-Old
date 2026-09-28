@@ -30,6 +30,7 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
     private readonly IModManagerPaths _paths;
     private readonly IModProfileEditor _editor;
     private readonly IInstanceService _instanceService;
+    private readonly ILibraryModFactory _modFactory;
     private CancellationTokenSource? _loadContentCts;
 
     private HierarchicalModel<TreeNodeViewModel>? _model;
@@ -83,6 +84,7 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
 
     public ModListViewModel(
         IModProfile profile,
+        ILibraryModFactory modFactory,
         IModProfileSerializer profileSerializer,
         ILibraryModSerializer modSerializer,
         IModManagerPaths paths,
@@ -105,6 +107,7 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
         _paths = paths;
         _editor = editor;
         _instanceService = instanceService;
+        _modFactory = modFactory;
 
         CreateModCommand = ReactiveCommand.CreateFromTask(CreateEmptyMod);
         CreateGroupCommand = ReactiveCommand.Create(CreateGroup);
@@ -212,6 +215,17 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
         return Task.CompletedTask;
     }
 
+    public void RegisterMod(ILibraryMod mod)
+    {
+        _profile.ModList.Add(mod);
+        _profileSerializer.Save(_profile);
+        var vm = new ModEntryNodeViewModel(mod);
+        int insertAt = _roots!.TakeWhile(n => n is ModEntryNodeViewModel).Count();
+        _roots!.Insert(insertAt, vm);
+        HookModNode(vm);
+        LoadInsertedRow.Execute(vm).Subscribe();
+    }
+
     private Task CreateEmptyMod() =>
         Task.Run(() =>
         {
@@ -232,16 +246,7 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
             folder.Create();
             _modSerializer.Save(mod);
 
-            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-            {
-                _profile.ModList.Add(mod);
-                _profileSerializer.Save(_profile);
-                var vm = new ModEntryNodeViewModel(mod);
-                int insertAt = _roots!.TakeWhile(n => n is ModEntryNodeViewModel).Count();
-                _roots!.Insert(insertAt, vm);
-                HookModNode(vm);
-                LoadInsertedRow.Execute(vm).Subscribe();
-            });
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => RegisterMod(mod));
         });
 
     private void CreateGroup()

@@ -5,5 +5,5 @@ namespace Daedalus.Contracts.ModManager;
 public interface IArchiveReader
 {
     IReadOnlyCollection<string> SupportedExtensions { get; }
-    IReadOnlyList<VirtualNode<ModFileEntry>> Read(IModInfo modInfo, FileInfo archiveFile);
+    VirtualNode<ModFileEntry> Read(IModInfo modInfo, FileInfo archiveFile);
 }

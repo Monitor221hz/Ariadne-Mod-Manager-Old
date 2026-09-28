@@ -6,9 +6,9 @@ public class SupportedGameTests
 {
     private static SupportedGame CreateGame()
     {
-        var root = new GamePath("Root", "", []);
-        var appData = new GamePath("AppData", @"D:\AppData\Test Game", []);
-        var data = new GamePath("Data", "Data", [], basedOn: "Root");
+        var root = new GamePath("Root", "", [], []);
+        var appData = new GamePath("AppData", @"D:\AppData\Test Game", [], []);
+        var data = new GamePath("Data", "Data", [], [], basedOn: "Root");
         return new SupportedGame(
             "Test Game",
             [],
@@ -92,9 +92,9 @@ public class SupportedGameTests
     [Fact]
     public void Constructor_DuplicateKeysAcrossDeploymentsAndTargets_Throws()
     {
-        var root = new GamePath("Root", "", []);
-        var a = new GamePath("Data", "Data", []);
-        var b = new GamePath("Data", "Other", []);
+        var root = new GamePath("Root", "", [], []);
+        var a = new GamePath("Data", "Data", [], []);
+        var b = new GamePath("Data", "Other", [], []);
 
         Assert.Throws<ArgumentException>(() =>
             new SupportedGame("Test Game", [], new VendorInfo(0, 0), root, [a], [b])

@@ -53,8 +53,8 @@ public sealed class LibraryModSerializer(IReadOnlyList<IArchiveReader> archiveRe
     public void Save(ILibraryMod mod)
     {
         var record = new ModInfoRecord(
-            mod.Info.ID,
-            mod.Info.IDSource,
+            mod.Info.ID.Value,
+            mod.Info.ID.Source,
             mod.Info.Version,
             mod.Info.Categories,
             mod.Info.Target,

@@ -248,8 +248,7 @@ file static class DirectoryOrigin
 
     private sealed class PlaceholderModInfo : IModInfo
     {
-        public ulong ID => 0;
-        public SourceType IDSource => SourceType.Local;
+        public ModID ID => new(0, SourceType.Local);
         public string Version => "";
         public List<string> Categories => [];
         public string Target { get; set; } = "";

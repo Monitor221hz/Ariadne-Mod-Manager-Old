@@ -1,7 +1,9 @@
 using System.Reactive.Concurrency;
+using System.Reactive.Threading.Tasks;
 using Daedalus.Contracts.ModManager;
 using Daedalus.Downloads;
 using Daedalus.ModManager.GUI.ViewModels;
+using Daedalus.VFS;
 using Microsoft.Reactive.Testing;
 using Xunit;
 
@@ -16,6 +18,7 @@ public class DownloadListViewModelTests : IDisposable
         public DirectoryInfo StagingFolder => new(".");
         public DirectoryInfo ModsFolder => new(".");
         public DirectoryInfo ProfilesFolder => new(".");
+        public DirectoryInfo TemporaryFolder => new(".");
         public DirectoryInfo DownloadsFolder { get; } =
             new(Path.Combine(Path.GetTempPath(), $"daedalus-download-vm-tests-{Guid.NewGuid():N}"));
     }
@@ -128,7 +131,7 @@ public class DownloadListViewModelTests : IDisposable
     {
         var queue = new FakeQueue();
         var effective = scheduler ?? Scheduler.Immediate;
-        return (queue, new DownloadListViewModel(queue, _paths, effective, effective));
+        return (queue, new DownloadListViewModel(queue, _paths, null, null, effective, effective));
     }
 
     private static bool WaitUntil(Func<bool> condition)
@@ -286,6 +289,8 @@ public class DownloadListViewModelTests : IDisposable
         using var viewModel = new DownloadListViewModel(
             queue,
             _paths,
+            null,
+            null,
             Scheduler.Immediate,
             Scheduler.Immediate
         );
@@ -377,6 +382,218 @@ public class DownloadListViewModelTests : IDisposable
             var row = Assert.Single(viewModel.Rows);
             Assert.True(row.IsQueued);
             Assert.Equal("1 active", viewModel.SummaryText);
+        }
+    }
+
+    private sealed class FakeInstallService : IModInstallService
+    {
+        public event EventHandler<InstallProgress>? InstallProgressChanged;
+
+        public int Calls { get; private set; }
+        public string? LastName { get; private set; }
+        public string? LastVersion { get; private set; }
+        public ModID? LastProvenanceId { get; private set; }
+        public bool Succeed = true;
+        public TaskCompletionSource? Gate;
+
+        public Task<ILibraryMod?> InstallAsync(
+            string name,
+            string? version,
+            FileInfo archive,
+            ModID? provenanceId = null,
+            CancellationToken cancellationToken = default
+        )
+        {
+            Calls++;
+            LastName = name;
+            LastVersion = version;
+            LastProvenanceId = provenanceId;
+            var gate = Gate;
+            if (gate is not null)
+            {
+                return AwaitGate(gate, name);
+            }
+            return Task.FromResult<ILibraryMod?>(
+                Succeed ? new StubLibraryMod(name) : null
+            );
+        }
+
+        private async Task<ILibraryMod?> AwaitGate(TaskCompletionSource gate, string name)
+        {
+            await gate.Task;
+            return Succeed ? new StubLibraryMod(name) : null;
+        }
+
+        public void EmitProgress(InstallProgress progress)
+        {
+            InstallProgressChanged?.Invoke(this, progress);
+        }
+    }
+
+    private sealed class StubLibraryMod(string name) : ILibraryMod
+    {
+        public IModInfo Info => throw new NotSupportedException();
+        public string Name => name;
+        public DirectoryInfo Directory => new(".");
+        public VirtualNode<ModFileEntry> Content => throw new NotSupportedException();
+
+        public void RefreshContent() { }
+        public void RenameTo(string newName) { }
+        public bool Equals(ILibraryMod? x, ILibraryMod? y) => ReferenceEquals(x, y);
+        public int GetHashCode(ILibraryMod obj) => 0;
+        public bool Equals(ILibraryMod? other) => ReferenceEquals(this, other);
+    }
+
+    private (FakeQueue Queue, DownloadListViewModel ViewModel, FakeInstallService Installer, List<ILibraryMod> Installed)
+        CreateInstallViewModel(IScheduler? sample = null, IScheduler? notify = null)
+    {
+        var queue = new FakeQueue();
+        var installer = new FakeInstallService();
+        var installed = new List<ILibraryMod>();
+        return (
+            queue,
+            new DownloadListViewModel(
+                queue,
+                _paths,
+                installer,
+                installed.Add,
+                sample ?? Scheduler.Default,
+                notify ?? Scheduler.Immediate
+            ),
+            installer,
+            installed
+        );
+    }
+
+    private DownloadRowViewModel AddCompletedRowViaQueue(DownloadListViewModel viewModel, FakeQueue queue, string name)
+    {
+        var id = queue.Enqueue(new DownloadRequest(
+            new Uri($"https://example.com/{name}"),
+            new FileInfo(Path.Combine(_paths.DownloadsFolder.FullName, name))
+        ));
+        queue.MarkRunning(id);
+        queue.MarkCompleted(id, 100);
+        return viewModel.Rows.Single(row => row.Job.Id == id);
+    }
+
+    [Fact]
+    public async Task InstallProgress_UpdatesRowPercentageAndDetail()
+    {
+        var (queue, viewModel, installer, installed) = CreateInstallViewModel(
+            sample: Scheduler.Default,
+            notify: Scheduler.Immediate
+        );
+        using (viewModel)
+        {
+            var row = AddCompletedRowViaQueue(viewModel, queue, "SkyUI.7z");
+
+            installer.Gate = new TaskCompletionSource(
+                TaskCreationOptions.RunContinuationsAsynchronously
+            );
+            var installTask = row.InstallCommand.Execute().ToTask();
+            Assert.True(WaitUntil(() => row.IsInstalling));
+
+            installer.EmitProgress(
+                new InstallProgress(row.Job.Destination, "Data/SKSE/plugin.dll", 50, 100, 50.0)
+            );
+
+            Assert.True(WaitUntil(() => row.InstallPercentage == 50.0));
+            Assert.Equal(50.0, row.ProgressValue);
+            Assert.True(WaitUntil(() => row.DetailText == "Installing Data/SKSE/plugin.dll"));
+
+            installer.Gate.SetResult();
+            await installTask;
+            Assert.True(row.DidInstall);
+        }
+    }
+
+    [Fact]
+    public async Task InstallCommand_OnCompletedRow_InstallsAndRegisters()
+    {
+        var (queue, viewModel, installer, installed) = CreateInstallViewModel();
+        using (viewModel)
+        {
+            var row = AddCompletedRowViaQueue(viewModel, queue, "SkyUI.7z");
+
+            Assert.True(row.InstallVisible);
+            await row.InstallCommand.Execute().ToTask();
+
+            Assert.Equal(1, installer.Calls);
+            Assert.Equal("SkyUI", installer.LastName);
+            Assert.True(row.DidInstall);
+            Assert.Equal("Installed", row.StatusText);
+            var mod = Assert.Single(installed);
+            Assert.Equal("SkyUI", mod.Name);
+            Assert.False(row.InstallVisible);
+        }
+    }
+
+    [Fact]
+    public async Task InstallCommand_ServiceFailure_MarksFailed()
+    {
+        var (queue, viewModel, installer, installed) = CreateInstallViewModel();
+        using (viewModel)
+        {
+            installer.Succeed = false;
+            var row = AddCompletedRowViaQueue(viewModel, queue, "SkyUI.7z");
+
+            await row.InstallCommand.Execute().ToTask();
+
+            Assert.False(row.DidInstall);
+            Assert.True(row.InstallFailed);
+            Assert.Equal("Install failed", row.StatusText);
+            Assert.Empty(installed);
+        }
+    }
+
+    [Fact]
+    public async Task InstallCommand_UsesManifestNameAndVersion()
+    {
+        var (queue, viewModel, installer, installed) = CreateInstallViewModel();
+        using (viewModel)
+        {
+            var row = AddCompletedRowViaQueue(viewModel, queue, "archive.7z");
+            DownloadManifestStore.Write(
+                row.Job.Destination,
+                new DownloadManifest
+                {
+                    Repository = "nxm",
+                    ModId = 12604,
+                    FileId = 360415,
+                    Version = "6.1",
+                    FileName = "SkyUI-12604-6-11-1778020881.zip",
+                    DownloadedUtc = DateTimeOffset.UtcNow,
+                }
+            );
+
+            await row.InstallCommand.Execute().ToTask();
+
+            Assert.Equal("SkyUI-12604-6-11-1778020881", installer.LastName);
+            Assert.Equal("6.1", installer.LastVersion);
+            Assert.Equal(new ModID(12604, SourceType.NexusMods), installer.LastProvenanceId);
+        }
+    }
+
+    [Fact]
+    public async Task InstallCommand_ModlManifest_MapsToModPubSource()
+    {
+        var (queue, viewModel, installer, installed) = CreateInstallViewModel();
+        using (viewModel)
+        {
+            var row = AddCompletedRowViaQueue(viewModel, queue, "My Mod.7z");
+            DownloadManifestStore.Write(
+                row.Job.Destination,
+                new DownloadManifest
+                {
+                    Repository = "modl",
+                    ModId = null,
+                    DownloadedUtc = DateTimeOffset.UtcNow,
+                }
+            );
+
+            await row.InstallCommand.Execute().ToTask();
+
+            Assert.Null(installer.LastProvenanceId);
         }
     }
 

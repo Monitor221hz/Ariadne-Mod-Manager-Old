@@ -60,6 +60,7 @@ public class ModlLinkProcessorTests
         public DirectoryInfo StagingFolder => new(".");
         public DirectoryInfo ModsFolder => new(".");
         public DirectoryInfo ProfilesFolder => new(".");
+        public DirectoryInfo TemporaryFolder => new(".");
         public DirectoryInfo DownloadsFolder { get; } =
             new(Path.Combine(Path.GetTempPath(), $"daedalus-modl-tests-{Guid.NewGuid():N}"));
     }
@@ -140,7 +141,7 @@ public class ModlLinkProcessorTests
                 "Skyrim Special Edition",
                 [],
                 new VendorInfo(0, 0),
-                new GamePath("Root", "", []),
+                new GamePath("Root", "", [], []),
                 [],
                 [],
                 new Dictionary<string, string> { [ProtocolSchemes.Modl] = SkyrimModlId }
@@ -218,7 +219,7 @@ public class ModlLinkProcessorTests
             "Oblivion",
             [],
             new VendorInfo(0, 0),
-            new GamePath("Root", "", []),
+            new GamePath("Root", "", [], []),
             [],
             [],
             new Dictionary<string, string> { [ProtocolSchemes.Modl] = SkyrimModlId }

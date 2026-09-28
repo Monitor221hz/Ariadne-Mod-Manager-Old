@@ -49,7 +49,7 @@ public static class TestAssets
             "Test Game",
             [],
             new VendorInfo(489830, 0),
-            new GamePath("Root", "", []),
+            new GamePath("Root", "", [], []),
             [],
             []
         );
