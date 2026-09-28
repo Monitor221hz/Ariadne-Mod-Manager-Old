@@ -10,6 +10,7 @@ namespace Daedalus.ModManager.GUI.ViewModels;
 public sealed class DownloadRowViewModel : ViewModelBase
 {
     private DownloadJob _job;
+    private readonly bool _canInstall;
     private double _percentage;
     private long _receivedBytes;
     private string _receivedText = "";
@@ -17,19 +18,47 @@ public sealed class DownloadRowViewModel : ViewModelBase
     private string _etaText = "--";
     private string _detailText = "";
     private bool _isInstalling;
-    private bool _didInstall;
     private bool _installFailed;
-    private double _installPercentage;
+    private string? _liveText;
 
-    public DownloadRowViewModel(DownloadJob job, Action<Guid> cancelHandler)
+    public DownloadRowViewModel(
+        DownloadJob job,
+        Action<Guid> cancelHandler,
+        Func<Task>? installHandler = null
+    )
     {
         _job = job;
+        _canInstall = installHandler is not null;
         Apply(job);
         CancelCommand = ReactiveCommand.Create(() =>
         {
             cancelHandler(job.Id);
         });
-        InstallCommand = ReactiveCommand.Create(() => { });
+        InstallCommand = ReactiveCommand.CreateFromTask(
+            () => installHandler?.Invoke() ?? Task.CompletedTask,
+            this.WhenAnyValue(r => r.InstallAllowed)
+        );
+        RemoveCommand = ReactiveCommand.Create(RemoveFiles);
+    }
+
+    private void RemoveFiles()
+    {
+        try
+        {
+            _job.Destination.Refresh();
+            if (_job.Destination.Exists)
+            {
+                _job.Destination.Delete();
+            }
+            var manifest = DownloadManifestStore.GetManifestPath(_job.Destination);
+            manifest.Refresh();
+            if (manifest.Exists)
+            {
+                manifest.Delete();
+            }
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
     }
 
     public DownloadJob Job => _job;
@@ -73,7 +102,9 @@ public sealed class DownloadRowViewModel : ViewModelBase
 
     public ReactiveCommand<Unit, Unit> CancelCommand { get; }
 
-    public ReactiveCommand<Unit, Unit> InstallCommand { get; set; }
+    public ReactiveCommand<Unit, Unit> InstallCommand { get; }
+
+    public ReactiveCommand<Unit, Unit> RemoveCommand { get; }
 
     public bool IsInstalling
     {
@@ -81,44 +112,11 @@ public sealed class DownloadRowViewModel : ViewModelBase
         set
         {
             this.RaiseAndSetIfChanged(ref _isInstalling, value);
-            this.RaisePropertyChanged(nameof(InstallVisible));
-            this.RaisePropertyChanged(nameof(ProgressVisible));
-            this.RaisePropertyChanged(nameof(ProgressValue));
+            this.RaisePropertyChanged(nameof(InstallAllowed));
         }
     }
 
-    public double InstallPercentage
-    {
-        get => _installPercentage;
-        private set => this.RaiseAndSetIfChanged(ref _installPercentage, value);
-    }
-
-    public void SetInstallProgress(InstallProgress progress)
-    {
-        DetailText = progress.EntryPath.Length > 0
-            ? $"Installing {progress.EntryPath}"
-            : "Installing";
-        if (progress.ProgressPercentage is { } percentage)
-        {
-            InstallPercentage = percentage;
-            this.RaisePropertyChanged(nameof(ProgressValue));
-        }
-    }
-
-    public double ProgressValue => IsInstalling ? InstallPercentage : Percentage;
-
-    public bool ProgressVisible => IsRunning || IsInstalling;
-
-    public bool DidInstall
-    {
-        get => _didInstall;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _didInstall, value);
-            this.RaisePropertyChanged(nameof(InstallVisible));
-            this.RaisePropertyChanged(nameof(StatusText));
-        }
-    }
+    public bool ProgressVisible => IsRunning;
 
     public bool InstallFailed
     {
@@ -132,7 +130,7 @@ public sealed class DownloadRowViewModel : ViewModelBase
 
     public bool IsCompleted => _job.Status is DownloadJobStatus.Completed;
 
-    public bool InstallVisible => IsCompleted && !IsInstalling && !DidInstall;
+    public bool InstallAllowed => _canInstall && IsCompleted && !IsInstalling;
 
     public bool IsRunning => _job.Status is DownloadJobStatus.Running;
     public bool IsQueued => _job.Status is DownloadJobStatus.Queued;
@@ -144,19 +142,27 @@ public sealed class DownloadRowViewModel : ViewModelBase
                 or DownloadJobStatus.IntegrityMismatch;
 
     public string StatusText =>
-        DidInstall
-            ? "Installed"
-            : InstallFailed
-                ? "Install failed"
-                : _job.Status switch
-                {
-                DownloadJobStatus.Queued => "Queued",
-                DownloadJobStatus.Running => "Downloading",
-                DownloadJobStatus.Completed => "Completed",
-                DownloadJobStatus.Cancelled => "Cancelled",
-                DownloadJobStatus.IntegrityMismatch => "Checksum mismatch",
-                _ => $"Failed: {_job.Error}",
-            };
+        InstallFailed ? "Install failed"
+        : IsInstalling && _liveText is not null ? _liveText
+        : _job.Status switch
+        {
+            DownloadJobStatus.Queued => "Queued",
+            DownloadJobStatus.Running => "Downloading",
+            DownloadJobStatus.Completed => "Completed",
+            DownloadJobStatus.Cancelled => "Cancelled",
+            DownloadJobStatus.IntegrityMismatch => "Checksum mismatch",
+            _ => $"Failed: {_job.Error}",
+        };
+
+    public void SetLiveText(string? text)
+    {
+        if (_liveText == text)
+        {
+            return;
+        }
+        _liveText = text;
+        this.RaisePropertyChanged(nameof(StatusText));
+    }
 
     public void Apply(DownloadJob job)
     {
@@ -179,7 +185,7 @@ public sealed class DownloadRowViewModel : ViewModelBase
         this.RaisePropertyChanged(nameof(IsQueued));
         this.RaisePropertyChanged(nameof(IsFinished));
         this.RaisePropertyChanged(nameof(IsCompleted));
-        this.RaisePropertyChanged(nameof(InstallVisible));
+        this.RaisePropertyChanged(nameof(InstallAllowed));
         this.RaisePropertyChanged(nameof(StatusText));
     }
 

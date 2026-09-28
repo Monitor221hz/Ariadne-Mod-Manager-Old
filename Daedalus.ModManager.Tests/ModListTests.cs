@@ -219,6 +219,41 @@ public class ModListTests
     }
 
     [Fact]
+    public void Remove_GroupedMod_RemovesFromSetAndGroup()
+    {
+        var list = NewList(out _, out var groups);
+        var groupedMod = groups[2][0];
+
+        Assert.Contains(groupedMod, list);
+        Assert.True(list.Remove(groupedMod));
+        Assert.DoesNotContain(groupedMod, list);
+        Assert.Empty(groups[2]);
+    }
+
+    [Fact]
+    public void Add_Duplicate_StaysSingle()
+    {
+        var list = NewList(out var loose, out _);
+        var mod = loose[0];
+
+        list.Add(mod);
+
+        Assert.Equal(1, list.Count(m => ReferenceEquals(m, mod)));
+    }
+
+    [Fact]
+    public void Remove_ThenReAdd_Works()
+    {
+        var list = NewList(out var loose, out _);
+        var mod = loose[0];
+
+        Assert.True(list.Remove(mod));
+        list.Add(mod);
+
+        Assert.True(list.Contains(mod));
+    }
+
+    [Fact]
     public void EmptyList_Works()
     {
         var list = new ModList([], []);

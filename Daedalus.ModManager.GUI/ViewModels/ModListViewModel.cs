@@ -42,7 +42,9 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
     private readonly SemaphoreSlim _syncGate = new(1, 1);
 
     private readonly Subject<Unit> _domainSynchronized = new();
+    private readonly Subject<Unit> _activeChanged = new();
     public IObservable<Unit> DomainSynchronized => _domainSynchronized;
+    public IObservable<Unit> ActiveChanged => _activeChanged;
 
     public ReactiveCommand<Unit, Unit> CreateModCommand { get; }
     public ReactiveCommand<Unit, Unit> CreateGroupCommand { get; }
@@ -217,6 +219,21 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
 
     public void RegisterMod(ILibraryMod mod)
     {
+        var existing = EnumerateModEntries()
+            .FirstOrDefault(entry =>
+                string.Equals(
+                    entry.Model.Directory.FullName,
+                    mod.Directory.FullName,
+                    StringComparison.OrdinalIgnoreCase
+                )
+            );
+        if (existing is not null)
+        {
+            existing.Model.RefreshContent();
+            _structureChanged.OnNext(Unit.Default);
+            return;
+        }
+
         _profile.ModList.Add(mod);
         _profileSerializer.Save(_profile);
         var vm = new ModEntryNodeViewModel(mod);
@@ -476,7 +493,11 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
             node.WhenAnyValue(n => n.Active)
                 .Skip(1)
                 .ObserveOn(TaskPoolScheduler.Default)
-                .Subscribe(_ => PersistMod(node))
+                .Subscribe(_ =>
+                {
+                    PersistMod(node);
+                    _activeChanged.OnNext(Unit.Default);
+                })
         );
         _nodeActionHooks.Add(
             node.WhenAnyValue(n => n.PriorityValue)
@@ -491,6 +512,9 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
         _syncHooks.Add(
             StreamOf(group.ObservableChildren)
                 .Subscribe(_ => _structureChanged.OnNext(Unit.Default))
+        );
+        _syncHooks.Add(
+            group.RenameCommitted.Subscribe(_ => _structureChanged.OnNext(Unit.Default))
         );
         _nodeActionHooks.Add(
             group

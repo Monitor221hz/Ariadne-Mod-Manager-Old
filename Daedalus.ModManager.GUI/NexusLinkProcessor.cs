@@ -5,6 +5,7 @@ using Daedalus.Downloads;
 using Daedalus.Security;
 using Daedalus.WebProtocol;
 using Daedalus.WebProtocol.Nexus;
+using Noggog;
 
 namespace Daedalus.ModManager.GUI;
 
@@ -174,6 +175,7 @@ public sealed class NexusLinkProcessor : IDisposable
                     ModName = pending.Metadata?.Name,
                     Version = pending.Metadata?.Version,
                     FileName = pending.Metadata?.FileName ?? file.Name,
+                    ModFileName = pending.Metadata?.Name ?? pending.Metadata?.FileName ?? file.Name,
                     SizeInBytes = pending.Metadata?.SizeInBytes,
                     SourceLink = pending.Link.ToString(),
                     ResolvedUrl = pending.Resolved.Uri.AbsoluteUri,

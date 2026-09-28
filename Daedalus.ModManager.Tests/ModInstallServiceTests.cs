@@ -1,7 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
+using System.IO.Compression;
 using Daedalus.Contracts.Games;
 using Daedalus.Contracts.ModManager;
 using Daedalus.Games;
+using Daedalus.Games.Serialization;
 using Daedalus.VFS;
 using Xunit;
 
@@ -32,10 +34,7 @@ public class ModInstallServiceTests : IDisposable
             {
                 throw new IOException("destination missing");
             }
-            File.WriteAllText(
-                Path.Combine(outputDirectory.FullName, "plugin.txt"),
-                "content"
-            );
+            File.WriteAllText(Path.Combine(outputDirectory.FullName, "plugin.txt"), "content");
             _handler?.Invoke(
                 archiveFile,
                 new ExtractionProgressEventArgs("plugin.txt", 7, 7, 42.0)
@@ -69,7 +68,8 @@ public class ModInstallServiceTests : IDisposable
             string name,
             IModInfo modInfo,
             DirectoryInfo content,
-            [NotNullWhen(true)] out ILibraryMod? mod
+            [NotNullWhen(true)] out ILibraryMod? mod,
+            InstallType type = InstallType.New
         )
         {
             TryInstallCalls++;
@@ -101,16 +101,20 @@ public class ModInstallServiceTests : IDisposable
             new VirtualNode<ModFileEntry>("", NodeFlags.Directory, null, null);
 
         public void RefreshContent() { }
+
         public void RenameTo(string newName) { }
 
         public bool Equals(ILibraryMod? x, ILibraryMod? y) => ReferenceEquals(x, y);
+
         public int GetHashCode(ILibraryMod obj) => 0;
+
         public bool Equals(ILibraryMod? other) => ReferenceEquals(this, other);
     }
 
     private sealed class FakeTargeter : IModTargeter
     {
         private readonly string _targetKey;
+
         public FakeTargeter(string targetKey) => _targetKey = targetKey;
 
         public void ApplyAliases(ISupportedGame game, ILibraryMod mod) { }
@@ -124,8 +128,11 @@ public class ModInstallServiceTests : IDisposable
     private sealed class FakeSerializer : ILibraryModSerializer
     {
         public int SaveCalls { get; private set; }
+
         public ILibraryMod Load(FileInfo file) => throw new InvalidOperationException();
+
         public ILibraryMod Load(DirectoryInfo folder) => throw new InvalidOperationException();
+
         public void Save(ILibraryMod mod) => SaveCalls++;
     }
 
@@ -135,17 +142,15 @@ public class ModInstallServiceTests : IDisposable
         {
             public DirectoryInfo InstallPath => new(".");
             public ISupportedGame Configuration => g;
+
             public string LookupAbsolutePath(IGamePath path) => path.Key;
+
             public string UpdateAbsolutePath(IGamePath path) => path.Key;
         }
 
         public FakeInstances(ISupportedGame game)
         {
-            Current = new CurrentInstance(
-                "main",
-                new DirectoryInfo("."),
-                new FakeInstalled(game)
-            );
+            Current = new CurrentInstance("main", new DirectoryInfo("."), new FakeInstalled(game));
         }
 
         public IReadOnlyDictionary<string, DirectoryInfo> Instances { get; } =
@@ -153,8 +158,11 @@ public class ModInstallServiceTests : IDisposable
         public CurrentInstance? Current { get; }
 
         public DirectoryInfo Create(string name, DirectoryInfo folder, IInstalledGame g) => folder;
+
         public void Switch(string name) { }
+
         public void Remove(string name, bool deleteFolder) { }
+
         public IInstalledGame? ResolveGame(string instanceName) => Current?.Game;
     }
 
@@ -205,6 +213,24 @@ public class ModInstallServiceTests : IDisposable
         return archive;
     }
 
+    private FileInfo WriteRealZipArchive(params (string Name, int Size)[] entries)
+    {
+        var archive = new FileInfo(Path.Combine(_temp.Path, "real.zip"));
+        using var fileStream = new FileStream(
+            archive.FullName,
+            FileMode.Create,
+            FileAccess.ReadWrite
+        );
+        using var zip = new ZipArchive(fileStream, ZipArchiveMode.Create);
+        foreach (var (name, size) in entries)
+        {
+            var entry = zip.CreateEntry(name);
+            using var entryStream = entry.Open();
+            entryStream.Write(new byte[size], 0, size);
+        }
+        return archive;
+    }
+
     [Fact]
     public async Task AcceptingInstaller_InstallsAndAssignsTarget()
     {
@@ -228,7 +254,12 @@ public class ModInstallServiceTests : IDisposable
     {
         var extractor = new FakeExtractor();
         var installer = new ScriptedInstaller(_modsRoot, accepts: false, succeeds: true);
-        var service = CreateService(extractor, [installer], new FakeTargeter("Data"), new FakeSerializer());
+        var service = CreateService(
+            extractor,
+            [installer],
+            new FakeTargeter("Data"),
+            new FakeSerializer()
+        );
 
         var mod = await service.InstallAsync("SkyUI", null, WriteFakeArchive());
 
@@ -242,7 +273,12 @@ public class ModInstallServiceTests : IDisposable
     {
         var extractor = new FakeExtractor();
         var installer = new ScriptedInstaller(_modsRoot, accepts: true, succeeds: false);
-        var service = CreateService(extractor, [installer], new FakeTargeter("Data"), new FakeSerializer());
+        var service = CreateService(
+            extractor,
+            [installer],
+            new FakeTargeter("Data"),
+            new FakeSerializer()
+        );
 
         var mod = await service.InstallAsync("SkyUI", null, WriteFakeArchive());
 
@@ -255,7 +291,12 @@ public class ModInstallServiceTests : IDisposable
     {
         var extractor = new FakeExtractor();
         var installer = new ScriptedInstaller(_modsRoot, accepts: true, succeeds: true);
-        var service = CreateService(extractor, [installer], new FakeTargeter("Data"), new FakeSerializer());
+        var service = CreateService(
+            extractor,
+            [installer],
+            new FakeTargeter("Data"),
+            new FakeSerializer()
+        );
 
         var mod = await service.InstallAsync(
             "SkyUI",
@@ -273,7 +314,12 @@ public class ModInstallServiceTests : IDisposable
     {
         var extractor = new FakeExtractor();
         var installer = new ScriptedInstaller(_modsRoot, accepts: true, succeeds: true);
-        var service = CreateService(extractor, [installer], new FakeTargeter("Data"), new FakeSerializer());
+        var service = CreateService(
+            extractor,
+            [installer],
+            new FakeTargeter("Data"),
+            new FakeSerializer()
+        );
 
         var progress = new List<InstallProgress>();
         service.InstallProgressChanged += (_, p) => progress.Add(p);
@@ -285,7 +331,143 @@ public class ModInstallServiceTests : IDisposable
         var update = Assert.Single(progress);
         Assert.Equal(archive.FullName, update.Archive.FullName);
         Assert.Equal("plugin.txt", update.EntryPath);
-        Assert.Equal(42.0, update.ProgressPercentage);
+    }
+
+    [Fact]
+    public async Task RealInstallerChain_ModContentSurvivesInstall()
+    {
+        var store = new InstanceStore(new FileInfo(_temp.Combine("instances.json")));
+        var configDir = new DirectoryInfo(_temp.Combine("gameconfigs"));
+        configDir.Create();
+        File.WriteAllText(
+            Path.Combine(configDir.FullName, "game.json"),
+            """
+            {
+              "Name": "Test Game",
+              "Platforms": [],
+              "Vendors": { "Steam": 489830, "GOG": 0 },
+              "Root": { "Key": "_root", "DirectoryPath": "", "Patterns": [] },
+              "Deployments": [],
+              "InstallTargets": [
+                {
+                  "Key": "Data",
+                  "DirectoryPath": "Data",
+                  "Aliases": ["data"],
+                  "Patterns": ["*.esp"],
+                  "BasedOn": "_root"
+                }
+              ]
+            }
+            """
+        );
+        var instances = new InstanceService(
+            store,
+            new InstalledGameSerializer(),
+            new GameCatalog(configDir)
+        );
+        var gameDir = new DirectoryInfo(_temp.Combine("game-install"));
+        gameDir.Create();
+        var game = new InstalledGame(gameDir, new GameCatalog(configDir).Games.Single());
+        instances.Create("main", new DirectoryInfo(_temp.Combine("instance")), game);
+
+        var paths = new ModManagerPaths(new DirectoryInfo(_temp.Path), instances);
+        var serializer = new LibraryModSerializer([]);
+        var installer = new AliasedModInstaller(new InstancedModFactory([], paths), serializer);
+        var service = new ModInstallService(
+            new StandardArchiveExtractor(),
+            [installer],
+            new QuickPatternModTargeter(),
+            instances,
+            paths,
+            serializer
+        );
+
+        var mod = await service.InstallAsync(
+            "SkyUI",
+            "6.1",
+            WriteRealZipArchive(("data/plugin.esp", 100))
+        );
+
+        Assert.NotNull(mod);
+        var modDir = new DirectoryInfo(Path.Combine(paths.ModsFolder.FullName, "SkyUI"));
+        Assert.True(File.Exists(Path.Combine(modDir.FullName, "plugin.esp")));
+        Assert.True(File.Exists(Path.Combine(modDir.FullName, LibraryModSerializer.FileName)));
+        Assert.False(Directory.Exists(Path.Combine(modDir.FullName, "data")));
+        Assert.Equal("Data", mod.Info.Target);
+        Assert.Empty(Directory.GetDirectories(paths.TemporaryFolder.FullName));
+    }
+
+    [Fact]
+    public async Task RealInstallerChain_Reinstall_ReplacesExistingContent()
+    {
+        var store = new InstanceStore(new FileInfo(_temp.Combine("instances.json")));
+        var configDir = new DirectoryInfo(_temp.Combine("gameconfigs"));
+        configDir.Create();
+        File.WriteAllText(
+            Path.Combine(configDir.FullName, "game.json"),
+            """
+            {
+              "Name": "Test Game",
+              "Platforms": [],
+              "Vendors": { "Steam": 489830, "GOG": 0 },
+              "Root": { "Key": "_root", "DirectoryPath": "", "Patterns": [] },
+              "Deployments": [],
+              "InstallTargets": [
+                {
+                  "Key": "Data",
+                  "DirectoryPath": "Data",
+                  "Aliases": ["data"],
+                  "Patterns": ["*.esp"],
+                  "BasedOn": "_root"
+                }
+              ]
+            }
+            """
+        );
+        var instances = new InstanceService(
+            store,
+            new InstalledGameSerializer(),
+            new GameCatalog(configDir)
+        );
+        var gameDir = new DirectoryInfo(_temp.Combine("game-install"));
+        gameDir.Create();
+        var game = new InstalledGame(gameDir, new GameCatalog(configDir).Games.Single());
+        instances.Create("main", new DirectoryInfo(_temp.Combine("instance")), game);
+
+        var paths = new ModManagerPaths(new DirectoryInfo(_temp.Path), instances);
+        var serializer = new LibraryModSerializer([]);
+        var installer = new AliasedModInstaller(new InstancedModFactory([], paths), serializer);
+        var service = new ModInstallService(
+            new StandardArchiveExtractor(),
+            [installer],
+            new QuickPatternModTargeter(),
+            instances,
+            paths,
+            serializer
+        );
+
+        var first = await service.InstallAsync(
+            "SkyUI",
+            "6.1",
+            WriteRealZipArchive(("data/plugin.esp", 100))
+        );
+        Assert.NotNull(first);
+
+        var modDir = new DirectoryInfo(Path.Combine(paths.ModsFolder.FullName, "SkyUI"));
+        Assert.True(File.Exists(Path.Combine(modDir.FullName, "plugin.esp")));
+
+        var second = await service.InstallAsync(
+            "SkyUI",
+            "6.2",
+            WriteRealZipArchive(("data/plugin.esp", 250), ("data/extra.dds", 50)),
+            installType: InstallType.Replace
+        );
+
+        Assert.NotNull(second);
+        Assert.Equal(250, new FileInfo(Path.Combine(modDir.FullName, "plugin.esp")).Length);
+        Assert.True(File.Exists(Path.Combine(modDir.FullName, "extra.dds")));
+        Assert.False(Directory.Exists(Path.Combine(modDir.FullName, "data")));
+        Assert.Equal("6.2", second.Info.Version);
     }
 
     [Fact]
@@ -293,7 +475,12 @@ public class ModInstallServiceTests : IDisposable
     {
         var extractor = new FakeExtractor { ThrowOnExtract = true };
         var installer = new ScriptedInstaller(_modsRoot, accepts: true, succeeds: true);
-        var service = CreateService(extractor, [installer], new FakeTargeter("Data"), new FakeSerializer());
+        var service = CreateService(
+            extractor,
+            [installer],
+            new FakeTargeter("Data"),
+            new FakeSerializer()
+        );
 
         var mod = await service.InstallAsync("SkyUI", null, WriteFakeArchive());
 

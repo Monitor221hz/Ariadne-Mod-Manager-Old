@@ -1,9 +1,9 @@
-using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Reactive;
 using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using CP.Reactive.Collections;
 using Daedalus.Contracts.Games;
 using Daedalus.Contracts.ModManager;
 using Daedalus.Downloads;
@@ -98,16 +98,23 @@ public sealed class DownloadListViewModel : ViewModelBase, IWorkspaceTab, IDispo
 
         _subscriptions.Add(WatchFolder(notifyScheduler));
 
-        Rows.CollectionChanged += (_, _) =>
+        NotifyCollectionChangedEventHandler rowsChangedHandler = (_, _) =>
         {
             this.RaisePropertyChanged(nameof(HasRows));
             this.RaisePropertyChanged(nameof(SummaryText));
         };
+        Rows.CollectionChanged += rowsChangedHandler;
+        _subscriptions.Add(
+            System.Reactive.Disposables.Disposable.Create(() =>
+            {
+                Rows.CollectionChanged -= rowsChangedHandler;
+            })
+        );
     }
 
     public string Title => "Downloads";
 
-    public ObservableCollection<DownloadRowViewModel> Rows { get; } = [];
+    public ReactiveList<DownloadRowViewModel> Rows { get; } = [];
 
     public bool HasRows => Rows.Count > 0;
 
@@ -163,8 +170,12 @@ public sealed class DownloadListViewModel : ViewModelBase, IWorkspaceTab, IDispo
 
         if (_rowsByPath.TryGetValue(job.Destination.FullName, out var seeded))
         {
-            _rowsByPath.Remove(job.Destination.FullName);
+            _rowsById.Remove(seeded.Job.Id);
             _rowsById[job.Id] = seeded;
+            if (_rowSubscriptions.Remove(seeded.Job.Id, out var subscription))
+            {
+                _rowSubscriptions[job.Id] = subscription;
+            }
             seeded.Apply(job);
             return;
         }
@@ -197,12 +208,18 @@ public sealed class DownloadListViewModel : ViewModelBase, IWorkspaceTab, IDispo
             return;
         }
 
-        row.SetInstallProgress(progress);
+        row.SetLiveText(
+            progress.EntryPath.Length > 0 ? $"Installing {progress.EntryPath}" : "Installing"
+        );
     }
 
-    private async Task InstallAsync(DownloadRowViewModel row)
+    private async Task InstallAsync(DownloadJob job)
     {
         if (_installService is null)
+        {
+            return;
+        }
+        if (!_rowsById.TryGetValue(job.Id, out var row))
         {
             return;
         }
@@ -211,21 +228,21 @@ public sealed class DownloadListViewModel : ViewModelBase, IWorkspaceTab, IDispo
         try
         {
             var manifest = DownloadManifestStore.TryRead(row.Job.Destination);
-            var name = manifest?.FileName is { Length: > 0 } fileName
-                ? Path.GetFileNameWithoutExtension(fileName)
-                : Path.GetFileNameWithoutExtension(row.Job.Destination.Name);
+            var name = manifest?.ModFileName is { Length: > 0 } modFileName
+                ? modFileName
+                : Path.GetFileNameWithoutExtension(manifest?.FileName ?? row.Job.Destination.Name);
             var mod = await _installService.InstallAsync(
                 name,
                 manifest?.Version,
                 row.Job.Destination,
-                ManifestProvenance(manifest)
+                ManifestProvenance(manifest),
+                InstallType.Replace
             );
             if (mod is null)
             {
                 row.InstallFailed = true;
                 return;
             }
-            row.DidInstall = true;
             _onInstalled?.Invoke(mod);
         }
         finally
@@ -243,8 +260,8 @@ public sealed class DownloadListViewModel : ViewModelBase, IWorkspaceTab, IDispo
 
         var source = manifest.Repository switch
         {
-            "nxm" => SourceType.NexusMods,
-            "modl" => SourceType.ModPub,
+            ProtocolSchemes.Nxm => SourceType.NexusMods,
+            ProtocolSchemes.Modl => SourceType.ModPub,
             _ => SourceType.Local,
         };
         return new ModID((ulong)modId, source);
@@ -252,15 +269,9 @@ public sealed class DownloadListViewModel : ViewModelBase, IWorkspaceTab, IDispo
 
     private void AddRow(DownloadJob job)
     {
-        var row = new DownloadRowViewModel(job, id => _queue.Cancel(id));
-        if (_installService is not null)
-        {
-            row.InstallCommand = ReactiveCommand.CreateFromTask(
-                () => InstallAsync(row),
-                row.WhenAnyValue(r => r.InstallVisible)
-            );
-            row.InstallCommand.ThrownExceptions.Subscribe(_ => row.InstallFailed = true);
-        }
+        Func<Task>? installHandler = _installService is not null ? () => InstallAsync(job) : null;
+        var row = new DownloadRowViewModel(job, id => _queue.Cancel(id), installHandler);
+        row.InstallCommand.ThrownExceptions.Subscribe(_ => row.InstallFailed = true);
         _rowsById[job.Id] = row;
         _rowsByPath[job.Destination.FullName] = row;
         _rowSubscriptions[job.Id] = row.WhenAnyValue(x => x.IsFinished)

@@ -136,13 +136,12 @@ public sealed class WorkspaceViewModelTests
 
     private sealed class FakeModFactory : ILibraryModFactory
     {
-        public ILibraryMod Create(string name, IModInfo info) => throw new InvalidOperationException();
+        public ILibraryMod Create(string name, IModInfo info) =>
+            throw new InvalidOperationException();
+
         public ILibraryMod Create(IModInfo info) => throw new InvalidOperationException();
-        public bool TryCreate(
-            string name,
-            IModInfo info,
-            out ILibraryMod? mod
-        )
+
+        public bool TryCreate(string name, IModInfo info, out ILibraryMod? mod)
         {
             mod = null;
             return false;
@@ -201,6 +200,43 @@ public sealed class WorkspaceViewModelTests
         return new Harness(ws, lo, pluginLog, modLog);
 
         static LoadOrderViewModel via(LoadOrderViewModel vm) => vm;
+    }
+
+    [Fact]
+    public async Task RegisterMod_SameDirectory_DoesNotDuplicate()
+    {
+        var mod = new FakeMod("WithPlugin", 1);
+        using var h = await NewHarness([mod], []);
+
+        var before = h.Workspace.ModList.EnumerateModEntries().Count();
+        h.Workspace.ModList.RegisterMod(mod);
+        var after = h.Workspace.ModList.EnumerateModEntries().Count();
+
+        Assert.Equal(before, after);
+    }
+
+    [Fact]
+    public async Task TickingMod_Active_RaisesActiveChanged_NotStructureChanged()
+    {
+        var mod = new FakeMod("Tickable", 1);
+        using var h = await NewHarness([mod], []);
+
+        var activeFired = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+        var structureFired = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+        h.Workspace.ModList.ActiveChanged.Subscribe(_ => activeFired.TrySetResult());
+        h.Workspace.ModList.StructureChanged.Subscribe(_ => structureFired.TrySetResult());
+
+        var entry = h
+            .Workspace.ModList.EnumerateModEntries()
+            .Single(e => e.DisplayName == "Tickable");
+        entry.Active = false;
+
+        Assert.True(activeFired.Task.Wait(TimeSpan.FromSeconds(5)));
+        Assert.False(structureFired.Task.Wait(TimeSpan.FromMilliseconds(500)));
     }
 
     [Fact]

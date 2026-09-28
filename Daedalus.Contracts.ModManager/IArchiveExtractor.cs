@@ -1,7 +1,5 @@
 namespace Daedalus.Contracts.ModManager;
 
-using System;
-
 public sealed class ExtractionProgressEventArgs(
     string entryPath,
     long bytesTransferred,
@@ -17,7 +15,6 @@ public sealed class ExtractionProgressEventArgs(
 
 public interface IArchiveExtractor
 {
-    delegate void ExtractionProgressEventHandler(ExtractionProgressEventArgs args);
     event EventHandler<ExtractionProgressEventArgs>? OnExtractionProgress;
     IReadOnlyCollection<string> SupportedExtensions { get; }
     void Extract(DirectoryInfo outputDirectory, FileInfo archiveFile);

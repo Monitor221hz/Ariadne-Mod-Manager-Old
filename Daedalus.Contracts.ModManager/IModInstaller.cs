@@ -4,6 +4,13 @@ using Daedalus.VFS;
 
 namespace Daedalus.Contracts.ModManager;
 
+public enum InstallType
+{
+    New,
+    Merge,
+    Replace,
+}
+
 public interface IModInstaller
 {
     bool CanInstall(ISupportedGame game, DirectoryInfo content);
@@ -11,6 +18,7 @@ public interface IModInstaller
         string name,
         IModInfo modInfo,
         DirectoryInfo content,
-        [NotNullWhen(true)] out ILibraryMod? mod
+        [NotNullWhen(true)] out ILibraryMod? mod,
+        InstallType type = InstallType.New
     );
 }

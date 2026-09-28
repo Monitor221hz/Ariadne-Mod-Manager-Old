@@ -393,6 +393,7 @@ public class DownloadListViewModelTests : IDisposable
         public string? LastName { get; private set; }
         public string? LastVersion { get; private set; }
         public ModID? LastProvenanceId { get; private set; }
+        public InstallType LastInstallType { get; private set; }
         public bool Succeed = true;
         public TaskCompletionSource? Gate;
 
@@ -401,6 +402,7 @@ public class DownloadListViewModelTests : IDisposable
             string? version,
             FileInfo archive,
             ModID? provenanceId = null,
+            InstallType installType = InstallType.New,
             CancellationToken cancellationToken = default
         )
         {
@@ -408,14 +410,13 @@ public class DownloadListViewModelTests : IDisposable
             LastName = name;
             LastVersion = version;
             LastProvenanceId = provenanceId;
+            LastInstallType = installType;
             var gate = Gate;
             if (gate is not null)
             {
                 return AwaitGate(gate, name);
             }
-            return Task.FromResult<ILibraryMod?>(
-                Succeed ? new StubLibraryMod(name) : null
-            );
+            return Task.FromResult<ILibraryMod?>(Succeed ? new StubLibraryMod(name) : null);
         }
 
         private async Task<ILibraryMod?> AwaitGate(TaskCompletionSource gate, string name)
@@ -438,14 +439,22 @@ public class DownloadListViewModelTests : IDisposable
         public VirtualNode<ModFileEntry> Content => throw new NotSupportedException();
 
         public void RefreshContent() { }
+
         public void RenameTo(string newName) { }
+
         public bool Equals(ILibraryMod? x, ILibraryMod? y) => ReferenceEquals(x, y);
+
         public int GetHashCode(ILibraryMod obj) => 0;
+
         public bool Equals(ILibraryMod? other) => ReferenceEquals(this, other);
     }
 
-    private (FakeQueue Queue, DownloadListViewModel ViewModel, FakeInstallService Installer, List<ILibraryMod> Installed)
-        CreateInstallViewModel(IScheduler? sample = null, IScheduler? notify = null)
+    private (
+        FakeQueue Queue,
+        DownloadListViewModel ViewModel,
+        FakeInstallService Installer,
+        List<ILibraryMod> Installed
+    ) CreateInstallViewModel(IScheduler? sample = null, IScheduler? notify = null)
     {
         var queue = new FakeQueue();
         var installer = new FakeInstallService();
@@ -465,19 +474,25 @@ public class DownloadListViewModelTests : IDisposable
         );
     }
 
-    private DownloadRowViewModel AddCompletedRowViaQueue(DownloadListViewModel viewModel, FakeQueue queue, string name)
+    private DownloadRowViewModel AddCompletedRowViaQueue(
+        DownloadListViewModel viewModel,
+        FakeQueue queue,
+        string name
+    )
     {
-        var id = queue.Enqueue(new DownloadRequest(
-            new Uri($"https://example.com/{name}"),
-            new FileInfo(Path.Combine(_paths.DownloadsFolder.FullName, name))
-        ));
+        var id = queue.Enqueue(
+            new DownloadRequest(
+                new Uri($"https://example.com/{name}"),
+                new FileInfo(Path.Combine(_paths.DownloadsFolder.FullName, name))
+            )
+        );
         queue.MarkRunning(id);
         queue.MarkCompleted(id, 100);
         return viewModel.Rows.Single(row => row.Job.Id == id);
     }
 
     [Fact]
-    public async Task InstallProgress_UpdatesRowPercentageAndDetail()
+    public async Task InstallProgress_UpdatesRowStatusText()
     {
         var (queue, viewModel, installer, installed) = CreateInstallViewModel(
             sample: Scheduler.Default,
@@ -494,16 +509,40 @@ public class DownloadListViewModelTests : IDisposable
             Assert.True(WaitUntil(() => row.IsInstalling));
 
             installer.EmitProgress(
-                new InstallProgress(row.Job.Destination, "Data/SKSE/plugin.dll", 50, 100, 50.0)
+                new InstallProgress(row.Job.Destination, "Data/SKSE/plugin.dll")
             );
 
-            Assert.True(WaitUntil(() => row.InstallPercentage == 50.0));
-            Assert.Equal(50.0, row.ProgressValue);
-            Assert.True(WaitUntil(() => row.DetailText == "Installing Data/SKSE/plugin.dll"));
+            Assert.True(WaitUntil(() => row.StatusText == "Installing Data/SKSE/plugin.dll"));
 
             installer.Gate.SetResult();
             await installTask;
-            Assert.True(row.DidInstall);
+            Assert.False(row.InstallFailed);
+            Assert.Equal("Completed", row.StatusText);
+        }
+    }
+
+    [Fact]
+    public async Task RemoveCommand_DeletesFileAndManifest()
+    {
+        var (queue, viewModel, installer, installed) = CreateInstallViewModel();
+        using (viewModel)
+        {
+            var row = AddCompletedRowViaQueue(viewModel, queue, "SkyUI.7z");
+            var archivePath = Path.Combine(_paths.DownloadsFolder.FullName, "SkyUI.7z");
+            _paths.DownloadsFolder.Create();
+            File.WriteAllText(archivePath, "fake");
+            DownloadManifestStore.Write(
+                new FileInfo(archivePath),
+                new DownloadManifest { Repository = "nxm", DownloadedUtc = DateTimeOffset.UtcNow }
+            );
+
+            Assert.True(WaitUntil(() => viewModel.Rows.Contains(row)));
+
+            row.RemoveCommand.Execute().Subscribe();
+
+            Assert.False(File.Exists(archivePath));
+            Assert.False(File.Exists(archivePath + ".manifest.json"));
+            Assert.True(WaitUntil(() => viewModel.Rows.Count == 0));
         }
     }
 
@@ -515,16 +554,15 @@ public class DownloadListViewModelTests : IDisposable
         {
             var row = AddCompletedRowViaQueue(viewModel, queue, "SkyUI.7z");
 
-            Assert.True(row.InstallVisible);
+            Assert.True(row.InstallAllowed);
             await row.InstallCommand.Execute().ToTask();
 
             Assert.Equal(1, installer.Calls);
             Assert.Equal("SkyUI", installer.LastName);
-            Assert.True(row.DidInstall);
-            Assert.Equal("Installed", row.StatusText);
+            Assert.Equal(InstallType.Replace, installer.LastInstallType);
             var mod = Assert.Single(installed);
             Assert.Equal("SkyUI", mod.Name);
-            Assert.False(row.InstallVisible);
+            Assert.True(row.InstallAllowed);
         }
     }
 
@@ -539,7 +577,6 @@ public class DownloadListViewModelTests : IDisposable
 
             await row.InstallCommand.Execute().ToTask();
 
-            Assert.False(row.DidInstall);
             Assert.True(row.InstallFailed);
             Assert.Equal("Install failed", row.StatusText);
             Assert.Empty(installed);

@@ -26,6 +26,9 @@ public sealed record DownloadManifest
     [JsonPropertyName("fileName")]
     public string? FileName { get; init; }
 
+    [JsonPropertyName("modFileName")]
+    public string? ModFileName { get; init; }
+
     [JsonPropertyName("sizeInBytes")]
     public long? SizeInBytes { get; init; }
 

@@ -74,10 +74,10 @@ public sealed class DeployedViewModel : ViewModelBase, IWorkspaceTab
         get => _rows;
         private set
         {
-            this.RaiseAndSetIfChanged(ref _rows, value);
             Model.SetRoots(
-                new System.Collections.ObjectModel.ObservableCollection<DeployedRowViewModel>(Rows)
+                new System.Collections.ObjectModel.ObservableCollection<DeployedRowViewModel>(value)
             );
+            this.RaiseAndSetIfChanged(ref _rows, value);
         }
     }
 

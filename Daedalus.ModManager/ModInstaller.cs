@@ -14,6 +14,7 @@ public abstract class ModInstaller(ILibraryModFactory modFactory, ILibraryModSer
         string name,
         IModInfo modInfo,
         DirectoryInfo content,
-        [NotNullWhen(true)] out ILibraryMod? mod
+        [NotNullWhen(true)] out ILibraryMod? mod,
+        InstallType type = InstallType.New
     );
 }

@@ -1,12 +1,6 @@
 namespace Daedalus.Contracts.ModManager;
 
-public sealed record InstallProgress(
-    FileInfo Archive,
-    string EntryPath,
-    long BytesTransferred,
-    long? TotalBytes,
-    double? ProgressPercentage
-);
+public sealed record InstallProgress(FileInfo Archive, string EntryPath);
 
 public interface IModInstallService
 {
@@ -17,6 +11,7 @@ public interface IModInstallService
         string? version,
         FileInfo archive,
         ModID? provenanceId = null,
+        InstallType installType = InstallType.New,
         CancellationToken cancellationToken = default
     );
 }

@@ -2,6 +2,7 @@ using Daedalus.Contracts.ModManager;
 using SharpCompress.Archives;
 using SharpCompress.Common;
 using SharpCompress.Readers;
+using ReaderOptions = SharpCompress.Readers.ReaderOptions;
 
 namespace Daedalus.ModManager;
 
@@ -22,51 +23,30 @@ public sealed class StandardArchiveExtractor : IArchiveExtractor
 
     public void Extract(DirectoryInfo outputDirectory, FileInfo archiveFile)
     {
-        using var archive = ArchiveFactory.OpenArchive(archiveFile.FullName);
-        var totalBytes = archive.TotalUncompressedSize;
-        var transferred = 0L;
-
-        void Report(string? entryPath)
+        var progress = new Progress<ProgressReport>(report =>
         {
-            double? percentage = totalBytes > 0 ? transferred * 100.0 / totalBytes : null;
             OnExtractionProgress?.Invoke(
                 archiveFile,
                 new ExtractionProgressEventArgs(
-                    entryPath ?? string.Empty,
-                    transferred,
-                    totalBytes,
-                    percentage
+                    report.EntryPath,
+                    report.BytesTransferred,
+                    report.TotalBytes,
+                    report.PercentComplete
                 )
             );
-        }
-
-        if (archive.IsSolid)
-        {
-            using var reader = archive.ExtractAllEntries();
-            while (reader.MoveToNextEntry())
+        });
+        using var archive = ArchiveFactory.OpenArchive(
+            archiveFile.FullName,
+            ReaderOptions.ForFilePath.WithProgress(progress)
+        );
+        archive.WriteToDirectory(
+            outputDirectory.FullName,
+            new ExtractionOptions
             {
-                if (reader.Entry.IsDirectory)
-                {
-                    continue;
-                }
-                reader.WriteEntryToDirectory(
-                    outputDirectory.FullName,
-                    new ExtractionOptions { ExtractFullPath = true, Overwrite = true }
-                );
-                transferred += reader.Entry.Size;
-                Report(reader.Entry.Key);
+                ExtractFullPath = true,
+                Overwrite = true,
+                CheckCrc = true,
             }
-            return;
-        }
-
-        foreach (var entry in archive.Entries.Where(entry => !entry.IsDirectory))
-        {
-            entry.WriteToDirectory(
-                outputDirectory.FullName,
-                new ExtractionOptions { ExtractFullPath = true, Overwrite = true }
-            );
-            transferred += entry.Size;
-            Report(entry.Key);
-        }
+        );
     }
 }

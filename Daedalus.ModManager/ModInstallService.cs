@@ -33,16 +33,7 @@ public sealed class ModInstallService : IModInstallService
         {
             if (sender is FileInfo archive)
             {
-                InstallProgressChanged?.Invoke(
-                    this,
-                    new InstallProgress(
-                        archive,
-                        args.EntryPath,
-                        args.BytesTransferred,
-                        args.TotalBytes,
-                        args.ProgressPercentage
-                    )
-                );
+                InstallProgressChanged?.Invoke(this, new InstallProgress(archive, args.EntryPath));
             }
         };
     }
@@ -52,6 +43,7 @@ public sealed class ModInstallService : IModInstallService
         string? version,
         FileInfo archive,
         ModID? provenanceId = null,
+        InstallType installType = InstallType.New,
         CancellationToken cancellationToken = default
     )
     {
@@ -98,7 +90,7 @@ public sealed class ModInstallService : IModInstallService
                     false
                 );
 
-                if (installer.TryInstall(name, info, extractionRoot, out var mod))
+                if (installer.TryInstall(name, info, extractionRoot, out var mod, installType))
                 {
                     _targeter.ApplyAliases(game.Configuration, mod);
                     mod.Info.Target = _targeter.GetTarget(game.Configuration, mod).Key;
@@ -119,12 +111,8 @@ public sealed class ModInstallService : IModInstallService
                     extractionRoot.Delete(true);
                 }
             }
-            catch (IOException)
-            {
-            }
-            catch (UnauthorizedAccessException)
-            {
-            }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
         }
     }
 }

@@ -113,7 +113,16 @@ public sealed class WorkspaceViewModel : ViewModelBase, IDisposable
         _subscriptions.Add(
             _loadOrderTab.LoadOrder.Stream.Subscribe(_ => _pluginRowsByOrigin = null)
         );
-        _subscriptions.Add(ModList.DomainSynchronized.Subscribe(_ => RefreshDeployed()));
+        _subscriptions.Add(
+            ModList
+                .DomainSynchronized.ObserveOn(AvaloniaScheduler.Instance)
+                .Subscribe(_ => RefreshDeployed())
+        );
+        _subscriptions.Add(
+            ModList
+                .ActiveChanged.ObserveOn(AvaloniaScheduler.Instance)
+                .Subscribe(_ => RefreshDeployed())
+        );
         _subscriptions.Add(
             this.WhenAnyValue(x => x.SelectedMod)
                 .Select(mod => Observable.FromAsync(() => ComputeVerdictsAsync(mod)))
