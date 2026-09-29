@@ -1,0 +1,151 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:converters="using:Ariadne.ModManager.GUI.Converters"
+        xmlns:fi="using:FluentIcons.Avalonia"
+        xmlns:hier="using:Avalonia.Controls.DataGridHierarchical"
+        xmlns:vm="using:Ariadne.ModManager.GUI.ViewModels"
+        xmlns:pdg="clr-namespace:Avalonia.Controls;assembly=Avalonia.Controls.DataGrid"
+        xmlns:xlang="using:System"
+        x:DataType="xlang:Object">
+
+    <Styles.Resources>
+        <ResourceDictionary>
+            <converters:NodeChevronIconConverter x:Key="NodeChevronIconGeometry" />
+            <converters:NodeChevronIconSizeConverter x:Key="NodeChevronIconSize" />
+            <converters:RowVisualBrushConverter x:Key="RowVisualBrush" />
+
+
+            <ControlTheme x:Key="AriadneHierarchyExpanderToggle" TargetType="ToggleButton">
+                <Setter Property="Margin" Value="0" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="Foreground" Value="{DynamicResource FgDimmedBrush}" />
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="Template">
+                    <ControlTemplate>
+                        <Grid Background="Transparent">
+                            <Border Width="22" Height="22">
+                                <fi:FluentIcon x:Name="Icon"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               FontSize="{Binding Path=DataContext, Converter={StaticResource NodeChevronIconSize}, RelativeSource={RelativeSource TemplatedParent}}"
+                                               Foreground="{TemplateBinding Foreground}"
+                                               IconVariant="Regular">
+                                    <fi:FluentIcon.Icon>
+                                        <MultiBinding Converter="{StaticResource NodeChevronIconGeometry}">
+                                            <Binding Path="DataContext" RelativeSource="{RelativeSource TemplatedParent}" />
+                                            <Binding Path="IsChecked" RelativeSource="{RelativeSource TemplatedParent}" />
+                                        </MultiBinding>
+                                    </fi:FluentIcon.Icon>
+                                </fi:FluentIcon>
+                            </Border>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter>
+                <Style Selector="^:checked">
+                    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                </Style>
+            </ControlTheme>
+
+            <ControlTheme x:Key="{x:Type pdg:DataGridHierarchicalPresenter}"
+                          TargetType="pdg:DataGridHierarchicalPresenter">
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="Indent" Value="{DynamicResource AriadneHierarchyIndent}" />
+                <Setter Property="Template">
+                    <ControlTemplate>
+                        <Border Padding="{TemplateBinding Padding}">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <ToggleButton x:Name="PART_Expander"
+                                              Width="{DynamicResource AriadneExpanderToggleWidth}"
+                                              Height="{DynamicResource AriadneExpanderToggleHeight}"
+                                              Theme="{StaticResource AriadneHierarchyExpanderToggle}"
+                                              IsEnabled="{TemplateBinding IsExpandable}"
+                                              IsVisible="{TemplateBinding IsExpandable}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" />
+                                <ContentPresenter Grid.Column="1"
+                                                  Margin="{DynamicResource AriadneHierarchyContentMargin}"
+                                                  HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                  ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                  Content="{TemplateBinding Content}" />
+                            </Grid>
+                        </Border>
+                    </ControlTemplate>
+                </Setter>
+            </ControlTheme>
+        </ResourceDictionary>
+    </Styles.Resources>
+
+    <Style Selector="DataGrid#ModsGrid DataGridRow">
+        <Setter Property="Background">
+            <MultiBinding Converter="{StaticResource RowVisualBrush}" x:DataType="hier:HierarchicalNode">
+                <Binding Path="Item" />
+                <Binding Path="((vm:TreeNodeViewModel)Item).ConflictVerdict" />
+            </MultiBinding>
+        </Setter>
+    </Style>
+
+    <Style Selector="Menu Separator">
+        <Setter Property="Background" Value="{DynamicResource BorderActiveBrush}" />
+        <Setter Property="Margin" Value="4,2" />
+    </Style>
+
+    <Style Selector="Menu > MenuItem">
+        <Setter Property="Foreground" Value="{DynamicResource FgMutedBrush}" />
+    </Style>
+
+    <Style Selector="Menu > MenuItem:pointerover">
+        <Setter Property="Foreground" Value="{DynamicResource FgBaseBrush}" />
+    </Style>
+
+    <Style Selector="TextBox.transparent:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="Cursor" Value="Arrow" />
+    </Style>
+
+    <Style Selector="TextBox.transparent /template/ Border#PART_BorderElement">
+        <Setter Property="Cursor" Value="Arrow" />
+    </Style>
+
+    <Style Selector="TextBox.transparent:focus /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+
+    <Style Selector="TextBox.transparent">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="SelectionBrush" Value="{DynamicResource BgSelection}"/>
+        <Setter Property="Cursor" Value="Arrow" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+    <Style Selector="TextBox.transparent /template/ TextPresenter#PART_TextPresenter">
+        <Setter Property="Cursor" Value="Arrow" />
+        <Setter Property="CaretBrush" Value="Transparent" />
+    </Style>
+
+    <Style Selector="TextBox.transparent /template/ ScrollViewer#PART_ScrollViewer /template/ ScrollContentPresenter#PART_ContentPresenter">
+        <Setter Property="Cursor" Value="Arrow" />
+    </Style>
+
+    <Style Selector="TextBox.transparent /template/ TextBlock#PART_Placeholder">
+        <Setter Property="Cursor" Value="Arrow" />
+    </Style>
+
+    <Style Selector="TextBox.transparent /template/ Border#PART_BorderElement">
+        <Setter Property="Cursor" Value="Arrow" />
+    </Style>
+
+    <Style Selector="DataGridRow">
+        <Setter Property="Cursor" Value="Arrow" />
+    </Style>
+
+</Styles>

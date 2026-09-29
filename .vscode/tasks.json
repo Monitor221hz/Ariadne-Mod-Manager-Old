@@ -5,21 +5,21 @@
             "label": "build-gui",
             "command": "dotnet",
             "type": "process",
-            "args": ["build", "${workspaceFolder}/Daedalus.ModManager.GUI/Daedalus.ModManager.GUI.csproj", "/property:GenerateFullPaths=true", "/consoleloggerparameters:NoSummary"],
+            "args": ["build", "${workspaceFolder}/Ariadne.ModManager.GUI/Ariadne.ModManager.GUI.csproj", "/property:GenerateFullPaths=true", "/consoleloggerparameters:NoSummary"],
             "problemMatcher": "$msCompile"
         },
         {
             "label": "build",
             "command": "dotnet",
             "type": "process",
-            "args": ["build", "${workspaceFolder}/Daedalus.VFS.WinFsp.Demo/Daedalus.VFS.WinFsp.Demo.csproj", "/property:GenerateFullPaths=true", "/consoleloggerparameters:NoSummary"],
+            "args": ["build", "${workspaceFolder}/Ariadne.VFS.WinFsp.Demo/Ariadne.VFS.WinFsp.Demo.csproj", "/property:GenerateFullPaths=true", "/consoleloggerparameters:NoSummary"],
             "problemMatcher": "$msCompile"
         },
         {
             "label": "build-release",
             "command": "dotnet",
             "type": "process",
-            "args": ["build", "${workspaceFolder}/Daedalus.VFS.WinFsp.Demo/Daedalus.VFS.WinFsp.Demo.csproj", "-c", "Release", "/property:GenerateFullPaths=true", "/consoleloggerparameters:NoSummary"],
+            "args": ["build", "${workspaceFolder}/Ariadne.VFS.WinFsp.Demo/Ariadne.VFS.WinFsp.Demo.csproj", "-c", "Release", "/property:GenerateFullPaths=true", "/consoleloggerparameters:NoSummary"],
             "problemMatcher": "$msCompile"
         }
     ]

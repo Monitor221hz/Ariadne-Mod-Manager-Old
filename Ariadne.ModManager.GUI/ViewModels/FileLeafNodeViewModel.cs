@@ -1,0 +1,39 @@
+using ByteSizeLib;
+using Ariadne.Contracts.ModManager;
+using Ariadne.VFS;
+using ReactiveUI;
+
+namespace Ariadne.ModManager.GUI.ViewModels;
+
+public sealed class FileLeafNodeViewModel : TreeNodeViewModel
+{
+    private readonly VirtualNode<ModFileEntry> _node;
+    private string _sizeText;
+
+    private string _displayName;
+    public override string DisplayName
+    {
+        get => _displayName;
+        set => this.RaiseAndSetIfChanged(ref _displayName, value);
+    }
+    public override string SizeText
+    {
+        get => _sizeText;
+    }
+    public override long SizeBytes => _node.SelfAndDescendants().Sum(c => c.Data?.Size ?? 0);
+    public ModEntryKind Kind => _node.Data!.Kind;
+
+    public string AbsolutePath => _node.Data!.AbsolutePath;
+
+    public override bool RenameAllowed => false;
+    public override IEnumerable<TreeNodeViewModel> Children =>
+        _node.Children.Select(ContentNodeViewModel.Wrap);
+    public override bool HasChildren => _node.Children.Count > 0;
+
+    public FileLeafNodeViewModel(VirtualNode<ModFileEntry> node)
+    {
+        _node = node;
+        _sizeText = ByteSize.FromBytes(node.Data!.Size).ToString();
+        _displayName = node.Data!.Name;
+    }
+}

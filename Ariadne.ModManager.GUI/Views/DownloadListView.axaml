@@ -1,0 +1,91 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Ariadne.ModManager.GUI.ViewModels"
+             xmlns:dc="using:Avalonia.Data.Converters"
+             xmlns:fi="using:FluentIcons.Avalonia"
+             x:Class="Ariadne.ModManager.GUI.Views.DownloadListView"
+             x:DataType="vm:DownloadListViewModel">
+
+    <DockPanel>
+        <Border DockPanel.Dock="Top"
+                Background="{DynamicResource AriadneToolbarBackground}"
+                BorderBrush="{DynamicResource AriadneToolbarBorder}"
+                BorderThickness="0,0,0,1"
+                Padding="12,8">
+            <TextBlock VerticalAlignment="Center"
+                       FontWeight="SemiBold"
+                       Text="{Binding SummaryText}" />
+        </Border>
+
+        <TextBlock Text="No downloads yet"
+                   Foreground="{DynamicResource FgDimmedBrush}"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   IsVisible="{Binding HasRows, Converter={x:Static dc:BoolConverters.Not}}" />
+
+        <ScrollViewer>
+            <ListBox ItemsSource="{Binding Rows}">
+                <ListBox.Styles>
+                    <Style Selector="ListBoxItem">
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="Margin" Value="0" />
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="ContextMenu">
+                            <ContextMenu x:DataType="vm:DownloadRowViewModel">
+                                <MenuItem Header="Install"
+                                          Command="{Binding InstallCommand}" />
+                                <MenuItem Header="Remove"
+                                          Command="{Binding RemoveCommand}" />
+                            </ContextMenu>
+                        </Setter>
+                    </Style>
+                </ListBox.Styles>
+                <ListBox.ItemTemplate>
+                    <DataTemplate DataType="vm:DownloadRowViewModel">
+                        <Border Padding="12,8">
+                            <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto,Auto">
+                                <TextBlock Grid.Row="0"
+                                           Grid.Column="0"
+                                           FontWeight="SemiBold"
+                                           Text="{Binding DisplayName}"
+                                           TextTrimming="CharacterEllipsis" />
+                                <TextBlock Grid.Row="0"
+                                           Grid.Column="1"
+                                           Grid.ColumnSpan="2"
+                                           Foreground="{DynamicResource FgDimmedBrush}"
+                                           Text="{Binding StatusText}" />
+                                <ProgressBar Grid.Row="1"
+                                             Grid.Column="0"
+                                             Grid.ColumnSpan="3"
+                                             Margin="0,6,0,6"
+                                             Minimum="0"
+                                             Maximum="100"
+                                             Value="{Binding Percentage}"
+                                             IsVisible="{Binding IsRunning}" />
+                                <ProgressBar Grid.Row="1"
+                                             Grid.Column="0"
+                                             Grid.ColumnSpan="3"
+                                             Margin="0,6,0,6"
+                                             IsIndeterminate="True"
+                                             IsVisible="{Binding IsInstalling}" />
+                                <TextBlock Grid.Row="2"
+                                           Grid.Column="0"
+                                           Foreground="{DynamicResource FgDimmedBrush}"
+                                           Text="{Binding DetailText}"
+                                           IsVisible="{Binding IsFinished, Converter={x:Static dc:BoolConverters.Not}}" />
+                                <Button Grid.Row="2"
+                                        Grid.Column="2"
+                                        Command="{Binding CancelCommand}"
+                                        IsVisible="{Binding IsFinished, Converter={x:Static dc:BoolConverters.Not}}"
+                                        Padding="2"
+                                        VerticalAlignment="Center">
+                                    <fi:FluentIcon Icon="Dismiss" IconVariant="Regular" FontSize="14" />
+                                </Button>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

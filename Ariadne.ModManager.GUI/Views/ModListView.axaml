@@ -1,0 +1,118 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Ariadne.ModManager.GUI.ViewModels"
+             xmlns:views="using:Ariadne.ModManager.GUI.Views"
+             xmlns:hier="using:Avalonia.Controls.DataGridHierarchical"
+             xmlns:conv="using:Avalonia.Data.Converters"
+             x:Class="Ariadne.ModManager.GUI.Views.ModListView"
+             x:DataType="vm:ModListViewModel">
+
+    <UserControl.Resources>
+        <views:HierarchicalSortingAdapterFactory x:Key="HierarchicalSortingAdapterFactory" />
+    </UserControl.Resources>
+
+    <UserControl.DataTemplates>
+        <DataTemplate DataType="vm:ModEntryNodeViewModel">
+            <views:ModEntryNodeView />
+        </DataTemplate>
+        <DataTemplate DataType="vm:GroupHeaderNodeViewModel">
+            <views:GroupHeaderNodeView />
+        </DataTemplate>
+        <DataTemplate DataType="vm:DirectoryNodeViewModel">
+            <views:DirectoryNodeView />
+        </DataTemplate>
+        <DataTemplate DataType="vm:FileLeafNodeViewModel">
+            <views:FileLeafNodeView />
+        </DataTemplate>
+        <DataTemplate DataType="vm:ArchiveLeafNodeViewModel">
+            <views:ArchiveLeafNodeView />
+        </DataTemplate>
+    </UserControl.DataTemplates>
+
+    <Grid>
+        <DockPanel>
+            <DataGrid x:Name="ModsGrid" HierarchicalModel="{Binding Model}"
+                      HierarchicalRowsEnabled="True"
+                      RowHeight="{DynamicResource AriadneRowHeight}"
+                      SortingModel="{Binding SortingModel}"
+                      SortingAdapterFactory="{StaticResource HierarchicalSortingAdapterFactory}"
+                      CanUserSortColumns="True"
+                      CanUserReorderRows="True"
+                      RowDragHandle="RowHeaderAndRow"
+                      RowDropHandler="{Binding DropHandler}"
+                      SelectionMode="Extended"
+                      SelectionUnit="FullRow"
+                      SelectionChanged="ModsGrid_SelectionChanged"
+                      AutoGenerateColumns="False"
+                      HeadersVisibility="Column"
+                      ContextRequested="ModsGrid_ContextRequested">
+                <DataGrid.Columns>
+                    <DataGridHierarchicalColumn Header="Name"
+                                                SortMemberPath="Item.DisplayName"
+                                                ColumnKey="name"
+                                                Width="3*"
+                                                x:DataType="hier:HierarchicalNode"
+                                                Binding="{Binding Item}">
+                        <DataGridHierarchicalColumn.CellTemplate>
+                            <DataTemplate x:DataType="hier:HierarchicalNode">
+                                <ContentControl Content="{Binding Item}" />
+                            </DataTemplate>
+                        </DataGridHierarchicalColumn.CellTemplate>
+                    </DataGridHierarchicalColumn>
+                    <DataGridTextColumn Header="Priority"
+                                        SortMemberPath="Item.PriorityValue"
+                                        ColumnKey="priority"
+                                        Width="90"
+                                        x:DataType="hier:HierarchicalNode"
+                                        Binding="{Binding ((vm:TreeNodeViewModel)Item).PriorityValue}" />
+                    <DataGridTextColumn Header="Version"
+                                        SortMemberPath="Item.VersionText"
+                                        ColumnKey="version"
+                                        Width="120"
+                                        x:DataType="hier:HierarchicalNode"
+                                        Binding="{Binding ((vm:TreeNodeViewModel)Item).VersionText}" />
+                    <DataGridTextColumn Header="Size"
+                                        SortMemberPath="Item.SizeBytes"
+                                        ColumnKey="size"
+                                        Width="100"
+                                        x:DataType="hier:HierarchicalNode"
+                                        Binding="{Binding ((vm:TreeNodeViewModel)Item).SizeText}" />
+                </DataGrid.Columns>
+            </DataGrid>
+        </DockPanel>
+
+        <Button IsVisible="{Binding SortActive}"
+                Command="{Binding ClearSortCommand}"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Bottom"
+                Margin="0,0,16,16"
+                Padding="12,6"
+                CornerRadius="16"
+                ToolTip.Tip="Column sorting hides the drag &amp; drop order; clear to restore it">
+            <TextBlock Text="Clear Sort" />
+        </Button>
+
+        <Border x:Name="RemoveOverlay"
+                IsVisible="False"
+                Background="#80000000">
+            <Border Background="{DynamicResource AriadneToolbarBackground}"
+                    BorderBrush="{DynamicResource AriadneToolbarBorder}"
+                    BoxShadow="{DynamicResource GlassCardShadow}"
+                    BorderThickness="1"
+                    Padding="16"
+                    CornerRadius="8"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <StackPanel Spacing="12" MinWidth="360">
+                    <TextBlock x:Name="RemovePromptText" FontWeight="SemiBold" />
+                    <TextBlock Text="The mod folder is deleted from disk. This cannot be undone."
+                               TextWrapping="Wrap" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button x:Name="DeleteModButton" Content="Delete" />
+                        <Button x:Name="RemoveModCancelButton" Content="Cancel" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+    </Grid>
+</UserControl>

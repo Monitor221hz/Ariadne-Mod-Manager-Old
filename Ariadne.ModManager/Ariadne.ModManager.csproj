@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="GameFinder" Version="4.9.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+    <PackageReference Include="SharpCompress" Version="0.50.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ariadne.Contracts.Games\Ariadne.Contracts.Games.csproj" />
+    <ProjectReference Include="..\Ariadne.Contracts.ModManager\Ariadne.Contracts.ModManager.csproj" />
+    <ProjectReference Include="..\Ariadne.Games\Ariadne.Games.csproj" />
+    <ProjectReference Include="..\Ariadne.VFS.Services\Ariadne.VFS.Services.csproj" />
+    <ProjectReference Include="..\Ariadne.VFS\Ariadne.VFS.csproj" />
+  </ItemGroup>
+
+</Project>

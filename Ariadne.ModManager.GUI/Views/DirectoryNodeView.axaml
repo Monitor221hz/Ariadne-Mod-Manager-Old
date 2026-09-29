@@ -1,0 +1,14 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Ariadne.ModManager.GUI.ViewModels"
+             x:Class="Ariadne.ModManager.GUI.Views.DirectoryNodeView"
+             x:DataType="vm:DirectoryNodeViewModel">
+
+    <MaskedTextBox Text="{Binding DisplayName}"
+               Classes="transparent"
+               FontSize="{DynamicResource UiFontSizeMedium}"
+               Foreground="{DynamicResource FgMutedBrush}"
+               VerticalAlignment="Center"
+               Margin="0,3"
+               Background="Transparent" BorderThickness="0"/>
+</UserControl>

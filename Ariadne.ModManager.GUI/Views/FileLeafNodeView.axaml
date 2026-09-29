@@ -1,0 +1,30 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Ariadne.ModManager.GUI.ViewModels"
+             xmlns:fi="using:FluentIcons.Avalonia"
+             xmlns:conv="using:Ariadne.ModManager.GUI.Converters"
+             x:Class="Ariadne.ModManager.GUI.Views.FileLeafNodeView"
+             x:DataType="vm:FileLeafNodeViewModel">
+
+    <UserControl.Resources>
+        <conv:FileIconConverter x:Key="FileIcon" />
+    </UserControl.Resources>
+
+    <StackPanel Orientation="Horizontal" Spacing="0">
+        <fi:FluentIcon Icon="{Binding Converter={StaticResource FileIcon}}"
+                       FontSize="20"
+                       Foreground="{DynamicResource FgDimmedBrush}"
+                       VerticalAlignment="Center" Padding="0" Margin="0" />
+        <MaskedTextBox Text="{Binding DisplayName}"
+                   Classes="transparent"
+                   FontSize="{DynamicResource UiFontSizeMedium}"
+                   Foreground="{DynamicResource FgMutedBrush}"
+                   VerticalAlignment="Center"
+                   Margin="0,3"
+                   Background="Transparent" BorderThickness="0"
+                   IsReadOnly="True"
+                   Focusable="False"
+                   Cursor="Arrow"
+                   CaretBrush="Transparent"/>
+    </StackPanel>
+</UserControl>

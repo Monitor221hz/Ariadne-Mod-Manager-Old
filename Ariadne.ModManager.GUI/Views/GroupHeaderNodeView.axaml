@@ -1,0 +1,24 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Ariadne.ModManager.GUI.ViewModels"
+             x:Class="Ariadne.ModManager.GUI.Views.GroupHeaderNodeView"
+             x:DataType="vm:GroupHeaderNodeViewModel">
+
+    <Border Padding="8,4"
+            HorizontalAlignment="Stretch"
+            Margin="0,3">
+        <MaskedTextBox x:Name="NameBox"
+                       Text="{Binding DisplayName, Mode=TwoWay}"
+                       Classes.transparent="{Binding !IsEditing}"
+                       FontWeight="SemiBold"
+                       Foreground="{Binding SeparatorBrush, Converter={StaticResource BandContrastForeground}}"
+                       VerticalAlignment="Center"
+                       IsReadOnly="{Binding !IsEditing}"
+                       IsHitTestVisible="False"
+                       Background="Transparent"
+                       BorderThickness="0"
+                       SelectionBrush="{DynamicResource BgSelection}"
+                       LostFocus="NameBox_LostFocus"
+                        LetterSpacing="1"/>
+    </Border>
+</UserControl>

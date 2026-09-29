@@ -1,0 +1,90 @@
+using Ariadne.Contracts.Games;
+using Ariadne.Contracts.ModManager;
+using Ariadne.Games;
+using Ariadne.Games.Serialization;
+using Ariadne.VFS;
+
+namespace Ariadne.ModManager.Tests;
+
+public sealed class FakeVirtualFileSystem : IVirtualFileSystem
+{
+    public VirtualNode<BackedEntry>? MountedRoot { get; private set; }
+    public VirtualFileSystemSettings? Settings { get; private set; }
+    public bool IsUnmounted { get; private set; }
+    public bool IsDisposed { get; private set; }
+
+    public void Mount(VirtualNode<BackedEntry> root, VirtualFileSystemSettings settings)
+    {
+        MountedRoot = root;
+        Settings = settings;
+    }
+
+    public void Unmount() => IsUnmounted = true;
+
+    public void Dispose() => IsDisposed = true;
+}
+
+public sealed class FakeVirtualFileSystemFactory : IVirtualFileSystemFactory
+{
+    public List<FakeVirtualFileSystem> Created { get; } = new();
+
+    public IVirtualFileSystem Create()
+    {
+        var vfs = new FakeVirtualFileSystem();
+        Created.Add(vfs);
+        return vfs;
+    }
+}
+
+public sealed class TestDeploymentPaths(string overwriteDir, string stagingDir) : IDeploymentPaths
+{
+    public DirectoryInfo OverwriteDirectory { get; } = new(overwriteDir);
+    public DirectoryInfo StagingDirectory { get; } = new(stagingDir);
+}
+
+public static class TestAssets
+{
+    public static ISupportedGame SupportedGame { get; } =
+        new SupportedGame(
+            "Test Game",
+            [],
+            new VendorInfo(489830, 0),
+            new GamePath("Root", "", [], []),
+            [],
+            []
+        );
+
+    public static InstalledGame GameAt(DirectoryInfo installDir)
+    {
+        installDir.Create();
+        return new InstalledGame(installDir, SupportedGame);
+    }
+
+    public static InstanceService CreateInstanceService(FileInfo configFile) =>
+        new(new InstanceStore(configFile), new InstalledGameSerializer(), new GameCatalog([]));
+}
+
+public sealed class TempDirectory : IDisposable
+{
+    public string Path { get; }
+
+    public TempDirectory()
+    {
+        Path = System.IO.Path.Combine(
+            System.IO.Path.GetTempPath(),
+            "AriadneTests-" + Guid.NewGuid().ToString("N")
+        );
+        Directory.CreateDirectory(Path);
+    }
+
+    public string Combine(params string[] parts) =>
+        System.IO.Path.Combine(new[] { Path }.Concat(parts).ToArray());
+
+    public void Dispose()
+    {
+        if (Directory.Exists(Path))
+        {
+            Directory.Delete(Path, true);
+        }
+    }
+}

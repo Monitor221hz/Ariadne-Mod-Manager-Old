@@ -2,22 +2,22 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Daedalus GUI (Ariadne)",
+            "name": "Ariadne GUI",
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build-gui",
-            "program": "${workspaceFolder}/Daedalus.ModManager.GUI/bin/Debug/net10.0/Ariadne.exe",
+            "program": "${workspaceFolder}/Ariadne.ModManager.GUI/bin/Debug/net10.0/Ariadne.exe",
             "args": [],
-            "cwd": "${workspaceFolder}/Daedalus.ModManager.GUI/bin/Debug/net10.0",
+            "cwd": "${workspaceFolder}/Ariadne.ModManager.GUI/bin/Debug/net10.0",
             "console": "internalConsole",
             "stopAtEntry": false
         },
         {
-            "name": "Daedalus.VFS.WinFsp.Demo",
+            "name": "Ariadne.VFS.WinFsp.Demo",
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/Daedalus.VFS.WinFsp.Demo/bin/Debug/net10.0/Daedalus.VFS.WinFsp.Demo.exe",
+            "program": "${workspaceFolder}/Ariadne.VFS.WinFsp.Demo/bin/Debug/net10.0/Ariadne.VFS.WinFsp.Demo.exe",
             "args": [
                 "${input:mode}",
                 "${input:sourceDir}",
@@ -29,11 +29,11 @@
             "stopAtEntry": false
         },
         {
-            "name": "Daedalus.VFS.WinFsp.Demo (Release)",
+            "name": "Ariadne.VFS.WinFsp.Demo (Release)",
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build-release",
-            "program": "${workspaceFolder}/Daedalus.VFS.WinFsp.Demo/bin/Release/net10.0/Daedalus.VFS.WinFsp.Demo.exe",
+            "program": "${workspaceFolder}/Ariadne.VFS.WinFsp.Demo/bin/Release/net10.0/Ariadne.VFS.WinFsp.Demo.exe",
             "args": [
                 "${input:mode}",
                 "${input:sourceDir}",
