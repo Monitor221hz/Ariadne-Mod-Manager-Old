@@ -15,6 +15,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Ariadne.Contracts.Games\Ariadne.Contracts.Games.csproj" />
     <ProjectReference Include="..\Ariadne.Contracts.ModManager\Ariadne.Contracts.ModManager.csproj" />
+    <ProjectReference Include="..\Ariadne.Extensions.IO\Ariadne.Extensions.IO.csproj" />
     <ProjectReference Include="..\Ariadne.Games\Ariadne.Games.csproj" />
     <ProjectReference Include="..\Ariadne.VFS.Services\Ariadne.VFS.Services.csproj" />
     <ProjectReference Include="..\Ariadne.VFS\Ariadne.VFS.csproj" />

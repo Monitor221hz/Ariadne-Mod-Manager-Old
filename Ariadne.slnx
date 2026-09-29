@@ -6,6 +6,7 @@
   <Project Path="Ariadne.VFS/Ariadne.VFS.csproj" />
   <Project Path="Ariadne.Contracts.ModManager/Ariadne.Contracts.ModManager.csproj" />
   <Project Path="Ariadne.Games/Ariadne.Games.csproj" />
+  <Project Path="Ariadne.Extensions.IO/Ariadne.Extensions.IO.csproj" />
   <Project Path="Ariadne.Games.Tests/Ariadne.Games.Tests.csproj" />
   <Project Path="Ariadne.ModManager.Bethesda/Ariadne.ModManager.Bethesda.csproj" />
   <Project Path="Ariadne.ModManager.Bethesda.Tests/Ariadne.ModManager.Bethesda.Tests.csproj" />
