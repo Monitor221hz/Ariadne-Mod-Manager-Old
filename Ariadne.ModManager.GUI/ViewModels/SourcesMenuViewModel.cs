@@ -10,7 +10,7 @@ namespace Ariadne.ModManager.GUI.ViewModels;
 
 public sealed class SourcesMenuViewModel : ViewModelBase
 {
-    public const string DevKeyEnvironmentVariable = "Ariadne_NEXUS_API_KEY";
+    public const string DevKeyEnvironmentVariable = "ARIADNE_NEXUS_API_KEY";
     private const string ApiKeySecretName = "nexus-api-key";
 
     private readonly INxmProtocolRegistration? _nxmRegistration;

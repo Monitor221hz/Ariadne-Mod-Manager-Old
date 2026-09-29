@@ -3,7 +3,7 @@ using Ariadne.VFS;
 using Ariadne.VFS.WinFsp;
 using Fsp;
 
-string? logPath = Environment.GetEnvironmentVariable("Ariadne_LOG");
+string? logPath = Environment.GetEnvironmentVariable("ARIADNE_LOG");
 if (!string.IsNullOrEmpty(logPath))
 {
     Trace.Listeners.Add(new TextWriterTraceListener(logPath));
@@ -25,10 +25,7 @@ string mountPoint = Path.GetFullPath(args[2]);
 string overwrite =
     args.Length > 3
         ? Path.GetFullPath(args[3])
-        : Path.Combine(
-            Path.GetTempPath(),
-            "AriadneDemo-overwrite-" + Guid.NewGuid().ToString("N")
-        );
+        : Path.Combine(Path.GetTempPath(), "AriadneDemo-overwrite-" + Guid.NewGuid().ToString("N"));
 
 if (!Directory.Exists(source))
 {
