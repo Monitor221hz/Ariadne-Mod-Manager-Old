@@ -5,10 +5,13 @@
              x:DataType="vm:DirectoryNodeViewModel">
 
     <MaskedTextBox Text="{Binding DisplayName}"
-               Classes="transparent"
-               FontSize="{DynamicResource UiFontSizeMedium}"
-               Foreground="{DynamicResource FgMutedBrush}"
-               VerticalAlignment="Center"
-               Margin="0,3"
-               Background="Transparent" BorderThickness="0"/>
+                   Classes="transparent"
+                   FontSize="{DynamicResource UiFontSizeMedium}"
+                   Foreground="{DynamicResource FgMutedBrush}"
+                   VerticalAlignment="Center"
+                   Margin="0,3"
+                   Background="Transparent" BorderThickness="0"
+                   IsReadOnly="True"
+                   Focusable="False"
+                   IsHitTestVisible="False"/>
 </UserControl>

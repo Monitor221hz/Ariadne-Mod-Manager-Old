@@ -4,16 +4,17 @@
              xmlns:fi="using:FluentIcons.Avalonia"
              x:Class="Ariadne.ModManager.GUI.Views.ArchiveLeafNodeView"
              x:DataType="vm:ArchiveLeafNodeViewModel">
-             
-        <MaskedTextBox Text="{Binding DisplayName}"
-                   Classes="transparent"
-                   FontSize="{DynamicResource UiFontSizeMedium}"
-                   Foreground="{DynamicResource FgMutedBrush}"
-                   VerticalAlignment="Center"
-                   Margin="0,3"
-                   Background="Transparent" BorderThickness="0"
-                   IsReadOnly="True"
-                   Focusable="False"
-                   Cursor="Arrow"
-                   CaretBrush="Transparent"/>
+
+     <MaskedTextBox Text="{Binding DisplayName}"
+                    Classes="transparent"
+                    FontSize="{DynamicResource UiFontSizeMedium}"
+                    Foreground="{DynamicResource FgMutedBrush}"
+                    VerticalAlignment="Center"
+                    Margin="0,3"
+                    Background="Transparent" BorderThickness="0"
+                    IsReadOnly="True"
+                    Focusable="False"
+                    IsHitTestVisible="False"
+                    Cursor="Arrow"
+                    CaretBrush="Transparent"/>
 </UserControl>
