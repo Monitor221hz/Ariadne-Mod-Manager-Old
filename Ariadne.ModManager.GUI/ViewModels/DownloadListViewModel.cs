@@ -3,10 +3,10 @@ using System.Reactive;
 using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
-using CP.Reactive.Collections;
 using Ariadne.Contracts.Games;
 using Ariadne.Contracts.ModManager;
 using Ariadne.Downloads;
+using CP.Reactive.Collections;
 using ReactiveUI;
 using ReactiveUI.Avalonia;
 
@@ -20,6 +20,7 @@ public sealed class DownloadListViewModel : ViewModelBase, IWorkspaceTab, IDispo
     private readonly DirectoryInfo _downloadsFolder;
     private readonly IModInstallService? _installService;
     private readonly Action<ILibraryMod>? _onInstalled;
+    private readonly IReadOnlyList<IGamePath> _installTargets;
     private readonly Dictionary<Guid, DownloadRowViewModel> _rowsById = new();
     private readonly Dictionary<string, DownloadRowViewModel> _rowsByPath = new(
         StringComparer.OrdinalIgnoreCase
@@ -31,6 +32,7 @@ public sealed class DownloadListViewModel : ViewModelBase, IWorkspaceTab, IDispo
     public DownloadListViewModel(
         IDownloadQueue queue,
         IModManagerPaths paths,
+        IInstanceService? instances = null,
         IModInstallService? installService = null,
         Action<ILibraryMod>? onInstalled = null,
         IScheduler? sampleScheduler = null,
@@ -41,6 +43,11 @@ public sealed class DownloadListViewModel : ViewModelBase, IWorkspaceTab, IDispo
         _downloadsFolder = paths.DownloadsFolder;
         _installService = installService;
         _onInstalled = onInstalled;
+        _installTargets =
+            installService is not null
+            && instances?.Current?.Game?.Configuration.InstallTargets is { } targets
+                ? targets
+                : [];
         sampleScheduler ??= Scheduler.Default;
         notifyScheduler ??= AvaloniaScheduler.Instance;
 
@@ -213,7 +220,7 @@ public sealed class DownloadListViewModel : ViewModelBase, IWorkspaceTab, IDispo
         );
     }
 
-    private async Task InstallAsync(DownloadJob job)
+    private async Task InstallAsync(DownloadJob job, IGamePath? target = null)
     {
         if (_installService is null)
         {
@@ -236,7 +243,8 @@ public sealed class DownloadListViewModel : ViewModelBase, IWorkspaceTab, IDispo
                 manifest?.Version,
                 row.Job.Destination,
                 ManifestProvenance(manifest),
-                InstallType.Replace
+                InstallType.Replace,
+                target
             );
             if (mod is null)
             {
@@ -269,9 +277,17 @@ public sealed class DownloadListViewModel : ViewModelBase, IWorkspaceTab, IDispo
 
     private void AddRow(DownloadJob job)
     {
-        Func<Task>? installHandler = _installService is not null ? () => InstallAsync(job) : null;
-        var row = new DownloadRowViewModel(job, id => _queue.Cancel(id), installHandler);
+        Func<IGamePath?, Task>? installHandler = _installService is not null
+            ? target => InstallAsync(job, target)
+            : null;
+        var row = new DownloadRowViewModel(
+            job,
+            id => _queue.Cancel(id),
+            installHandler,
+            _installTargets
+        );
         row.InstallCommand.ThrownExceptions.Subscribe(_ => row.InstallFailed = true);
+        row.InstallToCommand.ThrownExceptions.Subscribe(_ => row.InstallFailed = true);
         _rowsById[job.Id] = row;
         _rowsByPath[job.Destination.FullName] = row;
         _rowSubscriptions[job.Id] = row.WhenAnyValue(x => x.IsFinished)

@@ -14,8 +14,6 @@ public sealed class StandardArchiveExtractor : IArchiveExtractor
         ".7z",
         ".rar",
         ".tar",
-        ".gz",
-        ".bz2",
     };
 
     public event EventHandler<ExtractionProgressEventArgs>? OnExtractionProgress;

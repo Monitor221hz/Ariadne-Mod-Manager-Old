@@ -1,5 +1,3 @@
-using System.Management;
-using System.Xml.Linq;
 using Ariadne.Contracts.ModManager;
 using Ariadne.VFS;
 using SharpCompress.Archives;
@@ -14,8 +12,6 @@ public sealed class StandardArchiveReader : IArchiveReader
         ".7z",
         ".rar",
         ".tar",
-        ".gz",
-        ".bz2",
     };
 
     public IReadOnlyCollection<string> SupportedExtensions => Extensions;

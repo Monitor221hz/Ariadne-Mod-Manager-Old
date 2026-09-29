@@ -141,4 +141,23 @@ public class LibraryModContentTests : IDisposable
 
         Assert.Empty(zipNode.Children);
     }
+
+    [Fact]
+    public void GzippedTar_WithReader_StaysPlainFile()
+    {
+        var mod = CreateMod("mod", new StandardArchiveReader());
+        var dir = mod.Directory;
+        Directory.CreateDirectory(System.IO.Path.Combine(dir.FullName, "src"));
+        File.WriteAllText(
+            System.IO.Path.Combine(dir.FullName, "src", "skse64-2.3.1.tar.gz"),
+            "not really gzipped"
+        );
+
+        var src = Assert.Single(mod.Content.Children);
+        var file = Assert.Single(src.Children);
+
+        Assert.Equal("skse64-2.3.1.tar.gz", file.Name);
+        Assert.Equal(ModEntryKind.File, file.Data!.Kind);
+        Assert.Empty(file.Children);
+    }
 }

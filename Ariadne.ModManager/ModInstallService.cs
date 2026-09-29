@@ -1,3 +1,4 @@
+using Ariadne.Contracts.Games;
 using Ariadne.Contracts.ModManager;
 
 namespace Ariadne.ModManager;
@@ -44,6 +45,7 @@ public sealed class ModInstallService : IModInstallService
         FileInfo archive,
         ModID? provenanceId = null,
         InstallType installType = InstallType.New,
+        IGamePath? target = null,
         CancellationToken cancellationToken = default
     )
     {
@@ -92,8 +94,12 @@ public sealed class ModInstallService : IModInstallService
 
                 if (installer.TryInstall(name, info, extractionRoot, out var mod, installType))
                 {
-                    _targeter.ApplyAliases(game.Configuration, mod);
-                    mod.Info.Target = _targeter.GetTarget(game.Configuration, mod).Key;
+                    if (target is null)
+                    {
+                        _targeter.ApplyAliases(game.Configuration, mod);
+                        target = _targeter.GetTarget(game.Configuration, mod);
+                    }
+                    mod.Info.Target = target.Key;
                     _serializer.Save(mod);
                     return mod;
                 }

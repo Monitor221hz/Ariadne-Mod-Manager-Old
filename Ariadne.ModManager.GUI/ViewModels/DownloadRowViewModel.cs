@@ -1,8 +1,9 @@
 using System.Globalization;
 using System.Reactive;
-using ByteSizeLib;
+using Ariadne.Contracts.Games;
 using Ariadne.Contracts.ModManager;
 using Ariadne.Downloads;
+using ByteSizeLib;
 using ReactiveUI;
 
 namespace Ariadne.ModManager.GUI.ViewModels;
@@ -24,7 +25,8 @@ public sealed class DownloadRowViewModel : ViewModelBase
     public DownloadRowViewModel(
         DownloadJob job,
         Action<Guid> cancelHandler,
-        Func<Task>? installHandler = null
+        Func<IGamePath?, Task>? installHandler = null,
+        IReadOnlyList<IGamePath>? installTargets = null
     )
     {
         _job = job;
@@ -34,10 +36,18 @@ public sealed class DownloadRowViewModel : ViewModelBase
         {
             cancelHandler(job.Id);
         });
+        var installAllowed = this.WhenAnyValue(r => r.InstallAllowed);
         InstallCommand = ReactiveCommand.CreateFromTask(
-            () => installHandler?.Invoke() ?? Task.CompletedTask,
-            this.WhenAnyValue(r => r.InstallAllowed)
+            () => installHandler?.Invoke(null) ?? Task.CompletedTask,
+            installAllowed
         );
+        InstallToCommand = ReactiveCommand.CreateFromTask<IGamePath>(
+            target => installHandler?.Invoke(target) ?? Task.CompletedTask,
+            installAllowed
+        );
+        InstallTargets = (installTargets ?? [])
+            .Select(target => new InstallTargetOptionViewModel(target, InstallToCommand))
+            .ToList();
         RemoveCommand = ReactiveCommand.Create(RemoveFiles);
     }
 
@@ -103,6 +113,12 @@ public sealed class DownloadRowViewModel : ViewModelBase
     public ReactiveCommand<Unit, Unit> CancelCommand { get; }
 
     public ReactiveCommand<Unit, Unit> InstallCommand { get; }
+
+    public ReactiveCommand<IGamePath, Unit> InstallToCommand { get; }
+
+    public IReadOnlyList<InstallTargetOptionViewModel> InstallTargets { get; }
+
+    public bool HasInstallTargets => InstallTargets.Count > 0;
 
     public ReactiveCommand<Unit, Unit> RemoveCommand { get; }
 

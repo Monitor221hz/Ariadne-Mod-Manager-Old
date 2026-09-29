@@ -1,7 +1,9 @@
 using System.Reactive.Concurrency;
 using System.Reactive.Threading.Tasks;
+using Ariadne.Contracts.Games;
 using Ariadne.Contracts.ModManager;
 using Ariadne.Downloads;
+using Ariadne.Games;
 using Ariadne.ModManager.GUI.ViewModels;
 using Ariadne.VFS;
 using Microsoft.Reactive.Testing;
@@ -131,7 +133,10 @@ public class DownloadListViewModelTests : IDisposable
     {
         var queue = new FakeQueue();
         var effective = scheduler ?? Scheduler.Immediate;
-        return (queue, new DownloadListViewModel(queue, _paths, null, null, effective, effective));
+        return (
+            queue,
+            new DownloadListViewModel(queue, _paths, null, null, null, effective, effective)
+        );
     }
 
     private static bool WaitUntil(Func<bool> condition)
@@ -291,6 +296,7 @@ public class DownloadListViewModelTests : IDisposable
             _paths,
             null,
             null,
+            null,
             Scheduler.Immediate,
             Scheduler.Immediate
         );
@@ -394,6 +400,7 @@ public class DownloadListViewModelTests : IDisposable
         public string? LastVersion { get; private set; }
         public ModID? LastProvenanceId { get; private set; }
         public InstallType LastInstallType { get; private set; }
+        public IGamePath? LastTarget { get; private set; }
         public bool Succeed = true;
         public TaskCompletionSource? Gate;
 
@@ -403,6 +410,7 @@ public class DownloadListViewModelTests : IDisposable
             FileInfo archive,
             ModID? provenanceId = null,
             InstallType installType = InstallType.New,
+            IGamePath? target = null,
             CancellationToken cancellationToken = default
         )
         {
@@ -411,6 +419,7 @@ public class DownloadListViewModelTests : IDisposable
             LastVersion = version;
             LastProvenanceId = provenanceId;
             LastInstallType = installType;
+            LastTarget = target;
             var gate = Gate;
             if (gate is not null)
             {
@@ -429,6 +438,61 @@ public class DownloadListViewModelTests : IDisposable
         {
             InstallProgressChanged?.Invoke(this, progress);
         }
+    }
+
+    private sealed class FakeGameConfiguration(IReadOnlyList<IGamePath> installTargets)
+        : ISupportedGame
+    {
+        public string Name => "Test Game";
+        public IVendorInfo Vendors => null!;
+        public IReadOnlyDictionary<string, string> ProtocolGameIds =>
+            new Dictionary<string, string>();
+        public IGamePath Root => null!;
+        public IReadOnlyList<IGamePath> Deployments => [];
+        public IReadOnlyList<IGamePath> InstallTargets => installTargets;
+        public IGamePath this[string key] => throw new KeyNotFoundException();
+        public IEnumerable<string> Keys => [];
+        public IEnumerable<IGamePath> Values => [];
+        public int Count => 0;
+
+        public bool ContainsKey(string key) => false;
+
+        public bool TryGetValue(string key, out IGamePath value)
+        {
+            value = null!;
+            return false;
+        }
+
+        public IEnumerator<KeyValuePair<string, IGamePath>> GetEnumerator() =>
+            Enumerable.Empty<KeyValuePair<string, IGamePath>>().GetEnumerator();
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() =>
+            GetEnumerator();
+    }
+
+    private sealed class FakeGame(ISupportedGame config) : IInstalledGame
+    {
+        public DirectoryInfo InstallPath => new(".");
+        public ISupportedGame Configuration => config;
+
+        public string LookupAbsolutePath(IGamePath path) => path.Key;
+
+        public string UpdateAbsolutePath(IGamePath path) => path.Key;
+    }
+
+    private sealed class FakeInstances(IInstalledGame? game) : IInstanceService
+    {
+        public IReadOnlyDictionary<string, DirectoryInfo> Instances =>
+            new Dictionary<string, DirectoryInfo>();
+        public CurrentInstance? Current => new("default", new DirectoryInfo("."), game);
+
+        public DirectoryInfo Create(string name, DirectoryInfo folder, IInstalledGame g) => folder;
+
+        public void Switch(string name) { }
+
+        public void Remove(string name, bool deleteFolder) { }
+
+        public IInstalledGame? ResolveGame(string instanceName) => game;
     }
 
     private sealed class StubLibraryMod(string name) : ILibraryMod
@@ -454,7 +518,11 @@ public class DownloadListViewModelTests : IDisposable
         DownloadListViewModel ViewModel,
         FakeInstallService Installer,
         List<ILibraryMod> Installed
-    ) CreateInstallViewModel(IScheduler? sample = null, IScheduler? notify = null)
+    ) CreateInstallViewModel(
+        IScheduler? sample = null,
+        IScheduler? notify = null,
+        IInstanceService? instances = null
+    )
     {
         var queue = new FakeQueue();
         var installer = new FakeInstallService();
@@ -464,6 +532,7 @@ public class DownloadListViewModelTests : IDisposable
             new DownloadListViewModel(
                 queue,
                 _paths,
+                instances,
                 installer,
                 installed.Add,
                 sample ?? Scheduler.Default,
@@ -560,9 +629,83 @@ public class DownloadListViewModelTests : IDisposable
             Assert.Equal(1, installer.Calls);
             Assert.Equal("SkyUI", installer.LastName);
             Assert.Equal(InstallType.Replace, installer.LastInstallType);
+            Assert.Null(installer.LastTarget);
             var mod = Assert.Single(installed);
             Assert.Equal("SkyUI", mod.Name);
             Assert.True(row.InstallAllowed);
+        }
+    }
+
+    [Fact]
+    public void Row_ExposesInstallTargets_FromInstanceGameConfiguration()
+    {
+        var instances = new FakeInstances(
+            new FakeGame(
+                new FakeGameConfiguration(
+                    [new GamePath("Data", "Data", [], []), new GamePath("Root", "", [], [])]
+                )
+            )
+        );
+        var (queue, viewModel, _, _) = CreateInstallViewModel(instances: instances);
+        using (viewModel)
+        {
+            var row = AddCompletedRowViaQueue(viewModel, queue, "SkyUI.7z");
+
+            Assert.True(row.HasInstallTargets);
+            Assert.Equal(
+                new[] { "Data", "Root" },
+                row.InstallTargets.Select(option => option.Header).ToArray()
+            );
+        }
+    }
+
+    [Fact]
+    public void Row_WithoutInstanceGame_HasNoInstallTargets()
+    {
+        var (queue, viewModel, _, _) = CreateInstallViewModel();
+        using (viewModel)
+        {
+            var row = AddCompletedRowViaQueue(viewModel, queue, "SkyUI.7z");
+
+            Assert.False(row.HasInstallTargets);
+            Assert.Empty(row.InstallTargets);
+        }
+    }
+
+    [Fact]
+    public void InstallToCommand_CanExecute_ForCompletedRow()
+    {
+        var target = new GamePath("Data", "Data", [], []);
+        var instances = new FakeInstances(new FakeGame(new FakeGameConfiguration([target])));
+        var (queue, viewModel, _, _) = CreateInstallViewModel(instances: instances);
+        using (viewModel)
+        {
+            var row = AddCompletedRowViaQueue(viewModel, queue, "SkyUI.7z");
+
+            Assert.True(((System.Windows.Input.ICommand)row.InstallToCommand).CanExecute(target));
+        }
+    }
+
+    [Fact]
+    public async Task InstallToCommand_InstallsWithSelectedTarget()
+    {
+        var target = new GamePath("Root", "", [], []);
+        var instances = new FakeInstances(
+            new FakeGame(new FakeGameConfiguration([new GamePath("Data", "Data", [], []), target]))
+        );
+        var (queue, viewModel, installer, installed) = CreateInstallViewModel(instances: instances);
+        using (viewModel)
+        {
+            var row = AddCompletedRowViaQueue(viewModel, queue, "SkyUI.7z");
+
+            await row.InstallToCommand.Execute(target).ToTask();
+
+            Assert.Equal(1, installer.Calls);
+            Assert.Same(target, installer.LastTarget);
+            Assert.Equal("SkyUI", installer.LastName);
+            Assert.Equal(InstallType.Replace, installer.LastInstallType);
+            var mod = Assert.Single(installed);
+            Assert.Equal("SkyUI", mod.Name);
         }
     }
 

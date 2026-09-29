@@ -32,6 +32,23 @@
                         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                         <Setter Property="ContextMenu">
                             <ContextMenu x:DataType="vm:DownloadRowViewModel">
+                                <MenuItem Header="Install To..."
+                                          ItemsSource="{Binding InstallTargets}"
+                                          IsVisible="{Binding HasInstallTargets}">
+                                    <MenuItem.ItemContainerTheme>
+                                        <ControlTheme TargetType="MenuItem"
+                                                      x:DataType="vm:InstallTargetOptionViewModel"
+                                                      BasedOn="{StaticResource {x:Type MenuItem}}">
+                                            <Setter Property="Command" Value="{Binding Command}" />
+                                            <Setter Property="CommandParameter" Value="{Binding Target}" />
+                                        </ControlTheme>
+                                    </MenuItem.ItemContainerTheme>
+                                    <MenuItem.ItemTemplate>
+                                        <DataTemplate DataType="vm:InstallTargetOptionViewModel">
+                                            <TextBlock Text="{Binding Header}" />
+                                        </DataTemplate>
+                                    </MenuItem.ItemTemplate>
+                                </MenuItem>
                                 <MenuItem Header="Install"
                                           Command="{Binding InstallCommand}" />
                                 <MenuItem Header="Remove"

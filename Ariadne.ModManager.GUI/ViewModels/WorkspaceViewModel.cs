@@ -3,11 +3,11 @@ using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
-using Avalonia.Threading;
-using CP.Reactive.Collections;
 using Ariadne.Contracts.ModManager;
 using Ariadne.Downloads;
 using Ariadne.VFS;
+using Avalonia.Threading;
+using CP.Reactive.Collections;
 using ReactiveUI;
 using ReactiveUI.Avalonia;
 
@@ -95,6 +95,7 @@ public sealed class WorkspaceViewModel : ViewModelBase, IDisposable
             _downloadTab = new DownloadListViewModel(
                 downloads,
                 paths,
+                instances,
                 installService,
                 mod => ModList.RegisterMod(mod)
             );

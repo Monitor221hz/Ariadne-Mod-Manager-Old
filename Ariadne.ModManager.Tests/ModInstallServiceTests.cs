@@ -117,10 +117,14 @@ public class ModInstallServiceTests : IDisposable
 
         public FakeTargeter(string targetKey) => _targetKey = targetKey;
 
-        public void ApplyAliases(ISupportedGame game, ILibraryMod mod) { }
+        public int ApplyAliasesCalls { get; private set; }
+        public int GetTargetCalls { get; private set; }
+
+        public void ApplyAliases(ISupportedGame game, ILibraryMod mod) => ApplyAliasesCalls++;
 
         public IGamePath GetTarget(ISupportedGame game, ILibraryMod mod)
         {
+            GetTargetCalls++;
             return new GamePath(_targetKey, _targetKey, [], []);
         }
     }
@@ -247,6 +251,30 @@ public class ModInstallServiceTests : IDisposable
         Assert.Equal("Data", mod.Info.Target);
         Assert.Equal(1, serializer.SaveCalls);
         Assert.True(new DirectoryInfo(Path.Combine(_modsRoot.FullName, "SkyUI")).Exists);
+    }
+
+    [Fact]
+    public async Task ExplicitTarget_AssignedDirectlyAndSkipsTargeter()
+    {
+        var extractor = new FakeExtractor();
+        var installer = new ScriptedInstaller(_modsRoot, accepts: true, succeeds: true);
+        var targeter = new FakeTargeter("Data");
+        var serializer = new FakeSerializer();
+        var service = CreateService(extractor, [installer], targeter, serializer);
+        var explicitTarget = new GamePath("Meshes", "Meshes", [], []);
+
+        var mod = await service.InstallAsync(
+            "SkyUI",
+            "6.1",
+            WriteFakeArchive(),
+            target: explicitTarget
+        );
+
+        Assert.NotNull(mod);
+        Assert.Equal("Meshes", mod.Info.Target);
+        Assert.Equal(0, targeter.ApplyAliasesCalls);
+        Assert.Equal(0, targeter.GetTargetCalls);
+        Assert.Equal(1, serializer.SaveCalls);
     }
 
     [Fact]
