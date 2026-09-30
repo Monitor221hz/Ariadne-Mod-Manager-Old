@@ -68,7 +68,8 @@ public class NodeMenuItemsTests
                 Ariadne.VFS.NodeFlags.None,
                 null,
                 entry
-            )
+            ),
+            new ModEntryNodeViewModel(mod)
         );
         var items = NodeMenuItems.For(node);
 
@@ -85,7 +86,8 @@ public class NodeMenuItemsTests
                 Ariadne.VFS.NodeFlags.Directory,
                 null,
                 default
-            )
+            ),
+            new ModEntryNodeViewModel(new FakeMod("M"))
         );
 
         Assert.Empty(NodeMenuItems.For(node));

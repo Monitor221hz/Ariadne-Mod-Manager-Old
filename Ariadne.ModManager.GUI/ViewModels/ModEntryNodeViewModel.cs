@@ -2,9 +2,9 @@ using System.Reactive;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
-using ByteSizeLib;
 using Ariadne.Contracts.ModManager;
 using Ariadne.VFS;
+using ByteSizeLib;
 using ReactiveUI;
 using ReactiveUI.Avalonia;
 
@@ -51,11 +51,17 @@ public sealed class ModEntryNodeViewModel : TreeNodeViewModel
     public VirtualNode<ModFileEntry>? ContentTree => _content.Value;
 
     public override IEnumerable<TreeNodeViewModel> Children =>
-        ContentTree?.Children.Select(ContentNodeViewModel.Wrap)
+        ContentTree?.Children.Select(child => ContentNodeViewModel.Wrap(child, this))
         ?? Enumerable.Empty<TreeNodeViewModel>();
     public override bool HasChildren => ContentTree is { Children.Count: > 0 };
 
     public void ConnectContentTree(CancellationToken ct) => _beginLoad.OnNext(ct);
+
+    public void ReloadContent()
+    {
+        _mod.RefreshContent();
+        _beginLoad.OnNext(CancellationToken.None);
+    }
 
     public ModEntryNodeViewModel(ILibraryMod mod)
     {
@@ -66,8 +72,8 @@ public sealed class ModEntryNodeViewModel : TreeNodeViewModel
         RemoveCommand = ReactiveCommand.Create(() => _removeRequested.OnNext(Unit.Default));
 
         var content = _beginLoad
-            .Take(1)
-            .SelectMany(ct => Observable.FromAsync(t2 => Task.Run(() => _mod.Content, t2)))
+            .Select(ct => Observable.FromAsync(t2 => Task.Run(() => _mod.Content, t2)))
+            .Switch()
             .Catch<VirtualNode<ModFileEntry>, OperationCanceledException>(_ =>
                 Observable.Empty<VirtualNode<ModFileEntry>>()
             )

@@ -1,13 +1,12 @@
-using ByteSizeLib;
 using Ariadne.Contracts.ModManager;
 using Ariadne.VFS;
+using ByteSizeLib;
 using ReactiveUI;
 
 namespace Ariadne.ModManager.GUI.ViewModels;
 
-public sealed class DirectoryNodeViewModel : TreeNodeViewModel
+public sealed class DirectoryNodeViewModel : ContentNodeViewModel
 {
-    private readonly VirtualNode<ModFileEntry> _node;
     private string _displayName;
     public override string DisplayName
     {
@@ -19,17 +18,10 @@ public sealed class DirectoryNodeViewModel : TreeNodeViewModel
     {
         get => _sizeText;
     }
-    public override bool RenameAllowed => false;
 
-    public override long SizeBytes => _node.SelfAndDescendants().Sum(n => n.Data?.Size ?? 0);
-
-    public override IEnumerable<TreeNodeViewModel> Children =>
-        _node.Children.Select(ContentNodeViewModel.Wrap);
-    public override bool HasChildren => _node.Children.Count > 0;
-
-    public DirectoryNodeViewModel(VirtualNode<ModFileEntry> node)
+    public DirectoryNodeViewModel(VirtualNode<ModFileEntry> node, ModEntryNodeViewModel owner)
+        : base(node, owner)
     {
-        _node = node;
         _sizeText = ByteSize.FromBytes(SizeBytes).ToString();
         _displayName = node.Name;
     }

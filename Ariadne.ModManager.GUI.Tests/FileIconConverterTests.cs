@@ -10,6 +10,25 @@ namespace Ariadne.ModManager.GUI.Tests;
 
 public class FileIconConverterTests
 {
+    private sealed class FakeMod : ILibraryMod
+    {
+        public IModInfo Info { get; } = new ModInfo(0, SourceType.Local, "1.0", [], "", 0, false);
+        public string Name => "M";
+        public DirectoryInfo Directory => new(".");
+        public Ariadne.VFS.VirtualNode<ModFileEntry> Content { get; } =
+            new("", Ariadne.VFS.NodeFlags.Directory, null, default);
+
+        public void RefreshContent() { }
+
+        public void RenameTo(string newName) { }
+
+        public bool Equals(ILibraryMod? x, ILibraryMod? y) => ReferenceEquals(x, y);
+
+        public int GetHashCode(ILibraryMod obj) => obj.GetHashCode();
+
+        public bool Equals(ILibraryMod? other) => ReferenceEquals(this, other);
+    }
+
     private static readonly IModInfo Origin = new ModInfo(
         0,
         SourceType.Local,
@@ -19,6 +38,8 @@ public class FileIconConverterTests
         0,
         false
     );
+
+    private static readonly ModEntryNodeViewModel Owner = new(new FakeMod());
 
     private static FileLeafNodeViewModel FileNode(string name)
     {
@@ -36,7 +57,8 @@ public class FileIconConverterTests
                 Ariadne.VFS.NodeFlags.None,
                 null,
                 entry
-            )
+            ),
+            Owner
         );
     }
 
@@ -84,7 +106,8 @@ public class FileIconConverterTests
                 Ariadne.VFS.NodeFlags.None,
                 null,
                 entry
-            )
+            ),
+            Owner
         );
 
         Assert.Equal(Icon.Cube, IconFor(node));

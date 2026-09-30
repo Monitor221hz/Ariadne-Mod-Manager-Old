@@ -1,23 +1,42 @@
-using Avalonia.Controls.DataGridDragDrop;
-using Avalonia.Input;
 using Ariadne.Contracts.ModManager;
-using Ariadne.ModManager;
 using Ariadne.ModManager.GUI.DragDrop;
 using Ariadne.ModManager.GUI.ViewModels;
+using Ariadne.VFS;
+using Avalonia.Controls.DataGridDragDrop;
+using Avalonia.Input;
 using Xunit;
 
 namespace Ariadne.ModManager.GUI.Tests;
 
-public class ModListDropRulesTests
+public class ModListDropRulesTests : IDisposable
 {
-    private sealed class FakeMod(string name) : ILibraryMod
+    private sealed class TempDirectory : IDisposable
+    {
+        public string Path { get; } =
+            System.IO.Path.Combine(
+                System.IO.Path.GetTempPath(),
+                "AriadneDropTests-" + Guid.NewGuid().ToString("N")
+            );
+
+        public TempDirectory() => Directory.CreateDirectory(Path);
+
+        public void Dispose()
+        {
+            if (Directory.Exists(Path))
+            {
+                Directory.Delete(Path, true);
+            }
+        }
+    }
+
+    private sealed class FakeLibraryMod(DirectoryInfo directory, VirtualNode<ModFileEntry> content)
+        : ILibraryMod
     {
         public IModInfo Info { get; } =
-            new ModManager.ModInfo(0, SourceType.Local, "1.0", [], "", 0, false);
-        public string Name { get; } = name;
-        public DirectoryInfo Directory => new(".");
-        public Ariadne.VFS.VirtualNode<ModFileEntry> Content { get; } =
-            new("", Ariadne.VFS.NodeFlags.Directory, null, default);
+            new ModManager.ModInfo(1, SourceType.Local, "1.0", [], "", 0, false);
+        public string Name => Directory.Name;
+        public DirectoryInfo Directory { get; } = directory;
+        public VirtualNode<ModFileEntry> Content { get; } = content;
 
         public void RefreshContent() { }
 
@@ -25,238 +44,306 @@ public class ModListDropRulesTests
 
         public bool Equals(ILibraryMod? x, ILibraryMod? y) => ReferenceEquals(x, y);
 
-        public int GetHashCode(ILibraryMod obj) => obj.GetHashCode();
+        public int GetHashCode(ILibraryMod obj) => 0;
 
         public bool Equals(ILibraryMod? other) => ReferenceEquals(this, other);
     }
 
-    private static ModEntryNodeViewModel Mod(string name) => new(new FakeMod(name));
+    private readonly TempDirectory _temp = new();
 
-    private static GroupHeaderNodeViewModel Group(string name, params TreeNodeViewModel[] children)
+    public void Dispose() => _temp.Dispose();
+
+    private string ModDir(string name) => Path.Combine(_temp.Path, name);
+
+    private (ModEntryNodeViewModel Owner, VirtualNode<ModFileEntry> Root) CreateMod(string name)
     {
-        var group = new GroupHeaderNodeViewModel(new ModGroup(name, []));
-        foreach (var child in children)
-        {
-            group.ObservableChildren.Add(child);
-        }
-        return group;
+        var directory = new DirectoryInfo(ModDir(name));
+        directory.Create();
+        var root = new VirtualNode<ModFileEntry>(name, NodeFlags.Directory, null, default);
+        return (new ModEntryNodeViewModel(new FakeLibraryMod(directory, root)), root);
     }
 
-    private static readonly DirectoryNodeViewModel Dir = new(
-        new Ariadne.VFS.VirtualNode<ModFileEntry>(
-            "dir",
-            Ariadne.VFS.NodeFlags.Directory,
-            null,
-            default
-        )
+    private VirtualNode<ModFileEntry> CreateFileNode(
+        VirtualNode<ModFileEntry> root,
+        string modDir,
+        string relativePath,
+        ModEntryKind kind = ModEntryKind.File
+    )
+    {
+        var absolute = Path.Join(modDir, relativePath.Replace('/', Path.DirectorySeparatorChar));
+        File.WriteAllText(absolute, "x");
+        var name = relativePath[(relativePath.LastIndexOf('/') + 1)..];
+        return root.AddFile(
+            relativePath,
+            new ModFileEntry(name, kind, ModOrigin, absolute, 1, DateTimeOffset.UnixEpoch)
+        );
+    }
+
+    private VirtualNode<ModFileEntry> CreateDirectoryNode(
+        VirtualNode<ModFileEntry> root,
+        string modDir,
+        string relativePath
+    )
+    {
+        Directory.CreateDirectory(
+            Path.Join(modDir, relativePath.Replace('/', Path.DirectorySeparatorChar))
+        );
+        return root.AddDirectory(relativePath);
+    }
+
+    private static readonly IModInfo ModOrigin = new ModManager.ModInfo(
+        1,
+        SourceType.Local,
+        "1.0",
+        [],
+        "",
+        0,
+        false
     );
 
-    [Fact]
-    public void Mod_Before_Mod_At_Root_Is_Legal()
-    {
-        var dragged = Mod("A");
-        var target = Mod("B");
-        Assert.True(
-            ModListDropRules.IsLegal(
-                [dragged],
-                target,
-                null,
-                DataGridRowDropPosition.Before,
-                DragDropEffects.Move
-            )
-        );
-    }
-
-    [Fact]
-    public void Mod_Inside_Group_Is_Legal()
-    {
-        var dragged = Mod("A");
-        var target = Group("G");
-        Assert.True(
-            ModListDropRules.IsLegal(
-                [dragged],
-                target,
-                null,
-                DataGridRowDropPosition.Inside,
-                DragDropEffects.Move
-            )
-        );
-    }
-
-    [Fact]
-    public void Mod_Inside_Mod_Is_Illegal()
-    {
-        var dragged = Mod("A");
-        var target = Mod("B");
-        Assert.False(
-            ModListDropRules.IsLegal(
-                [dragged],
-                target,
-                null,
-                DataGridRowDropPosition.Inside,
-                DragDropEffects.Move
-            )
-        );
-    }
-
-    [Fact]
-    public void Mod_Before_Mod_Child_Of_Group_Is_Legal()
-    {
-        var targetChild = Mod("B");
-        var group = Group("G", targetChild);
-        Assert.True(
-            ModListDropRules.IsLegal(
-                [Mod("A")],
-                targetChild,
-                group,
-                DataGridRowDropPosition.After,
-                DragDropEffects.Move
-            )
-        );
-    }
-
-    [Fact]
-    public void Mod_Before_GroupChild_Without_Group_Parent_Is_Illegal_Inconsistent_State()
-    {
-        Assert.False(
-            ModListDropRules.IsLegal(
-                [Dir],
-                Mod("B"),
-                null,
-                DataGridRowDropPosition.Before,
-                DragDropEffects.Move
-            )
-        );
-    }
-
-    [Fact]
-    public void Group_Inside_Group_Is_Illegal()
-    {
-        Assert.False(
-            ModListDropRules.IsLegal(
-                [Group("G1")],
-                Group("G2"),
-                null,
-                DataGridRowDropPosition.Inside,
-                DragDropEffects.Move
-            )
-        );
-    }
-
-    [Fact]
-    public void Group_Before_GroupChild_Is_Illegal()
-    {
-        var groupChild = Mod("X");
-        var parentGroup = Group("G2", groupChild);
-        Assert.False(
-            ModListDropRules.IsLegal(
-                [Group("G1")],
-                groupChild,
-                parentGroup,
-                DataGridRowDropPosition.Before,
-                DragDropEffects.Move
-            )
-        );
-    }
-
-    [Fact]
-    public void Group_Before_Root_Group_Is_Legal()
-    {
-        Assert.True(
-            ModListDropRules.IsLegal(
-                [Group("G1")],
-                Group("G2"),
-                null,
-                DataGridRowDropPosition.Before,
-                DragDropEffects.Move
-            )
-        );
-    }
-
-    [Fact]
-    public void Directory_Is_Always_Illegal()
-    {
-        Assert.False(
-            ModListDropRules.IsLegal(
-                [Dir],
-                Mod("B"),
-                null,
-                DataGridRowDropPosition.Before,
-                DragDropEffects.Move
-            )
-        );
-        Assert.False(
-            ModListDropRules.IsLegal(
-                [Dir],
-                Group("G"),
-                null,
-                DataGridRowDropPosition.Inside,
-                DragDropEffects.Move
-            )
-        );
-    }
-
-    [Fact]
-    public void MoveIntoGroup_Moves_Mod_From_Root_Into_Group()
-    {
-        var dragged = Mod("A");
-        var roots = new System.Collections.ObjectModel.ObservableCollection<TreeNodeViewModel>
-        {
-            Mod("B"),
-            dragged,
-            Group("G"),
-        };
-        var target = roots.OfType<GroupHeaderNodeViewModel>().Single();
-
-        ModListDropRules.MoveIntoGroup(roots, target, [dragged]);
-
-        Assert.Equal(new[] { "B", "G" }, roots.Select(node => node.DisplayName));
-        Assert.Equal(new[] { "A" }, target.ObservableChildren.Select(node => node.DisplayName));
-    }
-
-    [Fact]
-    public void MoveIntoGroup_From_Source_Group_To_Another()
-    {
-        var dragged = Mod("A");
-        var source = Group("G1", dragged, Mod("B"));
-        var target = Group("G2");
-        var roots = new System.Collections.ObjectModel.ObservableCollection<TreeNodeViewModel>
-        {
-            source,
+    private static bool IsLegal(TreeNodeViewModel dragged, TreeNodeViewModel? target) =>
+        ModListDropRules.IsLegal(
+            [dragged],
             target,
-        };
+            null,
+            DataGridRowDropPosition.Inside,
+            DragDropEffects.Move
+        );
 
-        ModListDropRules.MoveIntoGroup(roots, target, [dragged]);
+    [Fact]
+    public void File_IntoFolder_MovesFile()
+    {
+        var (owner, root) = CreateMod("ModA");
+        var folder = CreateDirectoryNode(root, ModDir("ModA"), "stuff");
+        var file = CreateFileNode(root, ModDir("ModA"), "a.txt");
+        var fileVm = new FileLeafNodeViewModel(file, owner);
+        var folderVm = new DirectoryNodeViewModel(folder, owner);
 
-        Assert.Equal(new[] { "B" }, source.ObservableChildren.Select(node => node.DisplayName));
-        Assert.Equal(new[] { "A" }, target.ObservableChildren.Select(node => node.DisplayName));
+        Assert.True(IsLegal(fileVm, folderVm));
+        var affected = ModListDropRules.ExecuteContentDrop([fileVm], folderVm);
+
+        Assert.True(File.Exists(Path.Combine(ModDir("ModA"), "stuff", "a.txt")));
+        Assert.False(File.Exists(Path.Combine(ModDir("ModA"), "a.txt")));
+        Assert.Equal([owner], affected);
     }
 
     [Fact]
-    public void MoveIntoGroup_Skips_NonMods()
+    public void Folder_IntoFolder_MovesWithContents()
     {
-        var roots = new System.Collections.ObjectModel.ObservableCollection<TreeNodeViewModel>
-        {
-            Dir,
-        };
-        var target = Group("G");
+        var (owner, root) = CreateMod("ModA");
+        var stuff = CreateDirectoryNode(root, ModDir("ModA"), "stuff");
+        CreateFileNode(root, ModDir("ModA"), "stuff/inner.txt");
+        var misc = CreateDirectoryNode(root, ModDir("ModA"), "misc");
+        var stuffVm = new DirectoryNodeViewModel(stuff, owner);
+        var miscVm = new DirectoryNodeViewModel(misc, owner);
 
-        ModListDropRules.MoveIntoGroup(roots, target, [Dir]);
+        Assert.True(IsLegal(stuffVm, miscVm));
+        ModListDropRules.ExecuteContentDrop([stuffVm], miscVm);
 
-        Assert.Empty(target.ObservableChildren);
-        Assert.Single(roots);
+        Assert.True(File.Exists(Path.Combine(ModDir("ModA"), "misc", "stuff", "inner.txt")));
+        Assert.False(Directory.Exists(Path.Combine(ModDir("ModA"), "stuff")));
     }
 
     [Fact]
-    public void Non_Move_Effect_Is_Illegal()
+    public void Folder_IntoParentMod_FlattensContentsToTopLevel()
     {
+        var (owner, root) = CreateMod("ModA");
+        var stuff = CreateDirectoryNode(root, ModDir("ModA"), "stuff");
+        CreateFileNode(root, ModDir("ModA"), "stuff/a.txt");
+        CreateFileNode(root, ModDir("ModA"), "stuff/b.txt");
+        var stuffVm = new DirectoryNodeViewModel(stuff, owner);
+
+        Assert.True(IsLegal(stuffVm, owner));
+        var affected = ModListDropRules.ExecuteContentDrop([stuffVm], owner);
+
+        Assert.True(File.Exists(Path.Combine(ModDir("ModA"), "a.txt")));
+        Assert.True(File.Exists(Path.Combine(ModDir("ModA"), "b.txt")));
+        Assert.False(Directory.Exists(Path.Combine(ModDir("ModA"), "stuff")));
+        Assert.Equal([owner], affected);
+    }
+
+    [Fact]
+    public void Folder_IntoNonParentMod_MovesFolder()
+    {
+        var (ownerA, rootA) = CreateMod("ModA");
+        var (ownerB, _) = CreateMod("ModB");
+        var stuff = CreateDirectoryNode(rootA, ModDir("ModA"), "stuff");
+        CreateFileNode(rootA, ModDir("ModA"), "stuff/inner.txt");
+        var stuffVm = new DirectoryNodeViewModel(stuff, ownerA);
+
+        Assert.True(IsLegal(stuffVm, ownerB));
+        var affected = ModListDropRules.ExecuteContentDrop([stuffVm], ownerB);
+
+        Assert.True(File.Exists(Path.Combine(ModDir("ModB"), "stuff", "inner.txt")));
+        Assert.False(Directory.Exists(Path.Combine(ModDir("ModA"), "stuff")));
+        Assert.Equal(2, affected.Count);
+        Assert.Contains(ownerA, affected);
+        Assert.Contains(ownerB, affected);
+    }
+
+    [Fact]
+    public void File_IntoNonParentMod_MovesFile()
+    {
+        var (ownerA, rootA) = CreateMod("ModA");
+        var (ownerB, _) = CreateMod("ModB");
+        var file = CreateFileNode(rootA, ModDir("ModA"), "a.txt");
+        var fileVm = new FileLeafNodeViewModel(file, ownerA);
+
+        Assert.True(IsLegal(fileVm, ownerB));
+        ModListDropRules.ExecuteContentDrop([fileVm], ownerB);
+
+        Assert.True(File.Exists(Path.Combine(ModDir("ModB"), "a.txt")));
+        Assert.False(File.Exists(Path.Combine(ModDir("ModA"), "a.txt")));
+    }
+
+    [Fact]
+    public void File_FromSubfolder_IntoParentMod_MovesToTopLevel()
+    {
+        var (owner, root) = CreateMod("ModA");
+        CreateDirectoryNode(root, ModDir("ModA"), "stuff");
+        var file = CreateFileNode(root, ModDir("ModA"), "stuff/a.txt");
+        var fileVm = new FileLeafNodeViewModel(file, owner);
+
+        Assert.True(IsLegal(fileVm, owner));
+        ModListDropRules.ExecuteContentDrop([fileVm], owner);
+
+        Assert.True(File.Exists(Path.Combine(ModDir("ModA"), "a.txt")));
+        Assert.False(File.Exists(Path.Combine(ModDir("ModA"), "stuff", "a.txt")));
+    }
+
+    [Fact]
+    public void File_IntoOwnParentFolder_IsIllegal()
+    {
+        var (owner, root) = CreateMod("ModA");
+        var file = CreateFileNode(root, ModDir("ModA"), "a.txt");
+        var fileVm = new FileLeafNodeViewModel(file, owner);
+
+        Assert.False(IsLegal(fileVm, owner));
+    }
+
+    [Fact]
+    public void Folder_IntoItself_IsIllegal()
+    {
+        var (owner, root) = CreateMod("ModA");
+        var stuff = CreateDirectoryNode(root, ModDir("ModA"), "stuff");
+        var stuffVm = new DirectoryNodeViewModel(stuff, owner);
+
+        Assert.False(IsLegal(stuffVm, stuffVm));
+    }
+
+    [Fact]
+    public void Folder_IntoOwnDescendant_IsIllegal()
+    {
+        var (owner, root) = CreateMod("ModA");
+        var stuff = CreateDirectoryNode(root, ModDir("ModA"), "stuff");
+        var inner = CreateDirectoryNode(root, ModDir("ModA"), "stuff/inner");
+        var stuffVm = new DirectoryNodeViewModel(stuff, owner);
+        var innerVm = new DirectoryNodeViewModel(inner, owner);
+
+        Assert.False(IsLegal(stuffVm, innerVm));
+    }
+
+    [Fact]
+    public void File_IntoFolder_WithNameCollision_IsIllegal()
+    {
+        var (owner, root) = CreateMod("ModA");
+        var folder = CreateDirectoryNode(root, ModDir("ModA"), "stuff");
+        CreateFileNode(root, ModDir("ModA"), "stuff/a.txt");
+        var file = CreateFileNode(root, ModDir("ModA"), "a.txt");
+        var fileVm = new FileLeafNodeViewModel(file, owner);
+        var folderVm = new DirectoryNodeViewModel(folder, owner);
+
+        Assert.False(IsLegal(fileVm, folderVm));
+    }
+
+    [Fact]
+    public void Folder_IntoParentMod_WithChildCollision_IsIllegal()
+    {
+        var (owner, root) = CreateMod("ModA");
+        var stuff = CreateDirectoryNode(root, ModDir("ModA"), "stuff");
+        CreateFileNode(root, ModDir("ModA"), "stuff/a.txt");
+        CreateFileNode(root, ModDir("ModA"), "a.txt");
+        var stuffVm = new DirectoryNodeViewModel(stuff, owner);
+
+        Assert.False(IsLegal(stuffVm, owner));
+    }
+
+    [Fact]
+    public void File_InsideArchive_IsIllegal()
+    {
+        var (owner, root) = CreateMod("ModA");
+        var folder = CreateDirectoryNode(root, ModDir("ModA"), "stuff");
+        var archive = CreateFileNode(root, ModDir("ModA"), "pack.zip", ModEntryKind.Archive);
+        var inner = archive.AddFile(
+            "inner.txt",
+            new ModFileEntry(
+                "inner.txt",
+                ModEntryKind.File,
+                ModOrigin,
+                "inner.txt",
+                1,
+                DateTimeOffset.UnixEpoch
+            )
+        );
+        var innerVm = new FileLeafNodeViewModel(inner, owner);
+        var folderVm = new DirectoryNodeViewModel(folder, owner);
+
+        Assert.False(innerVm.IsDiskBacked);
+        Assert.False(IsLegal(innerVm, folderVm));
+    }
+
+    [Fact]
+    public void Archive_IntoFolder_MovesArchive()
+    {
+        var (owner, root) = CreateMod("ModA");
+        var folder = CreateDirectoryNode(root, ModDir("ModA"), "stuff");
+        var archive = CreateFileNode(root, ModDir("ModA"), "pack.zip", ModEntryKind.Archive);
+        var archiveVm = new ArchiveLeafNodeViewModel(archive, owner);
+        var folderVm = new DirectoryNodeViewModel(folder, owner);
+
+        Assert.True(archiveVm.IsDiskBacked);
+        Assert.True(IsLegal(archiveVm, folderVm));
+        ModListDropRules.ExecuteContentDrop([archiveVm], folderVm);
+
+        Assert.True(File.Exists(Path.Combine(ModDir("ModA"), "stuff", "pack.zip")));
+    }
+
+    [Fact]
+    public void File_NonMoveEffect_IsIllegal()
+    {
+        var (owner, root) = CreateMod("ModA");
+        var folder = CreateDirectoryNode(root, ModDir("ModA"), "stuff");
+        var file = CreateFileNode(root, ModDir("ModA"), "a.txt");
+        var fileVm = new FileLeafNodeViewModel(file, owner);
+        var folderVm = new DirectoryNodeViewModel(folder, owner);
+
         Assert.False(
             ModListDropRules.IsLegal(
-                [Mod("A")],
-                Group("G"),
+                [fileVm],
+                folderVm,
                 null,
                 DataGridRowDropPosition.Inside,
                 DragDropEffects.Copy
+            )
+        );
+    }
+
+    [Fact]
+    public void File_BeforeFolder_IsIllegal()
+    {
+        var (owner, root) = CreateMod("ModA");
+        var folder = CreateDirectoryNode(root, ModDir("ModA"), "stuff");
+        var file = CreateFileNode(root, ModDir("ModA"), "a.txt");
+        var fileVm = new FileLeafNodeViewModel(file, owner);
+        var folderVm = new DirectoryNodeViewModel(folder, owner);
+
+        Assert.False(
+            ModListDropRules.IsLegal(
+                [fileVm],
+                folderVm,
+                null,
+                DataGridRowDropPosition.Before,
+                DragDropEffects.Move
             )
         );
     }

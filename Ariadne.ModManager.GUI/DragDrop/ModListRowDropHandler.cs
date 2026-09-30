@@ -1,9 +1,13 @@
+using System.Diagnostics;
+using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
+using Ariadne.ModManager.GUI.ViewModels;
 using Avalonia.Controls;
 using Avalonia.Controls.DataGridDragDrop;
 using Avalonia.Controls.DataGridHierarchical;
 using Avalonia.Input;
 using Avalonia.VisualTree;
-using Ariadne.ModManager.GUI.ViewModels;
+using ReactiveUI;
 
 namespace Ariadne.ModManager.GUI.DragDrop;
 
@@ -17,16 +21,6 @@ public sealed class ModListRowDropHandler(
 
     public bool Validate(DataGridRowDropEventArgs args)
     {
-        if (isSorted())
-        {
-            args.EffectiveEffect = DragDropEffects.None;
-            if (args.Session is not null)
-            {
-                args.Session.FeedbackCaption =
-                    "Reordering is disabled while a column sort is active.";
-            }
-            return false;
-        }
         var dragged = args
             .Items.OfType<HierarchicalNode>()
             .Select(node => node.Item as TreeNodeViewModel)
@@ -35,7 +29,8 @@ public sealed class ModListRowDropHandler(
         var target = targetNode?.Item as TreeNodeViewModel;
         var targetParent = targetNode?.Parent?.Item as TreeNodeViewModel;
         if (
-            dragged.Any(node => node is null)
+            dragged.Count == 0
+            || dragged.Any(node => node is null)
             || !ModListDropRules.IsLegal(
                 dragged!,
                 target,
@@ -49,6 +44,25 @@ public sealed class ModListRowDropHandler(
             if (args.Session is not null)
             {
                 args.Session.FeedbackCaption = "Drop here is not allowed.";
+            }
+            return false;
+        }
+        if (dragged.All(node => node is ContentNodeViewModel))
+        {
+            args.EffectiveEffect = DragDropEffects.Move;
+            if (args.Session is not null)
+            {
+                args.Session.FeedbackCaption = ContentDropCaption(dragged, target);
+            }
+            return true;
+        }
+        if (isSorted())
+        {
+            args.EffectiveEffect = DragDropEffects.None;
+            if (args.Session is not null)
+            {
+                args.Session.FeedbackCaption =
+                    "Reordering is disabled while a column sort is active.";
             }
             return false;
         }
@@ -68,6 +82,22 @@ public sealed class ModListRowDropHandler(
             args.Session.FeedbackCaption = $"Move {args.Items.Count} row(s).";
         }
         return valid;
+    }
+
+    private static string ContentDropCaption(
+        IReadOnlyList<TreeNodeViewModel> dragged,
+        TreeNodeViewModel? target
+    )
+    {
+        if (
+            dragged.Count == 1
+            && dragged[0] is ContentNodeViewModel content
+            && ModListDropRules.IsFlattenDrop(content, target)
+        )
+        {
+            return $"Move contents of {content.DisplayName} to top level of {target?.DisplayName}.";
+        }
+        return $"Move into {target?.DisplayName ?? "target"}.";
     }
 
     private static bool IsGroupInsideDrop(DataGridRowDropEventArgs args) =>
@@ -103,8 +133,65 @@ public sealed class ModListRowDropHandler(
         return true;
     }
 
+    private bool ExecuteContentDrop(DataGridRowDropEventArgs args)
+    {
+        var dragged = args
+            .Items.OfType<HierarchicalNode>()
+            .Select(node => node.Item)
+            .OfType<TreeNodeViewModel>()
+            .ToList();
+        var target = (args.TargetItem as HierarchicalNode)?.Item as TreeNodeViewModel;
+        if (dragged.Count == 0 || target is null)
+        {
+            return false;
+        }
+        var affected = ModListDropRules.ExecuteContentDrop(dragged, target);
+        if (affected.Count == 0)
+        {
+            return false;
+        }
+        target.IsExpanded = true;
+        foreach (var entry in affected)
+        {
+            _ = ReloadAndRefreshAsync(entry);
+        }
+        return true;
+    }
+
+    private async Task ReloadAndRefreshAsync(ModEntryNodeViewModel entry)
+    {
+        try
+        {
+            var arrival = entry
+                .WhenAnyValue(x => x.ContentTree)
+                .Skip(1)
+                .WhereNotNull()
+                .FirstAsync()
+                .ToTask();
+            entry.ReloadContent();
+            await arrival;
+            getModel()?.Refresh();
+            foreach (var group in getRoots().OfType<GroupHeaderNodeViewModel>())
+            {
+                group.RefreshSizeText();
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex);
+        }
+    }
+
     public bool Execute(DataGridRowDropEventArgs args)
     {
+        var dragged = args
+            .Items.OfType<HierarchicalNode>()
+            .Select(node => node.Item as TreeNodeViewModel)
+            .ToList();
+        if (dragged.Count > 0 && dragged.All(node => node is ContentNodeViewModel))
+        {
+            return ExecuteContentDrop(args);
+        }
         var scrollViewer = args.Grid.FindDescendantOfType<ScrollViewer>();
         var offset = scrollViewer?.Offset;
         var result = IsGroupInsideDrop(args)
