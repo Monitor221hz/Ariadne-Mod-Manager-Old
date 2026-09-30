@@ -1,10 +1,10 @@
 using System.Reactive;
-using Avalonia.Controls.DataGridHierarchical;
-using Avalonia.Controls.DataGridSorting;
-using CP.Reactive.Collections;
 using Ariadne.Contracts.Games;
 using Ariadne.Contracts.ModManager;
 using Ariadne.VFS;
+using Avalonia.Controls.DataGridHierarchical;
+using Avalonia.Controls.DataGridSorting;
+using CP.Reactive.Collections;
 using ReactiveUI;
 
 namespace Ariadne.ModManager.GUI.ViewModels;
@@ -127,7 +127,9 @@ public sealed class DeployedViewModel : ViewModelBase, IWorkspaceTab
             .ToList();
 
         SummaryTitle =
-            buckets.Count == 1 && buckets[0].Path is { } p ? $"{gameName}/{p.Key}" : gameName;
+            buckets.Count == 1 && buckets[0].Path is not null
+                ? $"{gameName}/{buckets[0].Display}"
+                : gameName;
 
         TargetRoots = buckets.Select(b => b.Display).ToList();
         _buckets = buckets;
@@ -150,7 +152,8 @@ public sealed class DeployedViewModel : ViewModelBase, IWorkspaceTab
     {
         if (string.IsNullOrEmpty(rawTarget))
         {
-            return config?.Root.Key ?? "root";
+            return config?.InstallTargets.FirstOrDefault(t => t.DirectoryPath.Length == 0)?.Key
+                ?? "Root";
         }
         return
             config?.InstallTargets.FirstOrDefault(t =>
@@ -166,7 +169,8 @@ public sealed class DeployedViewModel : ViewModelBase, IWorkspaceTab
     {
         if (string.IsNullOrEmpty(rawTarget))
         {
-            return config?.Root;
+            return config?.InstallTargets.FirstOrDefault(t => t.DirectoryPath.Length == 0)
+                ?? config?.Root;
         }
         return config?.InstallTargets.FirstOrDefault(t =>
             t.Key.Equals(rawTarget, StringComparison.OrdinalIgnoreCase)

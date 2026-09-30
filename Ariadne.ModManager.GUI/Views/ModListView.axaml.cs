@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
+using Ariadne.ModManager.GUI.ViewModels;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.DataGridHierarchical;
@@ -8,7 +9,6 @@ using Avalonia.Controls.Selection;
 using Avalonia.Input;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
-using Ariadne.ModManager.GUI.ViewModels;
 using ReactiveUI;
 
 namespace Ariadne.ModManager.GUI.Views;
@@ -82,11 +82,7 @@ public partial class ModListView : UserControl
         {
             return;
         }
-        SyncSelectedNodes(
-            viewModel,
-            UnwrapRows(e.RemovedItems),
-            UnwrapRows(e.AddedItems)
-        );
+        SyncSelectedNodes(viewModel, UnwrapRows(e.RemovedItems), UnwrapRows(e.AddedItems));
     }
 
     private static List<TreeNodeViewModel> UnwrapRows(System.Collections.IList items)
@@ -153,7 +149,7 @@ public partial class ModListView : UserControl
         {
             return;
         }
-        var items = NodeMenuItems.For(node);
+        var items = NodeMenuItems.For(node, (DataContext as ModListViewModel)?.InstallTargets);
         if (items.Length == 0)
         {
             return;
@@ -161,9 +157,24 @@ public partial class ModListView : UserControl
         var menu = new ContextMenu();
         foreach (var item in items)
         {
-            menu.Items.Add(new MenuItem { Header = item.Header, Command = item.Command });
+            menu.Items.Add(ToMenuItem(item));
         }
         e.Handled = true;
         menu.Open(anchor);
+    }
+
+    private static MenuItem ToMenuItem(NodeMenuItem item)
+    {
+        var menuItem = new MenuItem
+        {
+            Header = item.Header,
+            Command = item.Command,
+            CommandParameter = item.CommandParameter,
+        };
+        if (item.Children is { Count: > 0 } children)
+        {
+            menuItem.ItemsSource = children.Select(ToMenuItem).ToList();
+        }
+        return menuItem;
     }
 }

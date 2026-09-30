@@ -2,6 +2,7 @@ using System.Reactive;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using Ariadne.Contracts.Games;
 using Ariadne.Contracts.ModManager;
 using Ariadne.VFS;
 using ByteSizeLib;
@@ -18,6 +19,7 @@ public sealed class ModEntryNodeViewModel : TreeNodeViewModel
     private bool _active;
     private SelectedModVerdict? _conflictVerdict;
     private readonly Subject<CancellationToken> _beginLoad = new();
+    private readonly Subject<Unit> _targetChanged = new();
     private readonly ObservableAsPropertyHelper<VirtualNode<ModFileEntry>?> _content;
     private readonly ObservableAsPropertyHelper<string> _sizeText;
     private string _displayName;
@@ -70,6 +72,12 @@ public sealed class ModEntryNodeViewModel : TreeNodeViewModel
         _priorityValue = mod.Info.Priority;
         _active = mod.Info.Active;
         RemoveCommand = ReactiveCommand.Create(() => _removeRequested.OnNext(Unit.Default));
+        SetTargetCommand = ReactiveCommand.Create<IGamePath>(target =>
+        {
+            _mod.Info.Target = target.Key;
+            this.RaisePropertyChanged(nameof(Target));
+            _targetChanged.OnNext(Unit.Default);
+        });
 
         var content = _beginLoad
             .Select(ct => Observable.FromAsync(t2 => Task.Run(() => _mod.Content, t2)))
@@ -101,6 +109,10 @@ public sealed class ModEntryNodeViewModel : TreeNodeViewModel
 
     public IObservable<Unit> RemoveRequested => _removeRequested;
     public ReactiveCommand<Unit, Unit> RemoveCommand { get; }
+
+    public string Target => _mod.Info.Target;
+    public IObservable<Unit> TargetChanged => _targetChanged;
+    public ReactiveCommand<IGamePath, Unit> SetTargetCommand { get; }
 
     public void RefreshFromModel()
     {

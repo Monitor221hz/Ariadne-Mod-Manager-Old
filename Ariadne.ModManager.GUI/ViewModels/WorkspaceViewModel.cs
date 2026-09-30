@@ -125,6 +125,11 @@ public sealed class WorkspaceViewModel : ViewModelBase, IDisposable
                 .Subscribe(_ => RefreshDeployed())
         );
         _subscriptions.Add(
+            ModList
+                .TargetChanged.ObserveOn(AvaloniaScheduler.Instance)
+                .Subscribe(_ => RefreshDeployed())
+        );
+        _subscriptions.Add(
             this.WhenAnyValue(x => x.SelectedMod)
                 .Select(mod => Observable.FromAsync(() => ComputeVerdictsAsync(mod)))
                 .Switch()

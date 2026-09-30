@@ -1,4 +1,6 @@
+using Ariadne.Contracts.Games;
 using Ariadne.Contracts.ModManager;
+using Ariadne.Games;
 using Ariadne.ModManager;
 using Ariadne.ModManager.GUI.ViewModels;
 using Ariadne.ModManager.GUI.Views;
@@ -91,5 +93,55 @@ public class NodeMenuItemsTests
         );
 
         Assert.Empty(NodeMenuItems.For(node));
+    }
+
+    [Fact]
+    public void Mod_Nodes_Get_Target_Submenu_For_Game_InstallTargets()
+    {
+        var node = new ModEntryNodeViewModel(new FakeMod("A"));
+        var targets = new IGamePath[]
+        {
+            new GamePath("Data", "Data", [], []),
+            new GamePath("Root", "", [], []),
+        };
+
+        var items = NodeMenuItems.For(node, targets);
+
+        var targetItem = Assert.Single(items, item => item.Header == "Target...");
+        Assert.Null(targetItem.Command);
+        Assert.Equal(
+            new[] { "Data", "Root" },
+            targetItem.Children!.Select(child => child.Header).ToArray()
+        );
+        Assert.All(
+            targetItem.Children!,
+            child => Assert.Same(node.SetTargetCommand, child.Command)
+        );
+        Assert.Same(targets[0], targetItem.Children![0].CommandParameter);
+    }
+
+    [Fact]
+    public void Mod_Nodes_Without_Targets_Get_No_Target_Item()
+    {
+        var node = new ModEntryNodeViewModel(new FakeMod("A"));
+
+        Assert.DoesNotContain(NodeMenuItems.For(node), item => item.Header == "Target...");
+        Assert.DoesNotContain(NodeMenuItems.For(node, []), item => item.Header == "Target...");
+    }
+
+    [Fact]
+    public void Target_Submenu_Command_Sets_Mod_Target()
+    {
+        var mod = new FakeMod("A");
+        var node = new ModEntryNodeViewModel(mod);
+        var target = new GamePath("Data", "Data", [], []);
+        var changed = 0;
+        node.TargetChanged.Subscribe(_ => changed++);
+
+        node.SetTargetCommand.Execute(target).Subscribe();
+
+        Assert.Equal("Data", mod.Info.Target);
+        Assert.Equal("Data", node.Target);
+        Assert.Equal(1, changed);
     }
 }

@@ -8,13 +8,13 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Reactive.Threading.Tasks;
+using Ariadne.Contracts.ModManager;
+using Ariadne.ModManager.Serialization;
 using Avalonia.Controls.DataGridDragDrop;
 using Avalonia.Controls.DataGridHierarchical;
 using Avalonia.Controls.DataGridSorting;
 using ByteSizeLib;
 using CP.Reactive.Collections;
-using Ariadne.Contracts.ModManager;
-using Ariadne.ModManager.Serialization;
 using ReactiveUI;
 using ReactiveUI.Avalonia;
 
@@ -43,8 +43,10 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
 
     private readonly Subject<Unit> _domainSynchronized = new();
     private readonly Subject<Unit> _activeChanged = new();
+    private readonly Subject<Unit> _targetChanged = new();
     public IObservable<Unit> DomainSynchronized => _domainSynchronized;
     public IObservable<Unit> ActiveChanged => _activeChanged;
+    public IObservable<Unit> TargetChanged => _targetChanged;
 
     public ReactiveCommand<Unit, Unit> CreateModCommand { get; }
     public ReactiveCommand<Unit, Unit> CreateGroupCommand { get; }
@@ -83,6 +85,9 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
     public IDataGridRowDropHandler DropHandler { get; }
 
     public bool SortActive => SortingModel.Descriptors.Count > 0;
+
+    public IReadOnlyList<Ariadne.Contracts.Games.IGamePath> InstallTargets =>
+        _instanceService.Current?.Game?.Configuration.InstallTargets ?? [];
 
     public ModListViewModel(
         IModProfile profile,
@@ -504,6 +509,14 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
                 .Skip(1)
                 .ObserveOn(TaskPoolScheduler.Default)
                 .Subscribe(_ => PersistMod(node))
+        );
+        _nodeActionHooks.Add(
+            node.TargetChanged.ObserveOn(TaskPoolScheduler.Default)
+                .Subscribe(_ =>
+                {
+                    PersistMod(node);
+                    _targetChanged.OnNext(Unit.Default);
+                })
         );
     }
 
