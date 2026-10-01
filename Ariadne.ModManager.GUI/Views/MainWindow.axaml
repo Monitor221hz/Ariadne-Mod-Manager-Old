@@ -92,6 +92,8 @@
                             </DataTemplate>
                         </MenuItem.ItemTemplate>
                     </MenuItem>
+                    <MenuItem Header="Import From Disk"
+                              Command="{Binding ImportFromDiskCommand}" />
                 </MenuItem>
                 <MenuItem x:Name="SourcesItem"
                           Header="So_urces"

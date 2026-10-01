@@ -123,6 +123,7 @@ public class MainViewModel : ViewModelBase
     public ReactiveCommand<Unit, Unit> CreateProfileCommand { get; }
     public ReactiveCommand<Unit, Unit> ImportFromAllProfilesCommand { get; }
     public ReactiveCommand<string, Unit> ImportFromProfileCommand { get; }
+    public ReactiveCommand<Unit, Unit> ImportFromDiskCommand { get; }
 
     private ModListViewModel? ActiveModList => (CurrentViewModel as WorkspaceViewModel)?.ModList;
 
@@ -141,6 +142,7 @@ public class MainViewModel : ViewModelBase
         CreateProfileCommand = ReactiveCommand.Create(() => { });
         ImportFromAllProfilesCommand = ReactiveCommand.Create(() => { });
         ImportFromProfileCommand = ReactiveCommand.Create<string>(_ => { });
+        ImportFromDiskCommand = ReactiveCommand.Create(() => { });
     }
 
     public MainViewModel(
@@ -220,6 +222,7 @@ public class MainViewModel : ViewModelBase
             ImportFromProfile,
             workspaceWritable
         );
+        ImportFromDiskCommand = ReactiveCommand.Create(ImportFromDisk, workspaceWritable);
 
         if (sources is not null)
         {
@@ -441,14 +444,58 @@ public class MainViewModel : ViewModelBase
         {
             return;
         }
+        IModProfile source;
+        try
+        {
+            source = _profiles.Read(name);
+        }
+        catch (Exception ex)
+            when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException
+            )
+        {
+            Debug.WriteLine(ex);
+            return;
+        }
         var activeMods = _profiles.Active.ModList;
-        foreach (var entry in _profiles.Read(name).ModList)
+        foreach (var entry in source.ModList)
         {
             if (activeMods.Contains(entry.Mod))
             {
                 continue;
             }
             ActiveModList.RegisterMod(entry.Mod);
+        }
+    }
+
+    private void ImportFromDisk()
+    {
+        if (_paths is null || _modSerializer is null || ActiveModList is null)
+        {
+            return;
+        }
+        var modsFolder = _paths.ModsFolder;
+        modsFolder.Refresh();
+        if (!modsFolder.Exists)
+        {
+            return;
+        }
+        foreach (var folder in modsFolder.EnumerateDirectories())
+        {
+            ILibraryMod mod;
+            try
+            {
+                mod = _modSerializer.Load(folder);
+            }
+            catch (Exception ex)
+                when (ex
+                        is IOException
+                            or UnauthorizedAccessException
+                            or System.Text.Json.JsonException
+                )
+            {
+                continue;
+            }
+            ActiveModList.RegisterMod(mod);
         }
     }
 

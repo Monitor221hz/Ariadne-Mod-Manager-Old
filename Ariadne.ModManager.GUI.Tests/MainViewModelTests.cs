@@ -323,6 +323,61 @@ public class MainViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task ImportFromDisk_RegistersLibraryMods_AndSkipsUnknownFolders()
+    {
+        var game = GameAt(new DirectoryInfo(Path.Join(_paths.TemporaryFolder.FullName, "game")));
+        SeedMod("ModA");
+        SeedMod("ModB");
+        Directory.CreateDirectory(Path.Join(_paths.ModsFolder.FullName, "Stray"));
+        SeedProfile("Default", "Default", "ModA");
+        var viewModel = CreateViewModel(game);
+        await viewModel.InitializeCommand.Execute().ToTask();
+
+        await viewModel.ImportFromDiskCommand.Execute().ToTask();
+
+        var workspace = Assert.IsType<WorkspaceViewModel>(viewModel.CurrentViewModel);
+        var entries = workspace.ModList.EnumerateModEntries().ToList();
+        Assert.Equal(
+            new[] { "ModA", "ModB" },
+            entries.Select(entry => entry.DisplayName).Order().ToArray()
+        );
+        Assert.True(entries.Single(entry => entry.DisplayName == "ModA").Active);
+        Assert.False(entries.Single(entry => entry.DisplayName == "ModB").Active);
+    }
+
+    [Fact]
+    public async Task ImportFromAllProfiles_SkipsCorruptProfileFiles()
+    {
+        var game = GameAt(new DirectoryInfo(Path.Join(_paths.TemporaryFolder.FullName, "game")));
+        SeedMod("ModA");
+        SeedMod("ModB");
+        SeedProfile("Other", "Other", "ModB");
+        var corrupt = Directory.CreateDirectory(
+            Path.Join(_paths.ProfilesFolder.FullName, "Corrupt")
+        );
+        File.WriteAllText(Path.Join(corrupt.FullName, ModProfileSerializer.FileName), "{ not json");
+        SeedProfile("Default", "Default", "ModA");
+        File.SetLastWriteTimeUtc(
+            Path.Join(_paths.ProfilesFolder.FullName, "Default", ModProfileSerializer.FileName),
+            DateTime.UtcNow
+        );
+        var viewModel = CreateViewModel(game);
+        await viewModel.InitializeCommand.Execute().ToTask();
+
+        await viewModel.ImportFromAllProfilesCommand.Execute().ToTask();
+
+        var workspace = Assert.IsType<WorkspaceViewModel>(viewModel.CurrentViewModel);
+        Assert.Equal(
+            new[] { "ModA", "ModB" },
+            workspace
+                .ModList.EnumerateModEntries()
+                .Select(entry => entry.DisplayName)
+                .Order()
+                .ToArray()
+        );
+    }
+
+    [Fact]
     public async Task SwitchingProfiles_ComparesFolderNames_NotModelNames()
     {
         var game = GameAt(new DirectoryInfo(Path.Join(_paths.TemporaryFolder.FullName, "game")));
