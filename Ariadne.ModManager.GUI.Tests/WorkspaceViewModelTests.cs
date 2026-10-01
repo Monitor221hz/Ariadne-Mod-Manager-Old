@@ -1,3 +1,4 @@
+using System.Reactive.Threading.Tasks;
 using Ariadne.Contracts.Games;
 using Ariadne.Contracts.ModManager;
 using Ariadne.ModManager;
@@ -159,6 +160,50 @@ public sealed class WorkspaceViewModelTests
         public DirectoryInfo DownloadsFolder => new(".");
     }
 
+    private sealed class FakeDeploymentService : IDeploymentService
+    {
+        public bool IsDeployed { get; private set; }
+        public int DeployCalls { get; private set; }
+        public int UndeployCalls { get; private set; }
+        public IModProfile? LastProfile { get; private set; }
+        public TaskCompletionSource? DeployGate { get; set; }
+        public ManualResetEventSlim? UndeployGate { get; set; }
+        public Exception? DeployError { get; set; }
+
+        public event EventHandler? DeploymentChanged;
+
+        public async Task DeployAsync(
+            IModProfile profile,
+            IReadOnlyList<ILoadOrderInfo> loadOrder,
+            CancellationToken cancellationToken = default
+        )
+        {
+            DeployCalls++;
+            LastProfile = profile;
+            if (DeployError is not null)
+            {
+                throw DeployError;
+            }
+            if (DeployGate is { } gate)
+            {
+                await gate.Task;
+            }
+            IsDeployed = true;
+            DeploymentChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        public async Task UndeployAsync()
+        {
+            UndeployCalls++;
+            if (UndeployGate is { } gate)
+            {
+                await Task.Run(() => gate.Wait(TimeSpan.FromSeconds(10)));
+            }
+            IsDeployed = false;
+            DeploymentChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
     private sealed record Harness(
         WorkspaceViewModel Workspace,
         LoadOrderViewModel LoadOrder,
@@ -171,7 +216,8 @@ public sealed class WorkspaceViewModelTests
 
     private static async Task<Harness> NewHarness(
         FakeMod[] mods,
-        IReadOnlyList<ILoadOrderInfo> plugins
+        IReadOnlyList<ILoadOrderInfo> plugins,
+        IDeploymentService? deployment = null
     )
     {
         var profile = new ModProfile(
@@ -190,7 +236,9 @@ public sealed class WorkspaceViewModelTests
             new FakePaths(),
             new NoEditor(),
             new FakeBuilder(plugins),
-            new FakeInstances(new FakeGame(new FakeGameConfiguration("G")))
+            new FakeInstances(new FakeGame(new FakeGameConfiguration("G"))),
+            deploymentService: deployment,
+            notifyScheduler: System.Reactive.Concurrency.Scheduler.Immediate
         );
         var lo = ws.SidePanelTabs.OfType<LoadOrderViewModel>().Single();
         lo.SelectionRequested += rows => pluginLog.Add(rows);
@@ -317,5 +365,113 @@ public sealed class WorkspaceViewModelTests
         await Task.Delay(100);
 
         Assert.Empty(h.Workspace.Verdicts);
+    }
+
+    [Fact]
+    public async Task ToggleDeployment_DelegatesToService_And_TracksState()
+    {
+        var deployment = new FakeDeploymentService();
+        using var h = await NewHarness([new FakeMod("A", 1)], [], deployment);
+
+        Assert.False(h.Workspace.IsDeployed);
+        Assert.Equal("Deploy", h.Workspace.DeployText);
+
+        await h.Workspace.ToggleDeploymentCommand.Execute().ToTask();
+
+        Assert.Equal(1, deployment.DeployCalls);
+        Assert.True(h.Workspace.IsDeployed);
+        Assert.Equal("Undeploy", h.Workspace.DeployText);
+
+        await h.Workspace.ToggleDeploymentCommand.Execute().ToTask();
+
+        Assert.Equal(1, deployment.UndeployCalls);
+        Assert.False(h.Workspace.IsDeployed);
+        Assert.Equal("Deploy", h.Workspace.DeployText);
+    }
+
+    [Fact]
+    public async Task Deploy_Failure_Surfaces_And_Resets()
+    {
+        var deployment = new FakeDeploymentService
+        {
+            DeployError = new IOException("mount failed"),
+        };
+        using var h = await NewHarness([new FakeMod("A", 1)], [], deployment);
+        var failures = new List<(string Title, string Text)>();
+        h.Workspace.DeploymentFailed.Subscribe(failures.Add);
+
+        await h.Workspace.ToggleDeploymentCommand.Execute().ToTask();
+
+        var failure = Assert.Single(failures);
+        Assert.Equal("Deployment failed", failure.Title);
+        Assert.Equal("mount failed", failure.Text);
+        Assert.False(h.Workspace.IsDeploymentBusy);
+        Assert.Equal("Deploy", h.Workspace.DeployText);
+        Assert.False(h.Workspace.IsDeployed);
+    }
+
+    [Fact]
+    public async Task Dispose_WhileDeployed_Undeploys()
+    {
+        var deployment = new FakeDeploymentService();
+        var h = await NewHarness([new FakeMod("A", 1)], [], deployment);
+        await h.Workspace.ToggleDeploymentCommand.Execute().ToTask();
+
+        h.Workspace.Dispose();
+
+        Assert.Equal(1, deployment.UndeployCalls);
+    }
+
+    [Fact]
+    public async Task Deploy_WhileBusy_DisablesCommand_And_ShowsProgressText()
+    {
+        var deployment = new FakeDeploymentService
+        {
+            DeployGate = new TaskCompletionSource(
+                TaskCreationOptions.RunContinuationsAsynchronously
+            ),
+        };
+        using var h = await NewHarness([new FakeMod("A", 1)], [], deployment);
+
+        var execute = h.Workspace.ToggleDeploymentCommand.Execute().ToTask();
+
+        Assert.True(
+            SpinWait.SpinUntil(() => h.Workspace.IsDeploymentBusy, TimeSpan.FromSeconds(5))
+        );
+        Assert.Equal("Deploying…", h.Workspace.DeployText);
+        Assert.False(
+            ((System.Windows.Input.ICommand)h.Workspace.ToggleDeploymentCommand).CanExecute(null)
+        );
+
+        deployment.DeployGate.SetResult();
+        await execute;
+
+        Assert.False(h.Workspace.IsDeploymentBusy);
+        Assert.Equal("Undeploy", h.Workspace.DeployText);
+    }
+
+    [Fact]
+    public async Task Undeploy_WhileBusy_DisablesCommand_And_ShowsProgressText()
+    {
+        var deployment = new FakeDeploymentService();
+        using var h = await NewHarness([new FakeMod("A", 1)], [], deployment);
+        await h.Workspace.ToggleDeploymentCommand.Execute().ToTask();
+        deployment.UndeployGate = new ManualResetEventSlim(false);
+
+        var execute = h.Workspace.ToggleDeploymentCommand.Execute().ToTask();
+
+        Assert.True(
+            SpinWait.SpinUntil(() => h.Workspace.IsDeploymentBusy, TimeSpan.FromSeconds(5))
+        );
+        Assert.Equal("Undeploying…", h.Workspace.DeployText);
+        Assert.False(
+            ((System.Windows.Input.ICommand)h.Workspace.ToggleDeploymentCommand).CanExecute(null)
+        );
+
+        deployment.UndeployGate.Set();
+        await execute;
+
+        Assert.False(h.Workspace.IsDeploymentBusy);
+        Assert.Equal("Deploy", h.Workspace.DeployText);
     }
 }

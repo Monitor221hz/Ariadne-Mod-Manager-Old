@@ -1,5 +1,6 @@
 using Ariadne.Contracts.ModManager;
 using Ariadne.Games;
+using Ariadne.VFS;
 using Xunit;
 
 namespace Ariadne.ModManager.Tests;
@@ -56,11 +57,35 @@ public class VirtualDeploymentMethodTests : IDisposable
         Assert.All(_factory.Created, vfs => Assert.NotNull(vfs.MountedRoot));
 
         var rootMount = Path.Combine(_stagingDir.FullName, "Root");
-        Assert.True(Directory.Exists(rootMount));
+        Assert.False(Directory.Exists(rootMount));
         Assert.Equal(rootMount, _factory.Created[0].Settings!.MountPoint.FullName);
+        Assert.Null(_factory.Created[0].Settings!.InPlaceTarget);
 
         Assert.False(Directory.Exists(Path.Combine(_stagingDir.FullName, "AppData")));
-        Assert.Equal(_appDataDir.FullName, _factory.Created[1].Settings!.MountPoint.FullName);
+        Assert.Equal(
+            Path.Combine(_stagingDir.FullName, "AppData"),
+            _factory.Created[1].Settings!.MountPoint.FullName
+        );
+        Assert.Equal(_appDataDir.FullName, _factory.Created[1].Settings!.InPlaceTarget!.FullName);
+    }
+
+    [Fact]
+    public void Deploy_WithInPlaceCapability_MountsRootInPlace()
+    {
+        var game = CreateGame();
+        _factory.Capabilities = VirtualFileSystemCapabilities.InPlaceMount;
+        var mod = CreateMod("ModC", "Data", out var modDir);
+        File.WriteAllText(Path.Combine(modDir.FullName, "meshes.txt"), "meshes");
+
+        using var method = CreateMethod();
+        method.Deploy(game, [mod]);
+
+        var rootVfs = _factory.Created[0];
+        Assert.Equal(_installDir.FullName, rootVfs.Settings!.InPlaceTarget!.FullName);
+        Assert.Equal(
+            Path.Combine(modDir.FullName, "meshes.txt"),
+            rootVfs.MountedRoot!.FindNode(Path.Join("Data", "meshes.txt"))!.Data.PhysicalPath
+        );
     }
 
     [Fact]
@@ -104,8 +129,7 @@ public class VirtualDeploymentMethodTests : IDisposable
 
         var appDataVfs = _factory.Created[1];
         Assert.NotNull(appDataVfs.MountedRoot);
-        var expectedVirtualPath = Path.Join(_appDataDir.FullName, "plugins.txt");
-        var node = appDataVfs.MountedRoot!.FindNode(expectedVirtualPath);
+        var node = appDataVfs.MountedRoot!.FindNode("plugins.txt");
         Assert.NotNull(node);
         Assert.Equal(modFile, node.Data.PhysicalPath);
     }
@@ -122,10 +146,29 @@ public class VirtualDeploymentMethodTests : IDisposable
         method.Deploy(game, [mod]);
 
         var rootVfs = _factory.Created[0];
-        var expectedVirtualPath = Path.Join(_installDir.FullName, "Data", "meshes.txt");
-        var node = rootVfs.MountedRoot!.FindNode(expectedVirtualPath);
+        var node = rootVfs.MountedRoot!.FindNode(Path.Join("Data", "meshes.txt"));
         Assert.NotNull(node);
         Assert.Equal(modFile, node.Data.PhysicalPath);
+    }
+
+    [Fact]
+    public void Deploy_LinksModDirectoriesIntoDeploymentVirtualRoot()
+    {
+        var game = CreateGame();
+        var mod = CreateMod("ModD", "Data", out var modDir);
+        var subDir = Directory.CreateDirectory(Path.Combine(modDir.FullName, "meshes"));
+        File.WriteAllText(Path.Combine(subDir.FullName, "a.nif"), "mesh");
+
+        using var method = CreateMethod();
+        var exception = Record.Exception(() => method.Deploy(game, [mod]));
+
+        Assert.Null(exception);
+        var rootVfs = _factory.Created[0];
+        var node = rootVfs.MountedRoot!.FindNode(Path.Join("Data", "meshes"));
+        Assert.NotNull(node);
+        Assert.Equal(subDir.FullName, node.Data.PhysicalPath);
+        var file = rootVfs.MountedRoot!.FindNode(Path.Join("Data", "meshes", "a.nif"));
+        Assert.NotNull(file);
     }
 
     [Fact]

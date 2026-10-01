@@ -107,6 +107,34 @@ public class FileSystemLinkerTests : IDisposable
     }
 
     [Fact]
+    public void LinkDirectory_BaseLinkAfterCreateTarget_PreservesCreateTargetData()
+    {
+        string mod = ModDir("modA");
+        string overwrite = ModDir("overwrite");
+
+        var root = NewRoot();
+        root.LinkDirectory(overwrite, "", LinkFlags.Recursive | LinkFlags.CreateTarget);
+        root.LinkDirectory(mod, "");
+
+        Assert.Equal(overwrite, root.Data.PhysicalPath);
+        Assert.True(root.HasFlag(NodeFlags.CreateTarget));
+    }
+
+    [Fact]
+    public void LinkDirectory_CreateTargetAfterBase_StillClaimsRootData()
+    {
+        string mod = ModDir("modA");
+        string overwrite = ModDir("overwrite");
+
+        var root = NewRoot();
+        root.LinkDirectory(mod, "");
+        root.LinkDirectory(overwrite, "", LinkFlags.Recursive | LinkFlags.CreateTarget);
+
+        Assert.Equal(overwrite, root.Data.PhysicalPath);
+        Assert.True(root.HasFlag(NodeFlags.CreateTarget));
+    }
+
+    [Fact]
     public void LinkDirectory_FailIfExists_Throws_On_Conflict()
     {
         string mod = ModDir("modA");

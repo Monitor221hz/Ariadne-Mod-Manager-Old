@@ -1,10 +1,10 @@
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
+using Ariadne.ModManager.GUI.ViewModels;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Ariadne.ModManager.GUI.ViewModels;
 using ReactiveUI;
 
 namespace Ariadne.ModManager.GUI.Views;
@@ -24,6 +24,7 @@ public partial class MainWindow : Window
     private void Attach(MainViewModel viewModel)
     {
         viewModel.ConfirmDeleteInstance.RegisterHandler(HandleDeletePrompt);
+        viewModel.ShowInfo.RegisterHandler(HandleInfoPrompt);
         RebuildInstanceMenus(viewModel);
         viewModel.Instances.CollectionChanged += (_, _) => RebuildInstanceMenus(viewModel);
 

@@ -36,7 +36,7 @@ public class SkyrimSELoadOrderBuilder : ILoadOrderBuilder
     )
     {
         var configuration = game.Configuration;
-        if (!deploymentMethod.TryGetDeployedPath(game, configuration["AppData"], out var appData))
+        if (!deploymentMethod.TryGetDeployedPath(game, configuration["_appData"], out var appData))
         {
             return;
         }

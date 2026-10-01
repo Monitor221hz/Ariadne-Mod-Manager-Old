@@ -16,6 +16,12 @@ public sealed class OutputRuleRouter : IDisposable
         string? physicalMountRoot = null
     )
     {
+        if (!processes.TrackingAvailable)
+        {
+            throw new InvalidOperationException(
+                "Process tracking is unavailable; output rules cannot be applied."
+            );
+        }
         _rules = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var rule in rules)
         {

@@ -52,7 +52,7 @@ public sealed class ModListRowDropHandler(
             args.EffectiveEffect = DragDropEffects.Move;
             if (args.Session is not null)
             {
-                args.Session.FeedbackCaption = ContentDropCaption(dragged, target);
+                args.Session.FeedbackCaption = ContentDropCaption(dragged!, target);
             }
             return true;
         }

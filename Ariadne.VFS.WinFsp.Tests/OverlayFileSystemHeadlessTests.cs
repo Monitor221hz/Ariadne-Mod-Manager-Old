@@ -67,6 +67,7 @@ public class OverlayFileSystemHeadlessTests : IDisposable
             new OverlayFileSystemOptions
             {
                 OutputRules = new[] { new OutputRule("C:\\Tools\\test.exe", BaseDir) },
+                ProcessTracker = new WMProcessObserver(trackingAvailable: true),
                 PhysicalMountRoot = Path.Combine(_tmp, "mount"),
             }
         );

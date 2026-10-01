@@ -1,8 +1,11 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Diagnostics;
+using System.Reactive;
+using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using Ariadne.Contracts.ModManager;
 using Ariadne.Downloads;
 using Ariadne.VFS;
@@ -28,6 +31,7 @@ public interface IWorkspaceTab
 public sealed class WorkspaceViewModel : ViewModelBase, IDisposable
 {
     private readonly IModProfile _profile;
+    private readonly IDeploymentService? _deploymentService;
     private readonly IDisposable[] _tabLifetime;
     private readonly LoadOrderViewModel _loadOrderTab;
     private readonly DeployedViewModel _deployedTab;
@@ -41,6 +45,9 @@ public sealed class WorkspaceViewModel : ViewModelBase, IDisposable
     private IWorkspaceTab? _selectedTab;
     private bool _applyingSelection;
     private ILibraryMod? _selectedMod;
+    private bool _isDeployed;
+    private string? _deploymentBusyText;
+    private readonly Subject<(string Title, string Text)> _deploymentFailed = new();
     private IReadOnlyDictionary<ILibraryMod, SelectedModVerdict> _verdicts =
         new Dictionary<ILibraryMod, SelectedModVerdict>();
 
@@ -75,10 +82,13 @@ public sealed class WorkspaceViewModel : ViewModelBase, IDisposable
         ILoadOrderBuilder loadOrderBuilder,
         IInstanceService instances,
         IDownloadQueue? downloads = null,
-        IModInstallService? installService = null
+        IModInstallService? installService = null,
+        IDeploymentService? deploymentService = null,
+        IScheduler? notifyScheduler = null
     )
     {
         _profile = profile;
+        _deploymentService = deploymentService;
         ModList = new ModListViewModel(
             profile,
             modFactory,
@@ -143,6 +153,90 @@ public sealed class WorkspaceViewModel : ViewModelBase, IDisposable
                 .Subscribe(tab => _ = tab.EnsureInitializedAsync())
         );
         SelectedTab = _loadOrderTab;
+
+        if (deploymentService is not null)
+        {
+            _isDeployed = deploymentService.IsDeployed;
+            ToggleDeploymentCommand = ReactiveCommand.CreateFromTask(
+                ToggleDeploymentAsync,
+                this.WhenAnyValue(x => x.IsDeploymentBusy).Select(busy => !busy)
+            );
+            _subscriptions.Add(
+                Observable
+                    .FromEventPattern(
+                        handler => deploymentService.DeploymentChanged += handler,
+                        handler => deploymentService.DeploymentChanged -= handler
+                    )
+                    .ObserveOn(notifyScheduler ?? AvaloniaScheduler.Instance)
+                    .Subscribe(_ => IsDeployed = deploymentService.IsDeployed)
+            );
+        }
+        else
+        {
+            ToggleDeploymentCommand = ReactiveCommand.Create(() => { });
+        }
+    }
+
+    public bool IsDeployed
+    {
+        get => _isDeployed;
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref _isDeployed, value);
+            this.RaisePropertyChanged(nameof(DeployText));
+        }
+    }
+
+    public bool IsDeploymentBusy => _deploymentBusyText is not null;
+
+    private string? DeploymentBusyText
+    {
+        get => _deploymentBusyText;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _deploymentBusyText, value);
+            this.RaisePropertyChanged(nameof(IsDeploymentBusy));
+            this.RaisePropertyChanged(nameof(DeployText));
+        }
+    }
+
+    public string DeployText => _deploymentBusyText ?? (IsDeployed ? "Undeploy" : "Deploy");
+
+    public ReactiveCommand<Unit, Unit> ToggleDeploymentCommand { get; }
+
+    public IObservable<(string Title, string Text)> DeploymentFailed => _deploymentFailed;
+
+    private async Task ToggleDeploymentAsync()
+    {
+        if (_deploymentService is null)
+        {
+            return;
+        }
+        var undeploying = _deploymentService.IsDeployed;
+        DeploymentBusyText = undeploying ? "Undeploying…" : "Deploying…";
+        try
+        {
+            if (undeploying)
+            {
+                await _deploymentService.UndeployAsync();
+            }
+            else
+            {
+                var loadOrder = _loadOrderTab.LoadOrder.Select(row => row.Model).ToList();
+                await _deploymentService.DeployAsync(_profile, loadOrder);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex);
+            _deploymentFailed.OnNext(
+                (undeploying ? "Undeploy failed" : "Deployment failed", ex.Message)
+            );
+        }
+        finally
+        {
+            DeploymentBusyText = null;
+        }
     }
 
     public async Task InitializeAsync()
@@ -152,6 +246,10 @@ public sealed class WorkspaceViewModel : ViewModelBase, IDisposable
 
     public void Dispose()
     {
+        if (_deploymentService?.IsDeployed == true)
+        {
+            _deploymentService.UndeployAsync().GetAwaiter().GetResult();
+        }
         ModList.SelectedNodes.CollectionChanged -= OnModSelectionChanged;
         _loadOrderTab.SelectedNodes.CollectionChanged -= OnPluginSelectionChanged;
         _subscriptions.Dispose();

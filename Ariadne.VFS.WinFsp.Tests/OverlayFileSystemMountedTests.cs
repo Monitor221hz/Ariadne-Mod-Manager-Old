@@ -114,12 +114,17 @@ public class OverlayFileSystemMountedTests : IDisposable
         var rules = new[] { new OutputRule(selfPath, ruleTarget) };
         string mountPoint = _tmp + "-mount";
 
+        var tracker = new WMProcessObserver();
+        Skip.IfNot(
+            tracker.TrackingAvailable,
+            "WMI process trace events require elevation on this machine"
+        );
         var fs = new OverlayFileSystem(
             BuildTree(),
             new OverlayFileSystemOptions
             {
                 OutputRules = rules,
-                ProcessTracker = new WMProcessObserver(),
+                ProcessTracker = tracker,
                 PhysicalMountRoot = mountPoint,
             }
         );

@@ -122,7 +122,7 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
         {
             lock (_sync)
             {
-                Debug.WriteLine($"Create '{fileName}' opts={createOptions} attrs={fileAttributes}");
+                // Debug.WriteLine($"Create '{fileName}' opts={createOptions} attrs={fileAttributes}");
                 if (_root.FindNode(fileName) != null)
                 {
                     return STATUS_OBJECT_NAME_COLLISION;
@@ -385,7 +385,7 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
         string target = fileDesc.OutputTargetOverride is string ruleTarget
             ? Path.Join(ruleTarget.AsSpan(), virtualPath.AsSpan())
             : GetCreateTargetPath(virtualPath);
-        Debug.WriteLine($"CopyUp '{virtualPath}' -> '{target}'");
+        // Debug.WriteLine($"CopyUp '{virtualPath}' -> '{target}'");
         return target;
     }
 
@@ -567,7 +567,7 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
     {
         lock (_sync)
         {
-            Debug.WriteLine($"Cleanup '{fileName}' flags={flags}");
+            // Debug.WriteLine($"Cleanup '{fileName}' flags={flags}");
             if (flags.HasFlag(CleanupFlags.Delete) && fileName != null)
             {
                 var whiteoutPath = GetCreateTargetPath(fileName + ".daehidden");
@@ -582,9 +582,9 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
     {
         lock (_sync)
         {
-            Debug.WriteLine(
-                $"Close '{fileNode.Node.GetPath()}' pendingDelete={fileNode.PendingDelete}"
-            );
+            // Debug.WriteLine(
+            //     $"Close '{fileNode.Node.GetPath()}' pendingDelete={fileNode.PendingDelete}"
+            // );
             if (fileDesc.IsFile)
             {
                 fileDesc.Dispose();
@@ -710,7 +710,7 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
         }
         lock (_sync)
         {
-            Debug.WriteLine($"Overwrite '{fileDesc.Owner.GetPath()}'");
+            // Debug.WriteLine($"Overwrite '{fileDesc.Owner.GetPath()}'");
             EnsureWritable(fileDesc);
             fileInfo = fileDesc.GetFileInfo();
             if (replaceFileAttributes)
@@ -921,7 +921,7 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
         }
         lock (_sync)
         {
-            Debug.WriteLine($"Rename '{fileName}' -> '{newFileName}'");
+            // Debug.WriteLine($"Rename '{fileName}' -> '{newFileName}'");
             var srcNode = _root.FindNode(fileName);
             if (srcNode == null)
             {
@@ -984,7 +984,7 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
     {
         lock (_sync)
         {
-            Debug.WriteLine($"SetBasicInfo '{fileDesc.Owner.GetPath()}'");
+            // Debug.WriteLine($"SetBasicInfo '{fileDesc.Owner.GetPath()}'");
             if (!fileDesc.IsFile && fileDesc.Owner.Data.PhysicalPath is null)
             {
                 EnsureWritable(fileDesc); // materialize placeholder dir
@@ -1013,7 +1013,7 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
             {
                 Win32.ThrowIoExceptionWithNtStatus(STATUS_FILE_IS_A_DIRECTORY);
             }
-            Debug.WriteLine($"SetFileSize '{fileDesc.Owner.GetPath()}' newSize={newSize}");
+            // Debug.WriteLine($"SetFileSize '{fileDesc.Owner.GetPath()}' newSize={newSize}");
             EnsureWritable(fileDesc);
             if (!setAllocationSize || (ulong)fileDesc.Stream.Length > newSize)
             {
@@ -1033,7 +1033,7 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
     {
         lock (_sync)
         {
-            Debug.WriteLine($"SetSecurity '{fileDesc.Owner.GetPath()}'");
+            // Debug.WriteLine($"SetSecurity '{fileDesc.Owner.GetPath()}'");
             // metadata-only change: no file content, so no copy-up
             if (!fileDesc.IsFile && fileDesc.Owner.Data.PhysicalPath is null)
             {
@@ -1056,7 +1056,7 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
         out FileInfo fileInfo
     )
     {
-        Debug.WriteLine($"Write '{fileDesc.Owner.GetPath()}' offset={offset} length={length}");
+        // Debug.WriteLine($"Write '{fileDesc.Owner.GetPath()}' offset={offset} length={length}");
         EnsureWritable(fileDesc);
         var stream = fileDesc.BeginTransfer();
         try

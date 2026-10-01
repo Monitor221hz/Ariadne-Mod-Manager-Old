@@ -28,6 +28,9 @@ public sealed class FakeVirtualFileSystemFactory : IVirtualFileSystemFactory
 {
     public List<FakeVirtualFileSystem> Created { get; } = new();
 
+    public VirtualFileSystemCapabilities Capabilities { get; set; } =
+        VirtualFileSystemCapabilities.None;
+
     public IVirtualFileSystem Create()
     {
         var vfs = new FakeVirtualFileSystem();

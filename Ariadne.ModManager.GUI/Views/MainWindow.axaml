@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Ariadne.ModManager.GUI.ViewModels"
         xmlns:dc="using:Avalonia.Data.Converters"
+        xmlns:fi="using:FluentIcons.Avalonia"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="640"
@@ -97,19 +98,44 @@
                     BorderBrush="{DynamicResource AriadneToolbarBorder}"
                     BorderThickness="0,0,0,1"
                     Padding="12,8">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBlock VerticalAlignment="Center"
-                               FontWeight="SemiBold"
-                               Text="Profile:" />
-                    <ComboBox MinWidth="160"
-                              VerticalAlignment="Center"
-                              ItemsSource="{Binding ProfileNames}"
-                              SelectedItem="{Binding SelectedProfileName}" />
-                    <TextBlock VerticalAlignment="Center"
-                               Foreground="{DynamicResource FgDimmedBrush}"
-                               Text="{Binding CurrentGameText, TargetNullValue='', StringFormat='({0})'}" />
-                </StackPanel>
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                        <TextBlock VerticalAlignment="Center"
+                                   FontWeight="SemiBold"
+                                   Text="Profile:" />
+                        <ComboBox MinWidth="160"
+                                  VerticalAlignment="Center"
+                                  ItemsSource="{Binding ProfileNames}"
+                                  SelectedItem="{Binding SelectedProfileName}" />
+                        <TextBlock VerticalAlignment="Center"
+                                   Foreground="{DynamicResource FgDimmedBrush}"
+                                   Text="{Binding CurrentGameText, TargetNullValue='', StringFormat='({0})'}" />
+                    </StackPanel>
+                    <Button Grid.Column="1"
+                            VerticalAlignment="Center"
+                            Padding="10,4"
+                            Command="{Binding ActiveWorkspace.ToggleDeploymentCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <fi:FluentIcon Icon="Play"
+                                           FontSize="14"
+                                           VerticalAlignment="Center"
+
+                                           IsVisible="{Binding ActiveWorkspace.IsDeployed, Converter={x:Static dc:BoolConverters.Not}}" />
+                            <fi:FluentIcon Icon="Stop"
+                                           FontSize="14"
+                                           VerticalAlignment="Center"
+                                           IsVisible="{Binding ActiveWorkspace.IsDeployed}" />
+                            <TextBlock VerticalAlignment="Center"
+                                       Text="{Binding ActiveWorkspace.DeployText}" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
             </Border>
+
+            <ProgressBar DockPanel.Dock="Top"
+                         Height="2"
+                         IsIndeterminate="True"
+                         IsVisible="{Binding ActiveWorkspace.IsDeploymentBusy}" />
 
             <ContentControl Content="{Binding CurrentViewModel}" />
         </DockPanel>

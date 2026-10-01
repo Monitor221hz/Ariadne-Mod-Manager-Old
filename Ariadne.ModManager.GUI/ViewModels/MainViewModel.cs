@@ -2,11 +2,11 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Reactive;
 using System.Reactive.Linq;
-using Avalonia.Controls.ApplicationLifetimes;
 using Ariadne.Contracts.Games;
 using Ariadne.Contracts.ModManager;
 using Ariadne.Downloads;
 using Ariadne.ModManager.Serialization;
+using Avalonia.Controls.ApplicationLifetimes;
 using ReactiveUI;
 
 namespace Ariadne.ModManager.GUI.ViewModels;
@@ -24,9 +24,11 @@ public class MainViewModel : ViewModelBase
     private readonly ILibraryModFactory? _modFactory;
     private readonly IDownloadQueue? _downloads;
     private readonly IModInstallService? _installService;
+    private readonly IDeploymentService? _deploymentService;
 
     private object? _currentViewModel;
     private ProfileViewModel? _activeProfile;
+    private IDisposable? _workspaceLink;
     private string? _selectedProfileName;
     private string? _currentGameText;
     private bool _suppressProfileSwitch;
@@ -40,9 +42,12 @@ public class MainViewModel : ViewModelBase
             {
                 return;
             }
+            _workspaceLink?.Dispose();
+            _workspaceLink = null;
             (_currentViewModel as IDisposable)?.Dispose();
             this.RaiseAndSetIfChanged(ref _currentViewModel, value);
             this.RaisePropertyChanged(nameof(WorkspaceVisible));
+            this.RaisePropertyChanged(nameof(ActiveWorkspace));
         }
     }
 
@@ -84,6 +89,7 @@ public class MainViewModel : ViewModelBase
     public ObservableCollection<ThemeEntryViewModel> Themes { get; } = [];
 
     public Interaction<string, InstanceDeleteChoice> ConfirmDeleteInstance { get; } = new();
+    public Interaction<(string Title, string Text), Unit> ShowInfo { get; } = new();
 
     public ReactiveCommand<Unit, Unit> InitializeCommand { get; }
     public ReactiveCommand<Unit, Unit> ExitCommand { get; }
@@ -93,6 +99,8 @@ public class MainViewModel : ViewModelBase
     public ReactiveCommand<Unit, Unit> CreateGroupCommand { get; }
 
     private ModListViewModel? ActiveModList => (CurrentViewModel as WorkspaceViewModel)?.ModList;
+
+    public WorkspaceViewModel? ActiveWorkspace => CurrentViewModel as WorkspaceViewModel;
 
     public MainViewModel()
     {
@@ -116,7 +124,8 @@ public class MainViewModel : ViewModelBase
         SourcesMenuViewModel? sources = null,
         IDownloadQueue? downloads = null,
         ILibraryModFactory? modFactory = null,
-        IModInstallService? installService = null
+        IModInstallService? installService = null,
+        IDeploymentService? deploymentService = null
     )
     {
         _profileSerializer = profileSerializer;
@@ -130,6 +139,7 @@ public class MainViewModel : ViewModelBase
         _downloads = downloads;
         _modFactory = modFactory;
         _installService = installService;
+        _deploymentService = deploymentService;
 
         foreach (var theme in AppTheme.All)
         {
@@ -241,9 +251,13 @@ public class MainViewModel : ViewModelBase
             _loadOrderBuilder!,
             _instances!,
             _downloads,
-            _installService
+            _installService,
+            _deploymentService
         );
         CurrentViewModel = viewModel;
+        _workspaceLink = viewModel.DeploymentFailed.Subscribe(failure =>
+            _ = ShowInfo.Handle(failure)
+        );
         _ = viewModel
             .InitializeAsync()
             .ContinueWith(t => Debug.WriteLine(t.Exception), TaskContinuationOptions.OnlyOnFaulted);

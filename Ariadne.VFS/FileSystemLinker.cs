@@ -32,7 +32,10 @@ public static class FileSystemLinker
         }
 
         var node = root.AddDirectory(virtualDestination);
-        node.Data = new BackedEntry(physicalDirectory);
+        if (!node.HasFlag(NodeFlags.CreateTarget))
+        {
+            node.Data = new BackedEntry(physicalDirectory);
+        }
         if (flags.HasFlag(LinkFlags.CreateTarget))
         {
             node.SetFlag(NodeFlags.CreateTarget);

@@ -13,6 +13,17 @@
             "stopAtEntry": false
         },
         {
+            "name": "Ariadne GUI (Release)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build-gui",
+            "program": "${workspaceFolder}/Ariadne.ModManager.GUI/bin/Release/net10.0/Ariadne.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}/Ariadne.ModManager.GUI/bin/Release/net10.0",
+            "console": "internalConsole",
+            "stopAtEntry": false
+        },
+        {
             "name": "Ariadne.VFS.WinFsp.Demo",
             "type": "coreclr",
             "request": "launch",

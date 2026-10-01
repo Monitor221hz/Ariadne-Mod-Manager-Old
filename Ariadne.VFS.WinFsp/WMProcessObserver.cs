@@ -11,6 +11,8 @@ public sealed class WMProcessObserver
     private readonly ManagementEventWatcher _started;
     private readonly ManagementEventWatcher _stopped;
 
+    public bool TrackingAvailable { get; }
+
     public event Action<int, string>? ProcessStarted;
 
     public event Action<int>? ProcessStopped;
@@ -79,12 +81,20 @@ public sealed class WMProcessObserver
             _stopped.EventArrived += OnStopped;
             _started.Start();
             _stopped.Start();
+            TrackingAvailable = true;
         }
         catch (ManagementException)
         {
             _started = null!;
             _stopped = null!;
         }
+    }
+
+    internal WMProcessObserver(bool trackingAvailable)
+    {
+        TrackingAvailable = trackingAvailable;
+        _started = null!;
+        _stopped = null!;
     }
 
     private void SeedCurrent()

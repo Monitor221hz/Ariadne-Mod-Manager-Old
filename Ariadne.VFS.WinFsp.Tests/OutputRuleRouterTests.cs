@@ -16,7 +16,7 @@ public class OutputRuleRouterTests : IDisposable
             "AriadneRouterTests-" + Guid.NewGuid().ToString("N")
         );
         Directory.CreateDirectory(_tmp);
-        _tracker = new WMProcessObserver();
+        _tracker = new WMProcessObserver(trackingAvailable: true);
     }
 
     public void Dispose()
@@ -156,5 +156,25 @@ public class OutputRuleRouterTests : IDisposable
         );
         _tracker.Register(4_777_013, Path.Combine(_tmp, "unrelated", "something.exe"), 0);
         Assert.False(router.TryResolve(4_777_013, out _));
+    }
+
+    [SkippableFact]
+    public void Dead_Tracking_Fails_Fast_Instead_Of_Silently_Ignoring_Rules()
+    {
+        var (mount, root) = Environment();
+        Assert.Throws<InvalidOperationException>(() =>
+            new OutputRuleRouter(
+                new[]
+                {
+                    new OutputRule(
+                        Path.Combine(_tmp, "mods", "tools", "test.exe"),
+                        Path.Combine(_tmp, "out")
+                    ),
+                },
+                new WMProcessObserver(trackingAvailable: false),
+                root,
+                mount
+            )
+        );
     }
 }

@@ -48,7 +48,7 @@ public class SkyrimSELoadOrderBuilderTests : IDisposable
             [],
             new VendorInfo(489830, 0),
             new GamePath("Root", "", [], []),
-            [new GamePath("AppData", _appDataDir.FullName, [], [])],
+            [new GamePath("_appData", _appDataDir.FullName, [], [])],
             [new GamePath("Data", "Data", [], [], basedOn: "Root")]
         );
         _game = new InstalledGame(_installDir, config);

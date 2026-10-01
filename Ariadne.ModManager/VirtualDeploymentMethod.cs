@@ -54,36 +54,41 @@ public sealed class VirtualDeploymentMethod : IModDeploymentMethod
         }
         virtualRootKeyMap.Add(deploymentPath.Key, virtualRoot);
 
-        DirectoryInfo mountDirectory;
+        var mountDirectory = new DirectoryInfo(
+            Path.Join(_paths.StagingDirectory.FullName, deploymentPath.Key)
+        );
+        if (mountDirectory.Exists)
+        {
+            mountDirectory.Delete(true);
+        }
+        mountDirectory.Parent?.Create();
+        DirectoryInfo? inPlaceTarget = null;
         if (!inPlace)
         {
-            mountDirectory = new DirectoryInfo(
-                Path.Join(_paths.StagingDirectory.FullName, deploymentPath.Key)
-            );
-            if (mountDirectory.Exists)
-            {
-                mountDirectory.Delete(true);
-            }
-            mountDirectory.Create();
             virtualRoot.LinkDirectory(sourcePath, "");
         }
         else
         {
-            mountDirectory = new DirectoryInfo(sourcePath); // responsibility of caller to ensure empty mount dir with WinFsp
+            inPlaceTarget = new DirectoryInfo(sourcePath);
         }
 
-        var settings = new VirtualFileSystemSettings(true, mountDirectory, _outputRules);
+        var settings = new VirtualFileSystemSettings(
+            true,
+            mountDirectory,
+            _outputRules,
+            inPlaceTarget
+        );
         vfs.Mount(virtualRoot, settings);
         _vfsStack.Push(vfs);
-        _gamePathDirectoryMap.Add(deploymentPath, mountDirectory);
-        // deploymentPath.DeployedDirectory = mountDirectory;
+        _gamePathDirectoryMap.Add(deploymentPath, inPlaceTarget ?? mountDirectory);
     }
 
     private static bool TryGetVirtualRoot(
         IGamePath gamePath,
         ISupportedGame configuration,
         Dictionary<string, VirtualNode<BackedEntry>> virtualRootKeyMap,
-        [NotNullWhen(true)] out VirtualNode<BackedEntry>? virtualRoot
+        [NotNullWhen(true)] out VirtualNode<BackedEntry>? virtualRoot,
+        [NotNullWhen(true)] out IGamePath? mountPath
     )
     {
         var current = gamePath;
@@ -96,10 +101,12 @@ public sealed class VirtualDeploymentMethod : IModDeploymentMethod
                 || !configuration.TryGetValue(current.BasedOn, out var parent)
             )
             {
+                mountPath = null;
                 return false;
             }
             current = parent;
         }
+        mountPath = current;
         return true;
     }
 
@@ -117,7 +124,12 @@ public sealed class VirtualDeploymentMethod : IModDeploymentMethod
         var modOrder = mods.OrderBy(m => m.Info.Priority);
         var configuration = game.Configuration;
         Dictionary<string, VirtualNode<BackedEntry>> virtualRootKeyMap = new();
-        DeployPath(game, configuration.Root, virtualRootKeyMap, false);
+        DeployPath(
+            game,
+            configuration.Root,
+            virtualRootKeyMap,
+            _vfsFactory.Capabilities.HasFlag(VirtualFileSystemCapabilities.InPlaceMount)
+        );
         foreach (var deploymentPath in configuration.Deployments)
         {
             DeployPath(game, deploymentPath, virtualRootKeyMap, true);
@@ -132,25 +144,39 @@ public sealed class VirtualDeploymentMethod : IModDeploymentMethod
             {
                 continue;
             }
-            if (!TryGetVirtualRoot(gamePath, configuration, virtualRootKeyMap, out var virtualRoot))
+            if (
+                !TryGetVirtualRoot(
+                    gamePath,
+                    configuration,
+                    virtualRootKeyMap,
+                    out var virtualRoot,
+                    out var mountPath
+                )
+            )
             {
                 continue;
             }
 
+            var relativeBase = Path.GetRelativePath(
+                game.LookupAbsolutePath(mountPath),
+                game.LookupAbsolutePath(gamePath)
+            );
+
             foreach (var content in mod.Content.Children)
             {
-                var fullPath = Path.Join(game.LookupAbsolutePath(gamePath), content.Name);
+                var virtualPath =
+                    relativeBase == "." ? content.Name : Path.Join(relativeBase, content.Name);
                 if (content.IsDirectory)
                 {
                     virtualRoot.LinkDirectory(
-                        content.Data!.AbsolutePath,
-                        fullPath,
+                        Path.Join(mod.Directory.FullName, content.Name),
+                        virtualPath,
                         LinkFlags.Recursive | LinkFlags.Whiteouts
                     );
                 }
                 else
                 {
-                    virtualRoot.LinkFile(content.Data!.AbsolutePath, fullPath);
+                    virtualRoot.LinkFile(content.Data!.AbsolutePath, virtualPath);
                 }
             }
         }
