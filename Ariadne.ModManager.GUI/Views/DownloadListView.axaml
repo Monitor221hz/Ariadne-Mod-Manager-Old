@@ -32,6 +32,9 @@
                         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                         <Setter Property="ContextMenu">
                             <ContextMenu x:DataType="vm:DownloadRowViewModel">
+
+                                <MenuItem Header="Install"
+                                          Command="{Binding InstallCommand}" />
                                 <MenuItem Header="Install To..."
                                           ItemsSource="{Binding InstallTargets}"
                                           IsVisible="{Binding HasInstallTargets}">
@@ -49,8 +52,6 @@
                                         </DataTemplate>
                                     </MenuItem.ItemTemplate>
                                 </MenuItem>
-                                <MenuItem Header="Install"
-                                          Command="{Binding InstallCommand}" />
                                 <MenuItem Header="Remove"
                                           Command="{Binding RemoveCommand}" />
                             </ContextMenu>

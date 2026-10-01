@@ -380,6 +380,41 @@ public sealed class WorkspaceViewModelTests
     }
 
     [Fact]
+    public async Task Deployed_LocksModListMutations()
+    {
+        var deployment = new FakeDeploymentService();
+        using var h = await NewHarness([new FakeMod("A")], [], deployment);
+        var entry = h.Workspace.ModList.EnumerateModEntries().Single();
+        Assert.False(entry.IsReadOnly);
+
+        await h.Workspace.ToggleDeploymentCommand.Execute().ToTask();
+
+        Assert.True(h.Workspace.IsDeployed);
+        Assert.True(entry.IsReadOnly);
+        Assert.False(((System.Windows.Input.ICommand)entry.StartRenameCommand).CanExecute(null));
+        Assert.False(
+            ((System.Windows.Input.ICommand)entry.ForgetFromProfileCommand).CanExecute(null)
+        );
+        Assert.False(((System.Windows.Input.ICommand)entry.DeleteFromDiskCommand).CanExecute(null));
+        Assert.False(
+            ((System.Windows.Input.ICommand)h.Workspace.ModList.CreateModCommand).CanExecute(null)
+        );
+    }
+
+    [Fact]
+    public async Task RenameSelected_ForwardsToSelectedMod()
+    {
+        var mod = new FakeMod("A");
+        using var h = await NewHarness([mod], []);
+        var entry = h.Workspace.ModList.EnumerateModEntries().Single();
+        h.Workspace.ModList.SelectedNodes.Add(entry);
+
+        h.Workspace.ModList.RenameSelectedCommand.Execute().Subscribe();
+
+        Assert.True(entry.IsEditing);
+    }
+
+    [Fact]
     public async Task TogglingActive_SavesProfile()
     {
         var mod = new FakeMod("A");

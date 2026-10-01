@@ -171,6 +171,7 @@ public sealed class WorkspaceViewModel : ViewModelBase, IDisposable
         if (deploymentService is not null)
         {
             _isDeployed = deploymentService.IsDeployed;
+            ModList.IsDeployed = deploymentService.IsDeployed;
             ToggleDeploymentCommand = ReactiveCommand.CreateFromTask(
                 ToggleDeploymentAsync,
                 this.WhenAnyValue(x => x.IsDeploymentBusy).Select(busy => !busy)
@@ -182,7 +183,11 @@ public sealed class WorkspaceViewModel : ViewModelBase, IDisposable
                         handler => deploymentService.DeploymentChanged -= handler
                     )
                     .ObserveOn(notifyScheduler ?? AvaloniaScheduler.Instance)
-                    .Subscribe(_ => IsDeployed = deploymentService.IsDeployed)
+                    .Subscribe(_ =>
+                    {
+                        IsDeployed = deploymentService.IsDeployed;
+                        ModList.IsDeployed = IsDeployed;
+                    })
             );
         }
         else

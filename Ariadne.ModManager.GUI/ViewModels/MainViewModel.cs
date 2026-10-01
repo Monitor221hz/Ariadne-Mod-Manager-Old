@@ -52,6 +52,7 @@ public class MainViewModel : ViewModelBase
             this.RaiseAndSetIfChanged(ref _currentViewModel, value);
             this.RaisePropertyChanged(nameof(WorkspaceVisible));
             this.RaisePropertyChanged(nameof(ActiveWorkspace));
+            this.RaisePropertyChanged(nameof(ProfileSwitchLocked));
         }
     }
 
@@ -80,6 +81,7 @@ public class MainViewModel : ViewModelBase
                 value is not null
                 && !_suppressProfileSwitch
                 && value != _profiles?.Active?.ProfileFolder.Name
+                && ActiveWorkspace?.IsDeployed != true
             )
             {
                 LoadProfile(value);
@@ -125,6 +127,8 @@ public class MainViewModel : ViewModelBase
     private ModListViewModel? ActiveModList => (CurrentViewModel as WorkspaceViewModel)?.ModList;
 
     public WorkspaceViewModel? ActiveWorkspace => CurrentViewModel as WorkspaceViewModel;
+
+    public bool ProfileSwitchLocked => ActiveWorkspace?.IsDeployed == true;
 
     public MainViewModel()
     {
@@ -190,22 +194,31 @@ public class MainViewModel : ViewModelBase
 
         var workspaceActive = this.WhenAnyValue(x => x.CurrentViewModel)
             .Select(viewModel => viewModel is WorkspaceViewModel);
+        var workspaceWritable = this.WhenAnyValue(x => x.ActiveWorkspace)
+            .Select(workspace =>
+                workspace?.WhenAnyValue(w => w.IsDeployed) ?? Observable.Return(false)
+            )
+            .Switch()
+            .CombineLatest(workspaceActive, (deployed, active) => active && !deployed);
         CreateModCommand = ReactiveCommand.CreateFromObservable(
             () => ActiveModList!.CreateModCommand.Execute(),
-            workspaceActive
+            workspaceWritable
         );
         CreateGroupCommand = ReactiveCommand.CreateFromObservable(
             () => ActiveModList!.CreateGroupCommand.Execute(),
-            workspaceActive
+            workspaceWritable
         );
-        CreateProfileCommand = ReactiveCommand.CreateFromTask(CreateProfileAsync);
+        CreateProfileCommand = ReactiveCommand.CreateFromTask(
+            CreateProfileAsync,
+            workspaceWritable
+        );
         ImportFromAllProfilesCommand = ReactiveCommand.Create(
             ImportFromAllProfiles,
-            workspaceActive
+            workspaceWritable
         );
         ImportFromProfileCommand = ReactiveCommand.Create<string>(
             ImportFromProfile,
-            workspaceActive
+            workspaceWritable
         );
 
         if (sources is not null)
@@ -383,6 +396,9 @@ public class MainViewModel : ViewModelBase
                 .WhenAnyValue(x => x.SelectedTab)
                 .WhereNotNull()
                 .Subscribe(tab => _sidePanelTabTitle = tab.Title),
+            viewModel
+                .WhenAnyValue(x => x.IsDeployed)
+                .Subscribe(_ => this.RaisePropertyChanged(nameof(ProfileSwitchLocked))),
         };
         _ = viewModel
             .InitializeAsync()

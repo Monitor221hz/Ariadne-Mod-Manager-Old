@@ -87,7 +87,25 @@ public class MainViewModelTests : IDisposable
 
     public void Dispose() => _paths.Cleanup();
 
-    private MainViewModel CreateViewModel(IInstalledGame? game = null)
+    private sealed class StubDeploymentService(bool deployed) : IDeploymentService
+    {
+        public bool IsDeployed { get; } = deployed;
+        public IReadOnlyList<DirectoryInfo> DeployedPaths => [];
+        public event EventHandler? DeploymentChanged;
+
+        public Task DeployAsync(
+            IModProfile profile,
+            IReadOnlyList<ILoadOrderInfo> loadOrder,
+            CancellationToken cancellationToken = default
+        ) => Task.CompletedTask;
+
+        public Task UndeployAsync() => Task.CompletedTask;
+    }
+
+    private MainViewModel CreateViewModel(
+        IInstalledGame? game = null,
+        IDeploymentService? deployment = null
+    )
     {
         var serializer = new ModProfileSerializer(new LibraryModSerializer([]), _paths);
         return new MainViewModel(
@@ -99,6 +117,7 @@ public class MainViewModelTests : IDisposable
             new GameCatalog([]),
             null!,
             new FakeBuilder(),
+            deploymentService: deployment,
             profiles: new ProfileService(serializer, _paths)
         );
     }
@@ -282,6 +301,25 @@ public class MainViewModelTests : IDisposable
 
         var next = Assert.IsType<WorkspaceViewModel>(viewModel.CurrentViewModel);
         Assert.Equal("Deployed", next.SelectedTab?.Title);
+    }
+
+    [Fact]
+    public async Task Deployed_ProfileSwitch_IsBlocked()
+    {
+        var game = GameAt(new DirectoryInfo(Path.Join(_paths.TemporaryFolder.FullName, "game")));
+        SeedProfile("Default", "Default");
+        SeedProfile("Other", "Other");
+        File.SetLastWriteTimeUtc(
+            Path.Join(_paths.ProfilesFolder.FullName, "Default", ModProfileSerializer.FileName),
+            DateTime.UtcNow
+        );
+        var viewModel = CreateViewModel(game, new StubDeploymentService(deployed: true));
+        await viewModel.InitializeCommand.Execute().ToTask();
+        Assert.Equal("Default", viewModel.SelectedProfileName);
+
+        viewModel.SelectedProfileName = "Other";
+
+        Assert.Equal("Default", viewModel.ActiveProfile!.Model.ProfileFolder.Name);
     }
 
     [Fact]

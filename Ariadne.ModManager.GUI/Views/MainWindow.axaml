@@ -156,11 +156,13 @@
                         <ComboBox MinWidth="160"
                                   VerticalAlignment="Center"
                                   ItemsSource="{Binding ProfileNames}"
-                                  SelectedItem="{Binding SelectedProfileName}" />
+                                  SelectedItem="{Binding SelectedProfileName}"
+                                  IsEnabled="{Binding ProfileSwitchLocked, Converter={x:Static dc:BoolConverters.Not}}" />
                         <Button VerticalAlignment="Center"
                                 Padding="6,4"
                                 ToolTip.Tip="New profile"
-                                Command="{Binding CreateProfileCommand}">
+                                Command="{Binding CreateProfileCommand}"
+                                IsEnabled="{Binding ProfileSwitchLocked, Converter={x:Static dc:BoolConverters.Not}}">
                             <fi:FluentIcon Icon="Add" FontSize="13" />
                         </Button>
                         <TextBlock VerticalAlignment="Center"

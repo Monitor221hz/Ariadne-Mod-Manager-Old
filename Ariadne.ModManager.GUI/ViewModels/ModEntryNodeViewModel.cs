@@ -73,16 +73,24 @@ public sealed class ModEntryNodeViewModel : TreeNodeViewModel
         _entry = entry;
         _displayName = mod.Name;
         _active = entry.Active;
-        DeleteFromDiskCommand = ReactiveCommand.Create(() => _removeRequested.OnNext(Unit.Default));
-        ForgetFromProfileCommand = ReactiveCommand.Create(() =>
-            _removeFromProfileRequested.OnNext(Unit.Default)
+        var writable = this.WhenAnyValue(x => x.IsReadOnly).Select(readOnly => !readOnly);
+        DeleteFromDiskCommand = ReactiveCommand.Create(
+            () => _removeRequested.OnNext(Unit.Default),
+            writable
         );
-        SetTargetCommand = ReactiveCommand.Create<IGamePath>(target =>
-        {
-            mod.Info.Target = target.Key;
-            this.RaisePropertyChanged(nameof(Target));
-            _targetChanged.OnNext(Unit.Default);
-        });
+        ForgetFromProfileCommand = ReactiveCommand.Create(
+            () => _removeFromProfileRequested.OnNext(Unit.Default),
+            writable
+        );
+        SetTargetCommand = ReactiveCommand.Create<IGamePath>(
+            target =>
+            {
+                mod.Info.Target = target.Key;
+                this.RaisePropertyChanged(nameof(Target));
+                _targetChanged.OnNext(Unit.Default);
+            },
+            writable
+        );
 
         var content = _beginLoad
             .Select(ct => Observable.FromAsync(t2 => Task.Run(() => mod.Content, t2)))

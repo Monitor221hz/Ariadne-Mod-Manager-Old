@@ -1,4 +1,5 @@
 using System.Windows.Input;
+using Avalonia.Input;
 
 namespace Ariadne.ModManager.GUI.ViewModels;
 
@@ -7,5 +8,6 @@ public sealed record NodeMenuItem(
     ICommand? Command = null,
     object? CommandParameter = null,
     IReadOnlyList<NodeMenuItem>? Children = null,
-    string? Tooltip = null
+    string? Tooltip = null,
+    KeyGesture? Gesture = null
 );

@@ -170,6 +170,7 @@ public partial class ModListView : UserControl
             Header = item.Header,
             Command = item.Command,
             CommandParameter = item.CommandParameter,
+            InputGesture = item.Gesture,
         };
         ToolTip.SetTip(menuItem, item.Tooltip);
         if (item.Children is { Count: > 0 } children)

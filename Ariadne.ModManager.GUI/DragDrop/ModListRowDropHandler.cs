@@ -13,6 +13,7 @@ namespace Ariadne.ModManager.GUI.DragDrop;
 
 public sealed class ModListRowDropHandler(
     Func<bool> isSorted,
+    Func<bool> isReadOnly,
     Func<IList<TreeNodeViewModel>> getRoots,
     Func<HierarchicalModel<TreeNodeViewModel>?> getModel
 ) : IDataGridRowDropHandler
@@ -21,6 +22,15 @@ public sealed class ModListRowDropHandler(
 
     public bool Validate(DataGridRowDropEventArgs args)
     {
+        if (isReadOnly())
+        {
+            args.EffectiveEffect = DragDropEffects.None;
+            if (args.Session is not null)
+            {
+                args.Session.FeedbackCaption = "Undeploy to make changes.";
+            }
+            return false;
+        }
         var dragged = args
             .Items.OfType<HierarchicalNode>()
             .Select(node => node.Item as TreeNodeViewModel)

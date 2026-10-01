@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Ariadne.ModManager.GUI.ViewModels"
+             xmlns:fi="using:FluentIcons.Avalonia"
              x:Class="Ariadne.ModManager.GUI.Views.ModEntryNodeView"
              x:DataType="vm:ModEntryNodeViewModel">
     <StackPanel Orientation="Horizontal" Margin="0" Spacing="0">
@@ -9,7 +10,18 @@
             <LayoutTransformControl.LayoutTransform>
                 <ScaleTransform ScaleX="0.8" ScaleY="0.8" />
             </LayoutTransformControl.LayoutTransform>
-            <CheckBox Padding="0" Margin="0" IsChecked="{Binding Active, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <Grid>
+                <CheckBox Padding="0" Margin="0"
+                          IsChecked="{Binding Active, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                          IsEnabled="{Binding !IsReadOnly}"
+                          IsVisible="{Binding !IsReadOnly}" />
+                <fi:FluentIcon Icon="LockClosed"
+                               FontSize="24"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource FgDimmedBrush}"
+                               ToolTip.Tip="Undeploy to make changes"
+                               IsVisible="{Binding IsReadOnly}" />
+            </Grid>
         </LayoutTransformControl>
         <MaskedTextBox x:Name="NameBox" Text="{Binding DisplayName, Mode=TwoWay}"
                        Classes.transparent="{Binding !IsEditing}"

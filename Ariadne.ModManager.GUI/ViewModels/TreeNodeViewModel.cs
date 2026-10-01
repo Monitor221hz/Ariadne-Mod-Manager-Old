@@ -10,6 +10,7 @@ public abstract class TreeNodeViewModel : ViewModelBase
 {
     private bool _isEditing;
     private bool _isExpanded;
+    private bool _isReadOnly;
     private string _committedName = string.Empty;
     private static readonly Subject<TreeNodeViewModel> _fileOpenRequested = new();
     public static IObservable<TreeNodeViewModel> FileOpenRequested => _fileOpenRequested;
@@ -41,6 +42,12 @@ public abstract class TreeNodeViewModel : ViewModelBase
         private set => this.RaiseAndSetIfChanged(ref _isEditing, value);
     }
 
+    public bool IsReadOnly
+    {
+        get => _isReadOnly;
+        set => this.RaiseAndSetIfChanged(ref _isReadOnly, value);
+    }
+
     public ReactiveCommand<Unit, Unit> StartRenameCommand { get; }
     public ReactiveCommand<Unit, Unit> FinishRenameCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenCommand { get; }
@@ -48,15 +55,18 @@ public abstract class TreeNodeViewModel : ViewModelBase
     protected TreeNodeViewModel()
     {
         OpenCommand = ReactiveCommand.Create(() => _fileOpenRequested.OnNext(this));
-        StartRenameCommand = ReactiveCommand.Create(() =>
-        {
-            if (!RenameAllowed || IsEditing)
+        StartRenameCommand = ReactiveCommand.Create(
+            () =>
             {
-                return;
-            }
-            _committedName = DisplayName;
-            IsEditing = true;
-        });
+                if (!RenameAllowed || IsEditing)
+                {
+                    return;
+                }
+                _committedName = DisplayName;
+                IsEditing = true;
+            },
+            this.WhenAnyValue(x => x.IsReadOnly).Select(readOnly => !readOnly)
+        );
 
         FinishRenameCommand = ReactiveCommand.CreateFromTask(async () =>
         {

@@ -1,5 +1,6 @@
 using Ariadne.Contracts.Games;
 using Ariadne.ModManager.GUI.ViewModels;
+using Avalonia.Input;
 
 namespace Ariadne.ModManager.GUI.Views;
 
@@ -11,10 +12,14 @@ public static class NodeMenuItems
     ) =>
         node switch
         {
-            FileLeafNodeViewModel => [new("Open", node.OpenCommand)],
+            FileLeafNodeViewModel =>
+            [
+                new("Open", node.OpenCommand, Gesture: new KeyGesture(Key.Enter)),
+            ],
             ModEntryNodeViewModel mod =>
             [
-                new("Rename", mod.StartRenameCommand),
+                new("Rename", mod.StartRenameCommand, Gesture: new KeyGesture(Key.F2)),
+                .. TargetItems(mod, installTargets),
                 new(
                     "Forget",
                     mod.ForgetFromProfileCommand,
@@ -23,13 +28,13 @@ public static class NodeMenuItems
                 new(
                     "Delete",
                     mod.DeleteFromDiskCommand,
-                    Tooltip: "Removes the mod from the active profile and deletes its folder from disk. This cannot be undone."
+                    Tooltip: "Removes the mod from the active profile and deletes its folder from disk. This cannot be undone.",
+                    Gesture: new KeyGesture(Key.Delete)
                 ),
-                .. TargetItems(mod, installTargets),
             ],
             GroupHeaderNodeViewModel group =>
             [
-                new("Rename", group.StartRenameCommand),
+                new("Rename", group.StartRenameCommand, Gesture: new KeyGesture(Key.F2)),
                 new("Dissolve", group.DissolveCommand),
             ],
             _ => [],

@@ -46,6 +46,11 @@
                       AutoGenerateColumns="False"
                       HeadersVisibility="Column"
                       ContextRequested="ModsGrid_ContextRequested">
+                <DataGrid.KeyBindings>
+                    <KeyBinding Gesture="F2" Command="{Binding RenameSelectedCommand}" />
+                    <KeyBinding Gesture="Delete" Command="{Binding DeleteSelectedCommand}" />
+                    <KeyBinding Gesture="Enter" Command="{Binding OpenSelectedCommand}" />
+                </DataGrid.KeyBindings>
                 <DataGrid.Columns>
                     <DataGridHierarchicalColumn Header="Name"
                                                 SortMemberPath="Item.DisplayName"

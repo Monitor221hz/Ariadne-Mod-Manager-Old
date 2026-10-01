@@ -41,6 +41,8 @@ public class NodeMenuItemsTests
         Assert.Same(node.DeleteFromDiskCommand, items[2].Command);
         Assert.Contains("without deleting", items[1].Tooltip!);
         Assert.Contains("cannot be undone", items[2].Tooltip!);
+        Assert.Equal("F2", items[0].Gesture?.ToString());
+        Assert.Equal("Delete", items[2].Gesture?.ToString());
     }
 
     [Fact]

@@ -35,6 +35,7 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
 
     private HierarchicalModel<TreeNodeViewModel>? _model;
     private ObservableCollection<TreeNodeViewModel>? _roots;
+    private bool _isDeployed;
     private readonly Subject<Unit> _structureChanged = new();
     private readonly Subject<Unit> _renamed = new();
     private IDisposable? _syncSubscription;
@@ -52,6 +53,9 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
     public ReactiveCommand<Unit, Unit> CreateModCommand { get; }
     public ReactiveCommand<Unit, Unit> CreateGroupCommand { get; }
     public ReactiveCommand<Unit, Unit> ClearSortCommand { get; }
+    public ReactiveCommand<Unit, Unit> RenameSelectedCommand { get; }
+    public ReactiveCommand<Unit, Unit> DeleteSelectedCommand { get; }
+    public ReactiveCommand<Unit, Unit> OpenSelectedCommand { get; }
     public Interaction<ModEntryNodeViewModel, bool> ConfirmRemoveMod { get; } = new();
     public ReactiveCommand<ModEntryNodeViewModel, Unit> LoadInsertedRow { get; }
 
@@ -89,6 +93,32 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
 
     public bool SortActive => SortingModel.Descriptors.Count > 0;
 
+    public bool IsDeployed
+    {
+        get => _isDeployed;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _isDeployed, value);
+            PushReadOnlyToNodes();
+        }
+    }
+
+    private void PushReadOnlyToNodes()
+    {
+        if (_roots is null)
+        {
+            return;
+        }
+        foreach (var entry in EnumerateModEntries())
+        {
+            entry.IsReadOnly = _isDeployed;
+        }
+        foreach (var group in _roots.OfType<GroupHeaderNodeViewModel>())
+        {
+            group.IsReadOnly = _isDeployed;
+        }
+    }
+
     public IReadOnlyList<Ariadne.Contracts.Games.IGamePath> InstallTargets =>
         _instanceService.Current?.Game?.Configuration.InstallTargets ?? [];
 
@@ -120,9 +150,24 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
         _instanceService = instanceService;
         _modFactory = modFactory;
 
-        CreateModCommand = ReactiveCommand.CreateFromTask(CreateEmptyMod);
-        CreateGroupCommand = ReactiveCommand.Create(CreateGroup);
+        CreateModCommand = ReactiveCommand.CreateFromTask(
+            CreateEmptyMod,
+            this.WhenAnyValue(x => x.IsDeployed).Select(deployed => !deployed)
+        );
+        CreateGroupCommand = ReactiveCommand.Create(
+            CreateGroup,
+            this.WhenAnyValue(x => x.IsDeployed).Select(deployed => !deployed)
+        );
         ClearSortCommand = ReactiveCommand.Create(() => SortingModel.Clear());
+        RenameSelectedCommand = ReactiveCommand.Create(() =>
+            ForwardToSelected<TreeNodeViewModel>(node => node.StartRenameCommand)
+        );
+        DeleteSelectedCommand = ReactiveCommand.Create(() =>
+            ForwardToSelected<ModEntryNodeViewModel>(node => node.DeleteFromDiskCommand)
+        );
+        OpenSelectedCommand = ReactiveCommand.Create(() =>
+            ForwardToSelected<TreeNodeViewModel>(node => node.OpenCommand)
+        );
         LoadInsertedRow = ReactiveCommand.CreateFromTask<ModEntryNodeViewModel>(
             LoadInsertedRowAsync
         );
@@ -136,6 +181,7 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
             });
         DropHandler = new DragDrop.ModListRowDropHandler(
             () => SortActive,
+            () => IsDeployed,
             () => _roots is null ? Array.Empty<TreeNodeViewModel>() : _roots,
             () => Model
         );
@@ -480,6 +526,7 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
 
     private void HookModNode(ModEntryNodeViewModel node)
     {
+        node.IsReadOnly = IsDeployed;
         _syncHooks.Add(
             node.RenameCommitted.ObserveOn(TaskPoolScheduler.Default)
                 .Subscribe(_ =>
@@ -525,6 +572,7 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
 
     private void HookGroupNode(GroupHeaderNodeViewModel group)
     {
+        group.IsReadOnly = IsDeployed;
         _syncHooks.Add(
             StreamOf(group.ObservableChildren)
                 .Subscribe(_ => _structureChanged.OnNext(Unit.Default))
@@ -555,6 +603,15 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
         catch (Exception ex)
         {
             Debug.WriteLine(ex);
+        }
+    }
+
+    private void ForwardToSelected<TNode>(Func<TNode, ReactiveCommand<Unit, Unit>> commandOf)
+        where TNode : TreeNodeViewModel
+    {
+        if (SelectedNodes.OfType<TNode>().FirstOrDefault() is { } node)
+        {
+            commandOf(node).Execute().Subscribe();
         }
     }
 

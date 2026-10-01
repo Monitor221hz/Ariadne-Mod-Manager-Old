@@ -61,7 +61,10 @@ public sealed class GroupHeaderNodeViewModel : TreeNodeViewModel
         };
         IsExpanded = HasChildren;
         _sizeText = "↺";
-        DissolveCommand = ReactiveCommand.Create(() => _dissolveRequested.OnNext(Unit.Default));
+        DissolveCommand = ReactiveCommand.Create(
+            () => _dissolveRequested.OnNext(Unit.Default),
+            this.WhenAnyValue(x => x.IsReadOnly).Select(readOnly => !readOnly)
+        );
 
         _sizeSubscription = Observable
             .FromEventPattern<
