@@ -87,9 +87,7 @@ public sealed class ModInstallService : IModInstallService
                     provenanceId ?? new ModID(0, SourceType.Local),
                     version ?? "",
                     [],
-                    "",
-                    0,
-                    false
+                    ""
                 );
 
                 if (installer.TryInstall(name, info, extractionRoot, out var mod, installType))

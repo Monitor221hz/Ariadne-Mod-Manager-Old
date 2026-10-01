@@ -4,6 +4,7 @@ using System.Reactive.Threading.Tasks;
 using Ariadne.ModManager.GUI.ViewModels;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using ReactiveUI;
 
@@ -25,8 +26,7 @@ public partial class MainWindow : Window
     {
         viewModel.ConfirmDeleteInstance.RegisterHandler(HandleDeletePrompt);
         viewModel.ShowInfo.RegisterHandler(HandleInfoPrompt);
-        RebuildInstanceMenus(viewModel);
-        viewModel.Instances.CollectionChanged += (_, _) => RebuildInstanceMenus(viewModel);
+        viewModel.AskProfileName.RegisterHandler(HandleProfileNamePrompt);
 
         if (viewModel.Sources is { } sources)
         {
@@ -78,6 +78,22 @@ public partial class MainWindow : Window
         context.SetOutput(choice);
     }
 
+    private async Task HandleProfileNamePrompt(IInteractionContext<Unit, string?> context)
+    {
+        ProfileNameBox.Text = "";
+        ProfileOverlay.IsVisible = true;
+        ProfileNameBox.Focus();
+        var result = await Observable
+            .Merge(
+                ButtonObservables.ClicksOf(ProfileCreateButton).Select(_ => ProfileNameBox.Text),
+                ButtonObservables.ClicksOf(ProfileCancelButton).Select(_ => (string?)null)
+            )
+            .FirstAsync()
+            .ToTask();
+        ProfileOverlay.IsVisible = false;
+        context.SetOutput(string.IsNullOrWhiteSpace(result) ? null : result);
+    }
+
     private async Task HandleInfoPrompt(
         IInteractionContext<(string Title, string Text), Unit> context
     )
@@ -88,26 +104,5 @@ public partial class MainWindow : Window
         await ButtonObservables.ClicksOf(InfoOkButton).FirstAsync().ToTask();
         InfoOverlay.IsVisible = false;
         context.SetOutput(Unit.Default);
-    }
-
-    private void RebuildInstanceMenus(MainViewModel viewModel)
-    {
-        SwitchInstanceItem.ItemsSource = viewModel
-            .Instances.Select(instance => new MenuItem
-            {
-                Header = instance.DisplayHeader,
-                Command = viewModel.SwitchInstanceCommand,
-                CommandParameter = instance.Name,
-                IsEnabled = !instance.IsCurrent,
-            })
-            .ToList();
-        RemoveInstanceItem.ItemsSource = viewModel
-            .Instances.Select(instance => new MenuItem
-            {
-                Header = instance.RemoveHeader,
-                Command = viewModel.AskDeleteCommand,
-                CommandParameter = instance.Name,
-            })
-            .ToList();
     }
 }

@@ -12,11 +12,17 @@ public class LoadOrderViewModelTests
         : ILoadOrderBuilder
     {
         public int SaveCalls { get; private set; }
+        public int FetchCalls { get; private set; }
         public IReadOnlyList<ILoadOrderInfo>? LastSaved { get; private set; }
+        public IReadOnlyList<ILoadOrderInfo> Rows { get; set; } = rows;
         public TaskCompletionSource SaveRequested { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        public IEnumerable<ILoadOrderInfo> Fetch(IInstalledGame game, IModList mods) => rows;
+        public IEnumerable<ILoadOrderInfo> Fetch(IInstalledGame game, IModList mods)
+        {
+            FetchCalls++;
+            return Rows;
+        }
 
         public void Deploy(
             IInstalledGame game,
@@ -151,5 +157,24 @@ public class LoadOrderViewModelTests
 
         Assert.Equal(1, builder.SaveCalls);
         Assert.False(builder.LastSaved![0].Active);
+    }
+
+    [Fact]
+    public async Task RefreshAsync_RefetchesAndRebuildsRows()
+    {
+        var builder = new FakeLoadOrderBuilder([new FakeLoadOrderInfo("a.esp")]);
+        var vm = new LoadOrderViewModel(
+            FakeProfile(),
+            builder,
+            new FakeInstanceService(new FakeGame(new FakeGameConfiguration("Test Game")))
+        );
+        await vm.EnsureInitializedAsync();
+        Assert.Equal(["a.esp"], vm.LoadOrder.Select(i => i.Name).ToArray());
+
+        builder.Rows = [new FakeLoadOrderInfo("a.esp"), new FakeLoadOrderInfo("b.esp")];
+        await vm.RefreshAsync();
+
+        Assert.Equal(2, builder.FetchCalls);
+        Assert.Equal(new[] { "a.esp", "b.esp" }, vm.LoadOrder.Select(i => i.Name).ToArray());
     }
 }

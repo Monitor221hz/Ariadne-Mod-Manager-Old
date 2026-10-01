@@ -41,14 +41,18 @@ public sealed class ModProfileSerializer : IModProfileSerializer
                 $"Profile file \"{profileFile.FullName}\" has no parent directory."
             );
 
-        List<ILibraryMod> looseMods = record
-            .ModList.LooseMods.Select(LoadMod)
-            .OfType<ILibraryMod>()
+        var activeStates = record.ModList.ActiveStates;
+        List<IModListEntry> looseMods = record
+            .ModList.LooseMods.Select(name => LoadEntry(name, activeStates))
+            .OfType<IModListEntry>()
             .ToList();
         List<IModGroup> groups = record
             .ModList.ModGroups.Select(group => new ModGroup(
                 group.Name,
-                group.Mods.Select(LoadMod).OfType<ILibraryMod>().ToList(),
+                group
+                    .Mods.Select(name => LoadEntry(name, activeStates))
+                    .OfType<IModListEntry>()
+                    .ToList(),
                 group.HeaderColor
             ))
             .Cast<IModGroup>()
@@ -70,14 +74,18 @@ public sealed class ModProfileSerializer : IModProfileSerializer
         var record = new ModProfileRecord(
             profile.Name,
             new ModListRecord(
-                profile.ModList.LooseMods.Select(ModFolderName).ToList(),
+                profile.ModList.LooseMods.Select(entry => ModFolderName(entry.Mod)).ToList(),
                 profile
                     .ModList.ModGroups.Select(group => new ModGroupRecord(
                         group.Name,
                         group.HeaderColor,
-                        group.Select(ModFolderName).ToList()
+                        group.Select(entry => ModFolderName(entry.Mod)).ToList()
                     ))
-                    .ToList()
+                    .ToList(),
+                profile.ModList.ToDictionary(
+                    entry => ModFolderName(entry.Mod),
+                    entry => entry.Active
+                )
             ),
             profile.Version
         );
@@ -93,6 +101,20 @@ public sealed class ModProfileSerializer : IModProfileSerializer
     }
 
     private static string ModFolderName(ILibraryMod mod) => mod.Directory.Name;
+
+    private IModListEntry? LoadEntry(string modFolderName, Dictionary<string, bool>? activeStates)
+    {
+        var mod = LoadMod(modFolderName);
+        if (mod is null)
+        {
+            return null;
+        }
+        var active =
+            activeStates is not null
+            && activeStates.TryGetValue(modFolderName, out var recorded)
+            && recorded;
+        return new ModListEntry(mod, active);
+    }
 
     private ILibraryMod? LoadMod(string modFolderName)
     {

@@ -7,7 +7,11 @@ public sealed class ModProfileEditor : IModProfileEditor
     public async Task RemoveModAsync(IModProfile profile, ILibraryMod mod)
     {
         var modList = profile.ModList;
-        modList.Remove(mod);
+        var entry = modList.FirstOrDefault(candidate => candidate.Mod.Equals(mod));
+        if (entry is not null)
+        {
+            modList.Remove(entry);
+        }
         await Task.Run(() => mod.Directory.Delete(true));
     }
 

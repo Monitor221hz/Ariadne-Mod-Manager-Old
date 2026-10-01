@@ -36,6 +36,7 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
     private HierarchicalModel<TreeNodeViewModel>? _model;
     private ObservableCollection<TreeNodeViewModel>? _roots;
     private readonly Subject<Unit> _structureChanged = new();
+    private readonly Subject<Unit> _renamed = new();
     private IDisposable? _syncSubscription;
     private CompositeDisposable _syncHooks = new();
     private CompositeDisposable _nodeActionHooks = new();
@@ -68,6 +69,8 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
 
     public IObservable<Unit> StructureChanged => _structureChanged;
 
+    public IObservable<Unit> Renamed => _renamed;
+
     public event Action<IReadOnlyList<TreeNodeViewModel>>? SelectionRequested;
 
     public void RequestSelection(IReadOnlyList<TreeNodeViewModel> rows) =>
@@ -96,7 +99,8 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
         ILibraryModSerializer modSerializer,
         IModManagerPaths paths,
         IModProfileEditor editor,
-        IInstanceService instanceService
+        IInstanceService instanceService,
+        IScheduler? syncScheduler = null
     )
     {
         TreeNodeViewModel
@@ -125,7 +129,7 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
         LoadInsertedRow.ThrownExceptions.Subscribe(ex => Debug.WriteLine(ex));
         _syncSubscription = _structureChanged
             .Throttle(SyncDelay)
-            .ObserveOn(AvaloniaScheduler.Instance)
+            .ObserveOn(syncScheduler ?? AvaloniaScheduler.Instance)
             .Subscribe(signal =>
             {
                 _ = SyncDomainFromTreeAsync();
@@ -239,9 +243,9 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        _profile.ModList.Add(mod);
+        _profile.ModList.Add(new ModListEntry(mod, active: false));
         _profileSerializer.Save(_profile);
-        var vm = new ModEntryNodeViewModel(mod);
+        var vm = new ModEntryNodeViewModel(_profile.ModList.LooseMods[^1]);
         int insertAt = _roots!.TakeWhile(n => n is ModEntryNodeViewModel).Count();
         _roots!.Insert(insertAt, vm);
         HookModNode(vm);
@@ -252,19 +256,7 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
         Task.Run(() =>
         {
             var folder = UniqueModFolder(_paths.ModsFolder);
-            var mod = new LibraryMod(
-                new ModInfo(
-                    0,
-                    SourceType.Local,
-                    "1.0.0",
-                    [],
-                    "",
-                    (uint)(_profile.ModList.Count + 1),
-                    false
-                ),
-                folder,
-                []
-            );
+            var mod = new LibraryMod(new ModInfo(0, SourceType.Local, "1.0.0", [], ""), folder, []);
             folder.Create();
             _modSerializer.Save(mod);
 
@@ -449,7 +441,7 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
     private static ObservableCollection<TreeNodeViewModel> BuildRoots(IModList modList) =>
         new(
             modList
-                .LooseMods.Select(mod => (TreeNodeViewModel)new ModEntryNodeViewModel(mod))
+                .LooseMods.Select(entry => (TreeNodeViewModel)new ModEntryNodeViewModel(entry))
                 .Concat(modList.ModGroups.Select(group => new GroupHeaderNodeViewModel(group)))
         );
 
@@ -488,11 +480,21 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
 
     private void HookModNode(ModEntryNodeViewModel node)
     {
-        _syncHooks.Add(node.RenameCommitted.Subscribe(_ => _structureChanged.OnNext(Unit.Default)));
+        _syncHooks.Add(
+            node.RenameCommitted.ObserveOn(TaskPoolScheduler.Default)
+                .Subscribe(_ =>
+                {
+                    PersistProfile();
+                    _renamed.OnNext(Unit.Default);
+                })
+        );
         _nodeActionHooks.Add(
             node.RemoveRequested.Select(_ => node)
                 .ObserveOn(AvaloniaScheduler.Instance)
                 .Subscribe(target => _ = RemoveModNodeAsync(target))
+        );
+        _nodeActionHooks.Add(
+            node.RemoveFromProfileRequested.Select(_ => node).Subscribe(RemoveFromProfile)
         );
         _nodeActionHooks.Add(
             node.WhenAnyValue(n => n.Active)
@@ -500,15 +502,16 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
                 .ObserveOn(TaskPoolScheduler.Default)
                 .Subscribe(_ =>
                 {
-                    PersistMod(node);
+                    try
+                    {
+                        _profileSerializer.Save(_profile);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine(ex);
+                    }
                     _activeChanged.OnNext(Unit.Default);
                 })
-        );
-        _nodeActionHooks.Add(
-            node.WhenAnyValue(n => n.PriorityValue)
-                .Skip(1)
-                .ObserveOn(TaskPoolScheduler.Default)
-                .Subscribe(_ => PersistMod(node))
         );
         _nodeActionHooks.Add(
             node.TargetChanged.ObserveOn(TaskPoolScheduler.Default)
@@ -527,7 +530,9 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
                 .Subscribe(_ => _structureChanged.OnNext(Unit.Default))
         );
         _syncHooks.Add(
-            group.RenameCommitted.Subscribe(_ => _structureChanged.OnNext(Unit.Default))
+            group
+                .RenameCommitted.ObserveOn(TaskPoolScheduler.Default)
+                .Subscribe(_ => PersistProfile())
         );
         _nodeActionHooks.Add(
             group
@@ -546,6 +551,18 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
         try
         {
             _modSerializer.Save(node.Model);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex);
+        }
+    }
+
+    private void PersistProfile()
+    {
+        try
+        {
+            _profileSerializer.Save(_profile);
         }
         catch (Exception ex)
         {
@@ -581,14 +598,14 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
 
         var profile = _profile;
         var roots = _roots;
-        var looseMods = roots.OfType<ModEntryNodeViewModel>().Select(node => node.Model).ToList();
+        var looseMods = roots.OfType<ModEntryNodeViewModel>().Select(node => node.Entry).ToList();
         var groupNodes = roots.OfType<GroupHeaderNodeViewModel>().ToList();
         var groupMembers = groupNodes
             .Select(node =>
-                (IReadOnlyList<ILibraryMod>)
+                (IReadOnlyList<IModListEntry>)
                     node
                         .ObservableChildren.OfType<ModEntryNodeViewModel>()
-                        .Select(child => child.Model)
+                        .Select(child => child.Entry)
                         .ToList()
             )
             .ToList();
@@ -646,6 +663,25 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
         catch (Exception ex)
         {
             Debug.WriteLine(ex);
+        }
+    }
+
+    private void RemoveFromProfile(ModEntryNodeViewModel node)
+    {
+        if (_roots is null)
+        {
+            return;
+        }
+        if (_roots.Remove(node))
+        {
+            return;
+        }
+        foreach (var group in _roots.OfType<GroupHeaderNodeViewModel>())
+        {
+            if (group.ObservableChildren.Remove(node))
+            {
+                return;
+            }
         }
     }
 
@@ -752,15 +788,21 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
 
     private static void RefreshPriorities(IEnumerable<TreeNodeViewModel> nodes)
     {
+        var priority = 0u;
+        RefreshPriorities(nodes, ref priority);
+    }
+
+    private static void RefreshPriorities(IEnumerable<TreeNodeViewModel> nodes, ref uint priority)
+    {
         foreach (var node in nodes)
         {
             switch (node)
             {
                 case ModEntryNodeViewModel mod:
-                    mod.RefreshFromModel();
+                    mod.SetPriorityDisplay(++priority);
                     break;
                 case GroupHeaderNodeViewModel group:
-                    RefreshPriorities(group.ObservableChildren);
+                    RefreshPriorities(group.ObservableChildren, ref priority);
                     break;
             }
         }

@@ -3,10 +3,10 @@ using System.Reactive;
 using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
-using Avalonia.Controls.DataGridDragDrop;
-using CP.Reactive.Collections;
 using Ariadne.Contracts.ModManager;
 using Ariadne.ModManager.GUI.DragDrop;
+using Avalonia.Controls.DataGridDragDrop;
+using CP.Reactive.Collections;
 using ReactiveUI;
 using ReactiveUI.Avalonia;
 
@@ -19,6 +19,7 @@ public sealed class LoadOrderViewModel : ViewModelBase, IWorkspaceTab, IDisposab
     private readonly ILoadOrderBuilder _loadOrderBuilder;
     private readonly IInstanceService _instanceService;
     private readonly CompositeDisposable _syncHooks = new();
+    private CompositeDisposable _rowHooks = new();
     private readonly ReactiveList<LoadOrderInfoViewModel> _loadOrder = new();
     private Task? _initTask;
     private bool _initialized;
@@ -59,6 +60,8 @@ public sealed class LoadOrderViewModel : ViewModelBase, IWorkspaceTab, IDisposab
 
     public Task EnsureInitializedAsync() => _initTask ??= InitializeAsync();
 
+    public Task RefreshAsync() => _initialized ? InitializeAsync() : Task.CompletedTask;
+
     private void HookLoadOrderInfo(LoadOrderInfoViewModel vm)
     {
         var activeSubscription = vm.WhenAnyValue(v => v.Active)
@@ -66,7 +69,7 @@ public sealed class LoadOrderViewModel : ViewModelBase, IWorkspaceTab, IDisposab
             .Throttle(SyncDelay)
             .ObserveOn(TaskPoolScheduler.Default)
             .Subscribe(signal => _ = SyncLoadOrderAsync());
-        _syncHooks.Add(activeSubscription);
+        _rowHooks.Add(activeSubscription);
     }
 
     private async Task InitializeAsync()
@@ -83,6 +86,8 @@ public sealed class LoadOrderViewModel : ViewModelBase, IWorkspaceTab, IDisposab
                 _loadOrderBuilder.Fetch(game, _profile.ModList).ToList()
             );
             var sorted = _loadOrderBuilder.Sort(_profile, infos);
+            _rowHooks.Dispose();
+            _rowHooks = new CompositeDisposable();
             _loadOrder.Clear();
             _loadOrder.AddRange(sorted.Select(info => new LoadOrderInfoViewModel(info)));
             foreach (var loadOrderInfoViewModel in _loadOrder)
@@ -119,5 +124,9 @@ public sealed class LoadOrderViewModel : ViewModelBase, IWorkspaceTab, IDisposab
         });
     }
 
-    public void Dispose() => _syncHooks.Dispose();
+    public void Dispose()
+    {
+        _syncHooks.Dispose();
+        _rowHooks.Dispose();
+    }
 }

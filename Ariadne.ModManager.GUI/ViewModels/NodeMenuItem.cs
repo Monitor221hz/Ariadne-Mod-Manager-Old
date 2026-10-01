@@ -6,5 +6,6 @@ public sealed record NodeMenuItem(
     string Header,
     ICommand? Command = null,
     object? CommandParameter = null,
-    IReadOnlyList<NodeMenuItem>? Children = null
+    IReadOnlyList<NodeMenuItem>? Children = null,
+    string? Tooltip = null
 );

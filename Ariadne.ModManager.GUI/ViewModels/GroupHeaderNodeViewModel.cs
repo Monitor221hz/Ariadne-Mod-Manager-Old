@@ -3,9 +3,9 @@ using System.Collections.Specialized;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using Ariadne.Contracts.ModManager;
 using Avalonia.Media;
 using ByteSizeLib;
-using Ariadne.Contracts.ModManager;
 using ReactiveUI;
 
 namespace Ariadne.ModManager.GUI.ViewModels;
@@ -52,7 +52,7 @@ public sealed class GroupHeaderNodeViewModel : TreeNodeViewModel
         var color = group.HeaderColor;
         SeparatorBrush = new SolidColorBrush(Color.FromArgb(color.A, color.R, color.G, color.B));
         _children = new ObservableCollection<TreeNodeViewModel>(
-            group.Select(mod => new ModEntryNodeViewModel((ILibraryMod)mod))
+            group.Select(entry => new ModEntryNodeViewModel(entry))
         );
         _children.CollectionChanged += (_, _) =>
         {

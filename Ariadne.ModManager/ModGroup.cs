@@ -7,39 +7,39 @@ namespace Ariadne.ModManager;
 public class ModGroup : IModGroup
 {
     public string Name { get; set; }
-    private readonly List<ILibraryMod> _mods;
+    private readonly List<IModListEntry> _mods;
     public Color HeaderColor { get; set; }
 
     public int Count => _mods.Count;
 
     public bool IsReadOnly => false;
 
-    public ILibraryMod this[int index]
+    public IModListEntry this[int index]
     {
         get => _mods[index];
         set => _mods[index] = value;
     }
 
-    public ModGroup(string name, List<ILibraryMod> mods, Color headerColor)
+    public ModGroup(string name, List<IModListEntry> mods, Color headerColor)
     {
         Name = name;
         _mods = mods;
         HeaderColor = headerColor;
     }
 
-    public ModGroup(string name, List<ILibraryMod> mods)
+    public ModGroup(string name, List<IModListEntry> mods)
     {
         Name = name;
         _mods = mods;
         HeaderColor = Color.FromArgb(255, 0, 0, 0);
     }
 
-    public int IndexOf(ILibraryMod item)
+    public int IndexOf(IModListEntry item)
     {
         return _mods.IndexOf(item);
     }
 
-    public void Insert(int index, ILibraryMod item)
+    public void Insert(int index, IModListEntry item)
     {
         _mods.Insert(index, item);
     }
@@ -49,7 +49,7 @@ public class ModGroup : IModGroup
         _mods.RemoveAt(index);
     }
 
-    public void Add(ILibraryMod item)
+    public void Add(IModListEntry item)
     {
         _mods.Add(item);
     }
@@ -59,22 +59,22 @@ public class ModGroup : IModGroup
         _mods.Clear();
     }
 
-    public bool Contains(ILibraryMod item)
+    public bool Contains(IModListEntry item)
     {
         return _mods.Contains(item);
     }
 
-    public void CopyTo(ILibraryMod[] array, int arrayIndex)
+    public void CopyTo(IModListEntry[] array, int arrayIndex)
     {
         _mods.CopyTo(array, arrayIndex);
     }
 
-    public bool Remove(ILibraryMod item)
+    public bool Remove(IModListEntry item)
     {
         return _mods.Remove(item);
     }
 
-    public IEnumerator<ILibraryMod> GetEnumerator()
+    public IEnumerator<IModListEntry> GetEnumerator()
     {
         return _mods.GetEnumerator();
     }

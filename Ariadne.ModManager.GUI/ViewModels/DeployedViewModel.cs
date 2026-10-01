@@ -110,7 +110,10 @@ public sealed class DeployedViewModel : ViewModelBase, IWorkspaceTab
         var game = _instances.Current?.Game;
         var config = game?.Configuration;
         var gameName = config?.Name ?? "Game";
-        var mods = _profile.ModList.Where(m => m.Info.Active).ToList();
+        var mods = _profile
+            .ModList.Where(entry => entry.Active)
+            .Select(entry => entry.Mod)
+            .ToList();
 
         var groupedRaw = mods.GroupBy(
                 m => (m.Info.Target ?? "").Trim('\\', '/'),
@@ -191,7 +194,7 @@ public sealed class DeployedViewModel : ViewModelBase, IWorkspaceTab
 
     private List<DeployedRowViewModel> ComputeRows(DeployedTargetBucket bucket)
     {
-        var mods = bucket.Mods.OrderBy(m => m.Info.Priority).ToList();
+        var mods = bucket.Mods;
 
         var merged = new VirtualNode<ModFileEntry>("", NodeFlags.Directory, null, null);
         var namesByInfo = mods.ToDictionary(m => m.Info, m => m.Name);

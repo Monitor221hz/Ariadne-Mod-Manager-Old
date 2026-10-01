@@ -20,6 +20,7 @@
     <Window.KeyBindings>
         <KeyBinding Gesture="Ctrl+N" Command="{Binding CreateModCommand}" />
         <KeyBinding Gesture="Ctrl+Shift+N" Command="{Binding CreateGroupCommand}" />
+        <KeyBinding Gesture="Ctrl+I" Command="{Binding ImportFromAllProfilesCommand}" />
     </Window.KeyBindings>
 
     <Grid>
@@ -28,8 +29,39 @@
                   BorderBrush="{DynamicResource AriadneToolbarBorder}"
                   BorderThickness="0,0,0,1" FontSize="{DynamicResource UiFontSize}">
                 <MenuItem Header="_File">
-                    <MenuItem x:Name="SwitchInstanceItem" Header="_Switch Instance" />
-                    <MenuItem x:Name="RemoveInstanceItem" Header="_Remove Instance…" />
+                    <MenuItem Header="_Switch Instance"
+                              ItemsSource="{Binding SwitchInstanceItems}">
+                        <MenuItem.ItemContainerTheme>
+                            <ControlTheme TargetType="MenuItem"
+                                          x:DataType="vm:InstanceMenuOptionViewModel"
+                                          BasedOn="{StaticResource {x:Type MenuItem}}">
+                                <Setter Property="Command" Value="{Binding Command}" />
+                                <Setter Property="CommandParameter" Value="{Binding CommandParameter}" />
+                                <Setter Property="IsEnabled" Value="{Binding IsEnabled}" />
+                            </ControlTheme>
+                        </MenuItem.ItemContainerTheme>
+                        <MenuItem.ItemTemplate>
+                            <DataTemplate DataType="vm:InstanceMenuOptionViewModel">
+                                <TextBlock Text="{Binding Header}" />
+                            </DataTemplate>
+                        </MenuItem.ItemTemplate>
+                    </MenuItem>
+                    <MenuItem Header="_Remove Instance…"
+                              ItemsSource="{Binding RemoveInstanceItems}">
+                        <MenuItem.ItemContainerTheme>
+                            <ControlTheme TargetType="MenuItem"
+                                          x:DataType="vm:InstanceMenuOptionViewModel"
+                                          BasedOn="{StaticResource {x:Type MenuItem}}">
+                                <Setter Property="Command" Value="{Binding Command}" />
+                                <Setter Property="CommandParameter" Value="{Binding CommandParameter}" />
+                            </ControlTheme>
+                        </MenuItem.ItemContainerTheme>
+                        <MenuItem.ItemTemplate>
+                            <DataTemplate DataType="vm:InstanceMenuOptionViewModel">
+                                <TextBlock Text="{Binding Header}" />
+                            </DataTemplate>
+                        </MenuItem.ItemTemplate>
+                    </MenuItem>
                     <Separator />
                     <MenuItem x:Name="ThemeItem" Header="_Theme" />
                     <Separator />
@@ -42,6 +74,24 @@
                     <MenuItem Header="New Group"
                               Command="{Binding CreateGroupCommand}"
                               InputGesture="Ctrl+Shift+N" />
+                    <Separator />
+                    <MenuItem Header="Import From Profile..."
+                              ItemsSource="{Binding ImportItems}">
+                        <MenuItem.ItemContainerTheme>
+                            <ControlTheme TargetType="MenuItem"
+                                          x:DataType="vm:ProfileImportOptionViewModel"
+                                          BasedOn="{StaticResource {x:Type MenuItem}}">
+                                <Setter Property="Command" Value="{Binding Command}" />
+                                <Setter Property="CommandParameter" Value="{Binding CommandParameter}" />
+                                <Setter Property="InputGesture" Value="{Binding Gesture}" />
+                            </ControlTheme>
+                        </MenuItem.ItemContainerTheme>
+                        <MenuItem.ItemTemplate>
+                            <DataTemplate DataType="vm:ProfileImportOptionViewModel">
+                                <TextBlock Text="{Binding Header}" />
+                            </DataTemplate>
+                        </MenuItem.ItemTemplate>
+                    </MenuItem>
                 </MenuItem>
                 <MenuItem x:Name="SourcesItem"
                           Header="So_urces"
@@ -107,6 +157,12 @@
                                   VerticalAlignment="Center"
                                   ItemsSource="{Binding ProfileNames}"
                                   SelectedItem="{Binding SelectedProfileName}" />
+                        <Button VerticalAlignment="Center"
+                                Padding="6,4"
+                                ToolTip.Tip="New profile"
+                                Command="{Binding CreateProfileCommand}">
+                            <fi:FluentIcon Icon="Add" FontSize="13" />
+                        </Button>
                         <TextBlock VerticalAlignment="Center"
                                    Foreground="{DynamicResource FgDimmedBrush}"
                                    Text="{Binding CurrentGameText, TargetNullValue='', StringFormat='({0})'}" />
@@ -250,6 +306,26 @@
                     <Button x:Name="RegistryOnlyButton" Content="Registry only" />
                     <Button x:Name="DeleteFolderButton" Content="Delete folder" />
                     <Button x:Name="DeleteCancelButton" Content="Cancel" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+        <Border x:Name="ProfileOverlay"
+                IsVisible="False"
+                Background="{DynamicResource AriadneToolbarBackground}"
+                BorderBrush="{DynamicResource AriadneToolbarBorder}"
+                BoxShadow="{DynamicResource GlassCardShadow}"
+                BorderThickness="1"
+                Padding="16"
+                CornerRadius="8"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Top"
+                Margin="0,64,0,0">
+            <StackPanel Spacing="12" MinWidth="360">
+                <TextBlock FontWeight="SemiBold" Text="New profile name" />
+                <TextBox x:Name="ProfileNameBox" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button x:Name="ProfileCreateButton" Content="Create" />
+                    <Button x:Name="ProfileCancelButton" Content="Cancel" />
                 </StackPanel>
             </StackPanel>
         </Border>

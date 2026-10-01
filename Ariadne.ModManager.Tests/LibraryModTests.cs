@@ -23,11 +23,7 @@ public sealed class LibraryModTests : IDisposable
     {
         _temp.Create();
         File.WriteAllText(Path.Combine(_temp.FullName, "readme.txt"), "hi");
-        var mod = new LibraryMod(
-            new ModInfo(0, SourceType.Local, "1.0.0", [], "", 1, true),
-            _temp,
-            []
-        );
+        var mod = new LibraryMod(new ModInfo(0, SourceType.Local, "1.0.0", [], ""), _temp, []);
         var first = mod.Content;
 
         mod.RenameTo("renamed-mod");
@@ -46,11 +42,7 @@ public sealed class LibraryModTests : IDisposable
         File.WriteAllText(Path.Combine(_temp.FullName, "readme.txt"), "hi");
         Directory.CreateDirectory(Path.Combine(_temp.FullName, "textures"));
 
-        var mod = new LibraryMod(
-            new ModInfo(0, SourceType.Local, "1.0.0", [], "", 1, true),
-            _temp,
-            []
-        );
+        var mod = new LibraryMod(new ModInfo(0, SourceType.Local, "1.0.0", [], ""), _temp, []);
 
         var names = mod.Content.Children.Select(c => c.Name).ToList();
         Assert.Contains("readme.txt", names, StringComparer.OrdinalIgnoreCase);

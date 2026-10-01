@@ -12,7 +12,7 @@ public class FileIconConverterTests
 {
     private sealed class FakeMod : ILibraryMod
     {
-        public IModInfo Info { get; } = new ModInfo(0, SourceType.Local, "1.0", [], "", 0, false);
+        public IModInfo Info { get; } = new ModInfo(0, SourceType.Local, "1.0", [], "");
         public string Name => "M";
         public DirectoryInfo Directory => new(".");
         public Ariadne.VFS.VirtualNode<ModFileEntry> Content { get; } =
@@ -29,17 +29,11 @@ public class FileIconConverterTests
         public bool Equals(ILibraryMod? other) => ReferenceEquals(this, other);
     }
 
-    private static readonly IModInfo Origin = new ModInfo(
-        0,
-        SourceType.Local,
-        "1.0",
-        [],
-        "",
-        0,
-        false
-    );
+    private static readonly IModInfo Origin = new ModInfo(0, SourceType.Local, "1.0", [], "");
 
-    private static readonly ModEntryNodeViewModel Owner = new(new FakeMod());
+    private static readonly ModEntryNodeViewModel Owner = new(
+        new ModListEntry(new FakeMod(), true)
+    );
 
     private static FileLeafNodeViewModel FileNode(string name)
     {

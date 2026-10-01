@@ -32,8 +32,7 @@ public class ModListDropRulesTests : IDisposable
     private sealed class FakeLibraryMod(DirectoryInfo directory, VirtualNode<ModFileEntry> content)
         : ILibraryMod
     {
-        public IModInfo Info { get; } =
-            new ModManager.ModInfo(1, SourceType.Local, "1.0", [], "", 0, false);
+        public IModInfo Info { get; } = new ModManager.ModInfo(1, SourceType.Local, "1.0", [], "");
         public string Name => Directory.Name;
         public DirectoryInfo Directory { get; } = directory;
         public VirtualNode<ModFileEntry> Content { get; } = content;
@@ -60,7 +59,10 @@ public class ModListDropRulesTests : IDisposable
         var directory = new DirectoryInfo(ModDir(name));
         directory.Create();
         var root = new VirtualNode<ModFileEntry>(name, NodeFlags.Directory, null, default);
-        return (new ModEntryNodeViewModel(new FakeLibraryMod(directory, root)), root);
+        return (
+            new ModEntryNodeViewModel(new ModListEntry(new FakeLibraryMod(directory, root), true)),
+            root
+        );
     }
 
     private VirtualNode<ModFileEntry> CreateFileNode(
@@ -96,9 +98,7 @@ public class ModListDropRulesTests : IDisposable
         SourceType.Local,
         "1.0",
         [],
-        "",
-        0,
-        false
+        ""
     );
 
     private static bool IsLegal(TreeNodeViewModel dragged, TreeNodeViewModel? target) =>

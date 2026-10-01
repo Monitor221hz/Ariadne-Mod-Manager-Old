@@ -67,7 +67,7 @@ public class DeployedViewModelTests
     private sealed class FakeMod(string name, string target) : ILibraryMod
     {
         public IModInfo Info { get; } =
-            new ModManager.ModInfo(0, SourceType.Local, "1.0", [], target, 0, true);
+            new ModManager.ModInfo(0, SourceType.Local, "1.0", [], target);
         public string Name { get; } = name;
         public DirectoryInfo Directory => new(".");
         public Ariadne.VFS.VirtualNode<ModFileEntry> Content { get; } =
@@ -82,12 +82,6 @@ public class DeployedViewModelTests
         public int GetHashCode(ILibraryMod obj) => obj.GetHashCode();
 
         public bool Equals(ILibraryMod? other) => ReferenceEquals(this, other);
-    }
-
-    private sealed class FakeModList : List<ILibraryMod>, IModList
-    {
-        public IList<ILibraryMod> LooseMods => this;
-        public IList<IModGroup> ModGroups { get; } = new List<IModGroup>();
     }
 
     private sealed class FakeProfile(IModList modList) : IModProfile
@@ -105,7 +99,17 @@ public class DeployedViewModelTests
         new GamePath("Root", "", [], []),
     ];
 
-    private static DeployedViewModel CreateViewModel(FakeModList mods)
+    private static DeployedViewModel CreateViewModel(params FakeMod[] mods)
+    {
+        return CreateViewModelCore(
+            new ModManager.ModList(
+                mods.Select(mod => (IModListEntry)new ModManager.ModListEntry(mod, true)).ToList(),
+                []
+            )
+        );
+    }
+
+    private static DeployedViewModel CreateViewModelCore(IModList mods)
     {
         return new DeployedViewModel(
             new FakeProfile(mods),

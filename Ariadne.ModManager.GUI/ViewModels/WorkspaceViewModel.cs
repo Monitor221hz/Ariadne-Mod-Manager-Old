@@ -96,7 +96,8 @@ public sealed class WorkspaceViewModel : ViewModelBase, IDisposable
             modSerializer,
             paths,
             editor,
-            instances
+            instances,
+            notifyScheduler
         );
         _loadOrderTab = new LoadOrderViewModel(profile, loadOrderBuilder, instances);
         _deployedTab = new DeployedViewModel(profile, instances);
@@ -126,17 +127,30 @@ public sealed class WorkspaceViewModel : ViewModelBase, IDisposable
         );
         _subscriptions.Add(
             ModList
-                .DomainSynchronized.ObserveOn(AvaloniaScheduler.Instance)
+                .DomainSynchronized.ObserveOn(notifyScheduler ?? AvaloniaScheduler.Instance)
+                .Subscribe(signal =>
+                {
+                    RefreshDeployed();
+                    _ = _loadOrderTab.RefreshAsync();
+                })
+        );
+        _subscriptions.Add(
+            ModList
+                .ActiveChanged.ObserveOn(notifyScheduler ?? AvaloniaScheduler.Instance)
+                .Subscribe(signal =>
+                {
+                    RefreshDeployed();
+                    _ = _loadOrderTab.RefreshAsync();
+                })
+        );
+        _subscriptions.Add(
+            ModList
+                .TargetChanged.ObserveOn(notifyScheduler ?? AvaloniaScheduler.Instance)
                 .Subscribe(_ => RefreshDeployed())
         );
         _subscriptions.Add(
             ModList
-                .ActiveChanged.ObserveOn(AvaloniaScheduler.Instance)
-                .Subscribe(_ => RefreshDeployed())
-        );
-        _subscriptions.Add(
-            ModList
-                .TargetChanged.ObserveOn(AvaloniaScheduler.Instance)
+                .Renamed.ObserveOn(notifyScheduler ?? AvaloniaScheduler.Instance)
                 .Subscribe(_ => RefreshDeployed())
         );
         _subscriptions.Add(
@@ -348,13 +362,13 @@ public sealed class WorkspaceViewModel : ViewModelBase, IDisposable
         ILibraryMod? selected
     )
     {
-        if (selected is null || !selected.Info.Active)
+        if (selected is null)
         {
             return Task.FromResult(EmptyVerdicts);
         }
         var mods = _profile
-            .ModList.Where(m => m.Info.Active)
-            .OrderBy(m => m.Info.Priority)
+            .ModList.Where(entry => entry.Active)
+            .Select(entry => entry.Mod)
             .ToList();
         int focusIndex = mods.IndexOf(selected);
         if (focusIndex < 0 || mods.Count < 2)

@@ -33,15 +33,7 @@ public class LibraryModSerializerTests : IDisposable
 
     private LibraryMod CreateMod(string folder) =>
         new(
-            new ModInfo(
-                1001,
-                SourceType.NexusMods,
-                "2.1.0",
-                ["Textures", "Gameplay"],
-                "Data",
-                7,
-                true
-            ),
+            new ModInfo(1001, SourceType.NexusMods, "2.1.0", ["Textures", "Gameplay"], "Data"),
             ModFolder(folder),
             []
         );
@@ -61,7 +53,8 @@ public class LibraryModSerializerTests : IDisposable
         Assert.DoesNotContain("Directory", json);
         Assert.DoesNotContain("ProfileFolder", json);
         Assert.Contains("NexusMods", json);
-        Assert.Contains("\"Priority\": 7", json);
+        Assert.DoesNotContain("Priority", json);
+        Assert.DoesNotContain("IsEnabled", json);
     }
 
     [Fact]
@@ -88,8 +81,6 @@ public class LibraryModSerializerTests : IDisposable
         Assert.Equal(mod.Info.Version, loaded.Info.Version);
         Assert.Equal(mod.Info.Categories, loaded.Info.Categories);
         Assert.Equal(mod.Info.Target, loaded.Info.Target);
-        Assert.Equal(mod.Info.Priority, loaded.Info.Priority);
-        Assert.Equal(mod.Info.Active, loaded.Info.Active);
         Assert.Equal(ModFolder("TestMod").FullName, loaded.Directory.FullName);
     }
 

@@ -48,7 +48,10 @@ public sealed class DeploymentService(
         var method = deploymentMethods.Create(profile);
         try
         {
-            var mods = profile.ModList.Where(mod => mod.Info.Active).ToList();
+            var mods = profile
+                .ModList.Where(entry => entry.Active)
+                .Select(entry => entry.Mod)
+                .ToList();
             await Task.Run(
                 () =>
                 {

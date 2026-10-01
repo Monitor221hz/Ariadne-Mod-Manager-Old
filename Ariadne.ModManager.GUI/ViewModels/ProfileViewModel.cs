@@ -30,7 +30,7 @@ public class ProfileViewModel : ViewModelBase
         _name = profile.Name;
     }
 
-    public void AddLooseMod(ILibraryMod mod) => _profile.ModList.Add(mod);
+    public void AddLooseMod(ILibraryMod mod) => _profile.ModList.Add(new ModListEntry(mod, false));
 
     public void AddGroup(IModGroup group) => _profile.ModList.ModGroups.Add(group);
 }

@@ -171,6 +171,7 @@ public partial class ModListView : UserControl
             Command = item.Command,
             CommandParameter = item.CommandParameter,
         };
+        ToolTip.SetTip(menuItem, item.Tooltip);
         if (item.Children is { Count: > 0 } children)
         {
             menuItem.ItemsSource = children.Select(ToMenuItem).ToList();

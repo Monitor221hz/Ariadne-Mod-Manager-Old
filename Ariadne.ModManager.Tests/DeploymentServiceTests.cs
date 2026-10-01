@@ -59,8 +59,8 @@ public class DeploymentServiceTests : IDisposable
 
     private sealed class FakeMod(string name, bool active) : ILibraryMod
     {
-        public IModInfo Info { get; } =
-            new ModInfo(0, SourceType.Local, "1.0", [], "Data", 0, active);
+        public bool IntendedActive { get; } = active;
+        public IModInfo Info { get; } = new ModInfo(0, SourceType.Local, "1.0", [], "Data");
         public string Name { get; } = name;
         public DirectoryInfo Directory => new(".");
         public VirtualNode<ModFileEntry> Content { get; } =
@@ -100,11 +100,14 @@ public class DeploymentServiceTests : IDisposable
         public DeploymentService Service { get; }
         public ModProfile Profile { get; }
 
-        public Harness(IInstalledGame? game, params ILibraryMod[] mods)
+        public Harness(IInstalledGame? game, params FakeMod[] mods)
         {
             Profile = new ModProfile(
                 "P",
-                new ModList([.. mods], []),
+                new ModList(
+                    mods.Select(m => (IModListEntry)new ModListEntry(m, m.IntendedActive)).ToList(),
+                    []
+                ),
                 new Version(1, 0),
                 new DirectoryInfo(".")
             );

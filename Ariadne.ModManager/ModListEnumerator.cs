@@ -5,13 +5,13 @@ namespace Ariadne.ModManager;
 
 public partial class ModList
 {
-    public struct ModListEnumerator : IEnumerator<ILibraryMod>
+    public struct ModListEnumerator : IEnumerator<IModListEntry>
     {
         private readonly ModList _list;
         private int _looseIndex;
         private int _groupIndex;
         private int _modIndex;
-        private ILibraryMod? _current;
+        private IModListEntry? _current;
 
         internal ModListEnumerator(ModList list)
         {
@@ -22,7 +22,7 @@ public partial class ModList
             _current = null;
         }
 
-        public readonly ILibraryMod Current => _current!;
+        public readonly IModListEntry Current => _current!;
 
         readonly object IEnumerator.Current => Current;
 

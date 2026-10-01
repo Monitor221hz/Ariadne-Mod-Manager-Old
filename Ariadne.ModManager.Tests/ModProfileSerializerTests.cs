@@ -69,17 +69,21 @@ public class ModProfileSerializerTests : IDisposable
 
     private LibraryMod CreateMod(string folder, ulong id) =>
         new(
-            new ModInfo(id, SourceType.NexusMods, "1.0", [], "Data", 0, false),
+            new ModInfo(id, SourceType.NexusMods, "1.0", [], "Data"),
             new DirectoryInfo(System.IO.Path.Combine(ModsRoot.FullName, folder)),
             []
         );
 
     private ModProfile CreateProfile(LibraryMod modA, LibraryMod modB)
     {
-        List<ILibraryMod> loose = [modB];
+        List<IModListEntry> loose = [new ModListEntry(modB, true)];
         List<IModGroup> groups =
         [
-            new ModGroup("Group G", [modA], Color.FromArgb(0x80, 0x12, 0x34, 0x56)),
+            new ModGroup(
+                "Group G",
+                [new ModListEntry(modA, true)],
+                Color.FromArgb(0x80, 0x12, 0x34, 0x56)
+            ),
         ];
         return new ModProfile(
             "Main Profile",
@@ -140,16 +144,59 @@ public class ModProfileSerializerTests : IDisposable
         );
 
         Assert.Equal(2, loaded.ModList.Count);
-        Assert.Equal("TestModB", loaded.ModList[0].Name); // loose first
-        Assert.Equal("TestModA", loaded.ModList[1].Name); // grouped after
+        Assert.Equal("TestModB", loaded.ModList[0].Mod.Name); // loose first
+        Assert.Equal("TestModA", loaded.ModList[1].Mod.Name); // grouped after
 
         var group = Assert.Single(loaded.ModList.ModGroups);
         Assert.Equal("Group G", group.Name);
         Assert.Equal(Color.FromArgb(0x80, 0x12, 0x34, 0x56).ToArgb(), group.HeaderColor.ToArgb());
         Assert.Equal(
             System.IO.Path.Combine(ModsRoot.FullName, "TestModA"),
-            ((ILibraryMod)group[0]).Directory.FullName
+            group[0].Mod.Directory.FullName
         );
+    }
+
+    [Fact]
+    public void SaveLoad_RoundTripsActiveStates()
+    {
+        var modSerializer = new LibraryModSerializer([]);
+        var modA = SaveMod(modSerializer, "TestModA", 1001);
+        var modB = SaveMod(modSerializer, "TestModB", 2002);
+        var profile = CreateProfile(modA, modB);
+        profile.ModList.First(entry => ReferenceEquals(entry.Mod, modA)).Active = false;
+        var sut = new ModProfileSerializer(modSerializer, _paths);
+        sut.Save(profile);
+
+        var loaded = sut.Load(ProfileFolder);
+
+        Assert.False(loaded.ModList.Single(entry => entry.Mod.Name == "TestModA").Active);
+        Assert.True(loaded.ModList.Single(entry => entry.Mod.Name == "TestModB").Active);
+    }
+
+    [Fact]
+    public void Load_WithoutActiveStates_DefaultsInactive()
+    {
+        var mod = CreateMod("TestModA", 1001);
+        var recording = new RecordingLibraryModSerializer(mod);
+        var sut = new ModProfileSerializer(recording, _paths);
+        var profileFile = new FileInfo(
+            System.IO.Path.Combine(ProfileFolder.FullName, ModProfileSerializer.FileName)
+        );
+        ProfileFolder.Create();
+        File.WriteAllText(
+            profileFile.FullName,
+            """
+            {
+              "Name": "P",
+              "ModList": { "LooseMods": ["TestModA"], "ModGroups": [] },
+              "Version": "1.0.0"
+            }
+            """
+        );
+
+        var loaded = sut.Load(ProfileFolder);
+
+        Assert.False(loaded.ModList[0].Active);
     }
 
     [Fact]
@@ -176,6 +223,6 @@ public class ModProfileSerializerTests : IDisposable
         var loaded = sut.Load(ProfileFolder);
 
         Assert.Equal(1, recording.LoadCalls);
-        Assert.Same(mod, loaded.ModList[0]);
+        Assert.Same(mod, loaded.ModList[0].Mod);
     }
 }

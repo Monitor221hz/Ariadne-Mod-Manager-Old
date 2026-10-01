@@ -28,6 +28,7 @@ public static class ModManagerServiceExtensions
         ));
         services.AddSingleton<IDeploymentPathsFactory, DeploymentPathsFactory>();
         services.AddSingleton<IModProfileSerializer, ModProfileSerializer>();
+        services.AddSingleton<IProfileService, ProfileService>();
         services.AddSingleton<IModProfileEditor, ModProfileEditor>();
         services.AddSingleton<IArchiveExtractor, StandardArchiveExtractor>();
         services.AddSingleton<IModTargeter, QuickPatternModTargeter>();

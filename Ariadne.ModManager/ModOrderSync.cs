@@ -1,21 +1,21 @@
 using Ariadne.Contracts.ModManager;
 
-namespace Ariadne.ModManager.GUI.ViewModels;
+namespace Ariadne.ModManager;
 
 public static class ModOrderSync
 {
     public static void ApplyOrder(
-        IReadOnlyList<ILibraryMod> looseMods,
+        IReadOnlyList<IModListEntry> looseMods,
         IReadOnlyList<IModGroup> groups,
-        IReadOnlyList<IReadOnlyList<ILibraryMod>> groupMembers,
+        IReadOnlyList<IReadOnlyList<IModListEntry>> groupMembers,
         IModList modList
     )
     {
         var loose = modList.LooseMods;
         loose.Clear();
-        foreach (var mod in looseMods)
+        foreach (var entry in looseMods)
         {
-            loose.Add(mod);
+            loose.Add(entry);
         }
 
         var modGroups = modList.ModGroups;
@@ -25,20 +25,18 @@ public static class ModOrderSync
             modGroups.Add(group);
         }
 
-        var priority = 0u;
-        foreach (var mod in looseMods)
-        {
-            mod.Info.Priority = ++priority;
-        }
         for (var i = 0; i < groups.Count; i++)
         {
             var group = groups[i];
             group.Clear();
-            foreach (var mod in groupMembers[i])
+            foreach (var entry in groupMembers[i])
             {
-                mod.Info.Priority = ++priority;
-                group.Add(mod);
+                group.Add(entry);
             }
+        }
+        if (modList is ModList concrete)
+        {
+            concrete.RebuildSet();
         }
     }
 }

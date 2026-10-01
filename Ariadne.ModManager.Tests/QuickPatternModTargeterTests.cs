@@ -18,13 +18,7 @@ public class QuickPatternModTargeterTests : IDisposable
         new GamePath("_root", "", [], []),
         [],
         [
-            new GamePath(
-                "Data",
-                "Data",
-                ["data"],
-                ["*.esp", "*.esm", "*.bsa"],
-                basedOn: "_root"
-            ),
+            new GamePath("Data", "Data", ["data"], ["*.esp", "*.esm", "*.bsa"], basedOn: "_root"),
             new GamePath(
                 "Root",
                 "",
@@ -45,11 +39,7 @@ public class QuickPatternModTargeterTests : IDisposable
             File.WriteAllText(path, "x");
         }
 
-        return new LibraryMod(
-            new ModInfo(new ModID(0, SourceType.Local), "", [], "", 0, false),
-            dir,
-            []
-        );
+        return new LibraryMod(new ModInfo(new ModID(0, SourceType.Local), "", [], ""), dir, []);
     }
 
     [Fact]

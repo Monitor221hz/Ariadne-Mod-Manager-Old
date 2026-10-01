@@ -31,7 +31,7 @@ public class StandardArchiveReaderTests : IDisposable
     public void Read_PlainTarArchive_ListsEntries()
     {
         var archive = CreateTar(("plugin.txt", 7));
-        var modInfo = new ModInfo(1, SourceType.Local, "1.0", [], "", 0, false);
+        var modInfo = new ModInfo(1, SourceType.Local, "1.0", [], "");
 
         var tree = new StandardArchiveReader().Read(modInfo, archive);
 

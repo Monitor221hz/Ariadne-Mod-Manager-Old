@@ -9,11 +9,11 @@ namespace Ariadne.ModManager.GUI.Tests;
 
 public sealed class WorkspaceViewModelTests
 {
-    private sealed class FakeMod(string name, uint priority, bool active = true) : ILibraryMod
+    private sealed class FakeMod(string name, bool active = true) : ILibraryMod
     {
-        public IModInfo Info { get; } =
-            new ModManager.ModInfo(0, SourceType.Local, "1.0", [], "", priority, active);
+        public IModInfo Info { get; } = new ModManager.ModInfo(0, SourceType.Local, "1.0", [], "");
         public string Name { get; private set; } = name;
+        public bool ActiveByDefault { get; } = active;
         public DirectoryInfo Directory => new(".");
         public Ariadne.VFS.VirtualNode<ModFileEntry> Content { get; set; } =
             new("", Ariadne.VFS.NodeFlags.Directory, null, default);
@@ -38,7 +38,16 @@ public sealed class WorkspaceViewModelTests
 
     private sealed class FakeBuilder(IReadOnlyList<ILoadOrderInfo> rows) : ILoadOrderBuilder
     {
-        public IEnumerable<ILoadOrderInfo> Fetch(IInstalledGame game, IModList mods) => rows;
+        public int FetchCalls { get; private set; }
+
+        public IEnumerable<ILoadOrderInfo> Fetch(IInstalledGame game, IModList mods)
+        {
+            FetchCalls++;
+            var activeOrigins = mods.Where(entry => entry.Active)
+                .Select(entry => entry.Mod.Info)
+                .ToHashSet();
+            return rows.Where(row => activeOrigins.Contains(row.Origin));
+        }
 
         public void Deploy(
             IInstalledGame g,
@@ -109,11 +118,13 @@ public sealed class WorkspaceViewModelTests
 
     private sealed class NullProfileSerializer : IModProfileSerializer
     {
+        public int SaveCalls { get; private set; }
+
         public IModProfile Load(FileInfo file) => throw new InvalidOperationException();
 
         public IModProfile Load(DirectoryInfo folder) => throw new InvalidOperationException();
 
-        public void Save(IModProfile profile) { }
+        public void Save(IModProfile profile) => SaveCalls++;
     }
 
     private sealed class NullModSerializer : ILibraryModSerializer
@@ -210,7 +221,10 @@ public sealed class WorkspaceViewModelTests
         WorkspaceViewModel Workspace,
         LoadOrderViewModel LoadOrder,
         List<IReadOnlyList<LoadOrderInfoViewModel>> PluginSelectionLog,
-        List<IReadOnlyList<TreeNodeViewModel>> ModSelectionLog
+        List<IReadOnlyList<TreeNodeViewModel>> ModSelectionLog,
+        IModProfile Profile,
+        FakeBuilder Builder,
+        NullProfileSerializer ProfileSerializer
     ) : IDisposable
     {
         public void Dispose() => Workspace.Dispose();
@@ -224,20 +238,25 @@ public sealed class WorkspaceViewModelTests
     {
         var profile = new ModProfile(
             "P",
-            new ModList([.. mods], []),
+            new ModList(
+                mods.Select(m => (IModListEntry)new ModListEntry(m, m.ActiveByDefault)).ToList(),
+                []
+            ),
             new Version(1, 0),
             new DirectoryInfo(".")
         );
         var pluginLog = new List<IReadOnlyList<LoadOrderInfoViewModel>>();
         var modLog = new List<IReadOnlyList<TreeNodeViewModel>>();
+        var builder = new FakeBuilder(plugins);
+        var profileSerializer = new NullProfileSerializer();
         var ws = new WorkspaceViewModel(
             profile,
             new FakeModFactory(),
-            new NullProfileSerializer(),
+            profileSerializer,
             new NullModSerializer(),
             new FakePaths(),
             new NoEditor(),
-            new FakeBuilder(plugins),
+            builder,
             new FakeInstances(new FakeGame(new FakeGameConfiguration("G"))),
             deploymentService: deployment,
             notifyScheduler: System.Reactive.Concurrency.Scheduler.Immediate
@@ -247,7 +266,7 @@ public sealed class WorkspaceViewModelTests
         ws.ModList.SelectionRequested += rows => modLog.Add(rows);
         await ws.InitializeAsync();
         await via(lo).EnsureInitializedAsync();
-        return new Harness(ws, lo, pluginLog, modLog);
+        return new Harness(ws, lo, pluginLog, modLog, profile, builder, profileSerializer);
 
         static LoadOrderViewModel via(LoadOrderViewModel vm) => vm;
     }
@@ -255,7 +274,7 @@ public sealed class WorkspaceViewModelTests
     [Fact]
     public async Task RegisterMod_SameDirectory_DoesNotDuplicate()
     {
-        var mod = new FakeMod("WithPlugin", 1);
+        var mod = new FakeMod("WithPlugin");
         using var h = await NewHarness([mod], []);
 
         var before = h.Workspace.ModList.EnumerateModEntries().Count();
@@ -266,9 +285,148 @@ public sealed class WorkspaceViewModelTests
     }
 
     [Fact]
+    public async Task Rename_SavesProfile_WithoutDomainSync()
+    {
+        var mod = new FakeMod("Old");
+        using var h = await NewHarness([mod], []);
+        var syncCount = 0;
+        h.Workspace.ModList.DomainSynchronized.Subscribe(_ => syncCount++);
+        var entry = h.Workspace.ModList.EnumerateModEntries().Single();
+
+        entry.StartRenameCommand.Execute().Subscribe();
+        entry.DisplayName = "New";
+        await entry.FinishRenameCommand.Execute().ToTask();
+
+        Assert.True(
+            SpinWait.SpinUntil(() => h.ProfileSerializer.SaveCalls > 0, TimeSpan.FromSeconds(5))
+        );
+        Assert.Equal(0, syncCount);
+    }
+
+    [Fact]
+    public async Task Rename_RefreshesDeployedOriginLabel()
+    {
+        var mod = new FakeMod("Old");
+        mod.Content = new Ariadne.VFS.VirtualNode<ModFileEntry>(
+            "Old",
+            Ariadne.VFS.NodeFlags.Directory,
+            null,
+            default
+        );
+        mod.Content.AddFile(
+            "a.txt",
+            new ModFileEntry("a.txt", ModEntryKind.File, mod.Info, "x", 1, DateTimeOffset.UnixEpoch)
+        );
+        using var h = await NewHarness([mod], []);
+        var deployed = h.Workspace.SidePanelTabs.OfType<DeployedViewModel>().Single();
+        await deployed.EnsureInitializedAsync();
+        Assert.Equal("Old", deployed.Rows.First().Origin);
+        var entry = h.Workspace.ModList.EnumerateModEntries().Single();
+
+        entry.StartRenameCommand.Execute().Subscribe();
+        entry.DisplayName = "New";
+        await entry.FinishRenameCommand.Execute().ToTask();
+
+        Assert.True(
+            SpinWait.SpinUntil(() => deployed.Rows.First().Origin == "New", TimeSpan.FromSeconds(5))
+        );
+    }
+
+    [Fact]
+    public async Task TogglingActive_RefreshesLoadOrder()
+    {
+        var mod = new FakeMod("A");
+        var plugin = new FakePlugin("a.esp", mod.Info);
+        using var h = await NewHarness([mod], [plugin]);
+        Assert.Equal(1, h.Builder.FetchCalls);
+        var entry = h.Workspace.ModList.EnumerateModEntries().Single();
+
+        entry.Active = false;
+
+        Assert.True(SpinWait.SpinUntil(() => h.Builder.FetchCalls >= 2, TimeSpan.FromSeconds(5)));
+        Assert.Empty(h.LoadOrder.LoadOrder);
+    }
+
+    [Fact]
+    public async Task TogglingActive_RefreshesDeployed_InBothDirections()
+    {
+        var mod = new FakeMod("A");
+        mod.Content = new Ariadne.VFS.VirtualNode<ModFileEntry>(
+            "A",
+            Ariadne.VFS.NodeFlags.Directory,
+            null,
+            default
+        );
+        mod.Content.AddFile(
+            "a.txt",
+            new ModFileEntry("a.txt", ModEntryKind.File, mod.Info, "x", 1, DateTimeOffset.UnixEpoch)
+        );
+        using var h = await NewHarness([mod], []);
+        var deployed = h.Workspace.SidePanelTabs.OfType<DeployedViewModel>().Single();
+        await deployed.EnsureInitializedAsync();
+        Assert.Equal("a.txt", deployed.Rows.First().Name);
+        var entry = h.Workspace.ModList.EnumerateModEntries().Single();
+
+        entry.Active = false;
+        Assert.True(SpinWait.SpinUntil(() => !deployed.Rows.Any(), TimeSpan.FromSeconds(5)));
+
+        entry.Active = true;
+        Assert.True(
+            SpinWait.SpinUntil(
+                () => deployed.Rows.FirstOrDefault()?.Name == "a.txt",
+                TimeSpan.FromSeconds(5)
+            )
+        );
+    }
+
+    [Fact]
+    public async Task TogglingActive_SavesProfile()
+    {
+        var mod = new FakeMod("A");
+        using var h = await NewHarness([mod], []);
+        var entry = h.Workspace.ModList.EnumerateModEntries().Single();
+
+        entry.Active = false;
+
+        Assert.True(
+            SpinWait.SpinUntil(() => h.ProfileSerializer.SaveCalls > 0, TimeSpan.FromSeconds(5))
+        );
+    }
+
+    [Fact]
+    public async Task RemoveFromProfile_RefreshesLoadOrder()
+    {
+        var mod = new FakeMod("A");
+        var plugin = new FakePlugin("a.esp", mod.Info);
+        using var h = await NewHarness([mod], [plugin]);
+        Assert.Equal(1, h.Builder.FetchCalls);
+
+        var entry = h.Workspace.ModList.EnumerateModEntries().Single();
+        entry.ForgetFromProfileCommand.Execute().Subscribe();
+
+        Assert.True(SpinWait.SpinUntil(() => h.Builder.FetchCalls >= 2, TimeSpan.FromSeconds(5)));
+    }
+
+    [Fact]
+    public async Task RemoveFromProfile_RemovesRow_WithoutDeletingModFolder()
+    {
+        var mod = new FakeMod("Scrubbed");
+        using var h = await NewHarness([mod], []);
+
+        var entry = h.Workspace.ModList.EnumerateModEntries().Single();
+
+        entry.ForgetFromProfileCommand.Execute().Subscribe();
+
+        Assert.Empty(h.Workspace.ModList.EnumerateModEntries());
+        Assert.True(
+            SpinWait.SpinUntil(() => !h.Profile.ModList.Contains(mod), TimeSpan.FromSeconds(5))
+        );
+    }
+
+    [Fact]
     public async Task TickingMod_Active_RaisesActiveChanged_NotStructureChanged()
     {
-        var mod = new FakeMod("Tickable", 1);
+        var mod = new FakeMod("Tickable");
         using var h = await NewHarness([mod], []);
 
         var activeFired = new TaskCompletionSource(
@@ -292,12 +450,14 @@ public sealed class WorkspaceViewModelTests
     [Fact]
     public async Task Selecting_Mod_Raises_Linked_Plugins()
     {
-        var mod = new FakeMod("WithPlugin", 1);
+        var mod = new FakeMod("WithPlugin");
         var plugin = new FakePlugin("plugin.esp", mod.Info);
         using var h = await NewHarness([mod], [plugin]);
 
         h.Workspace.ModList.SelectedNodes.Clear();
-        h.Workspace.ModList.SelectedNodes.AddRange([new ModEntryNodeViewModel(mod)]);
+        h.Workspace.ModList.SelectedNodes.AddRange(
+            [new ModEntryNodeViewModel(new ModListEntry(mod, true))]
+        );
 
         var target = Assert.Single(h.PluginSelectionLog);
         Assert.Same(plugin.Name, Assert.Single(target).Name);
@@ -306,7 +466,7 @@ public sealed class WorkspaceViewModelTests
     [Fact]
     public async Task Selecting_Plugin_Raises_Origin_Mod_And_Does_Not_Bounce()
     {
-        var mod = new FakeMod("OriginMod", 1);
+        var mod = new FakeMod("OriginMod");
         var plugin = new FakePlugin("plugin.esp", mod.Info);
         using var h = await NewHarness([mod], [plugin]);
         var row = h.LoadOrder.LoadOrder.Single(r => r.Name == "plugin.esp");
@@ -322,12 +482,12 @@ public sealed class WorkspaceViewModelTests
     [Fact]
     public async Task Unlinked_Mod_Selection_Propagates_Nothing()
     {
-        var modA = new FakeMod("Linked", 1);
-        var modB = new FakeMod("Orphan", 2);
+        var modA = new FakeMod("Linked");
+        var modB = new FakeMod("Orphan");
         var plugin = new FakePlugin("plugin.esp", modA.Info);
         using var h = await NewHarness([modA, modB], [plugin]);
 
-        var rowB = new ModEntryNodeViewModel(modB);
+        var rowB = new ModEntryNodeViewModel(new ModListEntry(modB, true));
         h.Workspace.ModList.SelectedNodes.Clear();
         h.Workspace.ModList.SelectedNodes.AddRange([rowB]);
 
@@ -337,8 +497,8 @@ public sealed class WorkspaceViewModelTests
     [Fact]
     public async Task MultiSelect_Collects_All_Linked_Plugins()
     {
-        var modA = new FakeMod("ModA", 1);
-        var modB = new FakeMod("ModB", 2);
+        var modA = new FakeMod("ModA");
+        var modB = new FakeMod("ModB");
         var p1 = new FakePlugin("a.esp", modA.Info);
         var p2 = new FakePlugin("b.esp", modB.Info);
         using var h = await NewHarness([modA, modB], [p1, p2]);
@@ -347,8 +507,8 @@ public sealed class WorkspaceViewModelTests
         h.Workspace.ModList.SelectedNodes.AddRange(
             new TreeNodeViewModel[]
             {
-                new ModEntryNodeViewModel(modA),
-                new ModEntryNodeViewModel(modB),
+                new ModEntryNodeViewModel(new ModListEntry(modA, true)),
+                new ModEntryNodeViewModel(new ModListEntry(modB, true)),
             }
         );
 
@@ -359,11 +519,13 @@ public sealed class WorkspaceViewModelTests
     [Fact]
     public async Task Inactive_Mod_Produces_No_Conflict_Verdicts()
     {
-        var mod = new FakeMod("Inactive", 1, active: false);
+        var mod = new FakeMod("Inactive", active: false);
         using var h = await NewHarness([mod], []);
 
         h.Workspace.ModList.SelectedNodes.Clear();
-        h.Workspace.ModList.SelectedNodes.AddRange([new ModEntryNodeViewModel(mod)]);
+        h.Workspace.ModList.SelectedNodes.AddRange(
+            [new ModEntryNodeViewModel(new ModListEntry(mod, true))]
+        );
         await Task.Delay(100);
 
         Assert.Empty(h.Workspace.Verdicts);
@@ -373,7 +535,7 @@ public sealed class WorkspaceViewModelTests
     public async Task ToggleDeployment_DelegatesToService_And_TracksState()
     {
         var deployment = new FakeDeploymentService();
-        using var h = await NewHarness([new FakeMod("A", 1)], [], deployment);
+        using var h = await NewHarness([new FakeMod("A")], [], deployment);
 
         Assert.False(h.Workspace.IsDeployed);
         Assert.Equal("Deploy", h.Workspace.DeployText);
@@ -398,7 +560,7 @@ public sealed class WorkspaceViewModelTests
         {
             DeployError = new IOException("mount failed"),
         };
-        using var h = await NewHarness([new FakeMod("A", 1)], [], deployment);
+        using var h = await NewHarness([new FakeMod("A")], [], deployment);
         var failures = new List<(string Title, string Text)>();
         h.Workspace.DeploymentFailed.Subscribe(failures.Add);
 
@@ -416,7 +578,7 @@ public sealed class WorkspaceViewModelTests
     public async Task Dispose_WhileDeployed_Undeploys()
     {
         var deployment = new FakeDeploymentService();
-        var h = await NewHarness([new FakeMod("A", 1)], [], deployment);
+        var h = await NewHarness([new FakeMod("A")], [], deployment);
         await h.Workspace.ToggleDeploymentCommand.Execute().ToTask();
 
         h.Workspace.Dispose();
@@ -433,7 +595,7 @@ public sealed class WorkspaceViewModelTests
                 TaskCreationOptions.RunContinuationsAsynchronously
             ),
         };
-        using var h = await NewHarness([new FakeMod("A", 1)], [], deployment);
+        using var h = await NewHarness([new FakeMod("A")], [], deployment);
 
         var execute = h.Workspace.ToggleDeploymentCommand.Execute().ToTask();
 
@@ -456,7 +618,7 @@ public sealed class WorkspaceViewModelTests
     public async Task Undeploy_WhileBusy_DisablesCommand_And_ShowsProgressText()
     {
         var deployment = new FakeDeploymentService();
-        using var h = await NewHarness([new FakeMod("A", 1)], [], deployment);
+        using var h = await NewHarness([new FakeMod("A")], [], deployment);
         await h.Workspace.ToggleDeploymentCommand.Execute().ToTask();
         deployment.UndeployGate = new ManualResetEventSlim(false);
 

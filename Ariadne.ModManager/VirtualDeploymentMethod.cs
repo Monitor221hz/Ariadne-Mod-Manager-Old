@@ -38,6 +38,7 @@ public sealed class VirtualDeploymentMethod : IModDeploymentMethod
         var sourcePath = game.LookupAbsolutePath(deploymentPath);
         var virtualRoot = new VirtualNode<BackedEntry>("", NodeFlags.Directory, null, default);
 
+        Directory.CreateDirectory(_paths.OverwriteDirectory.FullName);
         virtualRoot.LinkDirectory(
             _paths.OverwriteDirectory.FullName,
             "",
@@ -121,7 +122,7 @@ public sealed class VirtualDeploymentMethod : IModDeploymentMethod
 
     public void Deploy(IInstalledGame game, IReadOnlyList<ILibraryMod> mods)
     {
-        var modOrder = mods.OrderBy(m => m.Info.Priority);
+        var modOrder = mods;
         var configuration = game.Configuration;
         Dictionary<string, VirtualNode<BackedEntry>> virtualRootKeyMap = new();
         DeployPath(

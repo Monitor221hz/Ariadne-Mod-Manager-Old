@@ -15,7 +15,16 @@ public static class NodeMenuItems
             ModEntryNodeViewModel mod =>
             [
                 new("Rename", mod.StartRenameCommand),
-                new("Remove", mod.RemoveCommand),
+                new(
+                    "Forget",
+                    mod.ForgetFromProfileCommand,
+                    Tooltip: "Removes the mod from the active profile without deleting its files from disk."
+                ),
+                new(
+                    "Delete",
+                    mod.DeleteFromDiskCommand,
+                    Tooltip: "Removes the mod from the active profile and deletes its folder from disk. This cannot be undone."
+                ),
                 .. TargetItems(mod, installTargets),
             ],
             GroupHeaderNodeViewModel group =>

@@ -12,8 +12,7 @@ public class NodeMenuItemsTests
 {
     private sealed class FakeMod(string name) : ILibraryMod
     {
-        public IModInfo Info { get; } =
-            new ModManager.ModInfo(0, SourceType.Local, "1.0", [], "", 0, false);
+        public IModInfo Info { get; } = new ModManager.ModInfo(0, SourceType.Local, "1.0", [], "");
         public string Name { get; } = name;
         public DirectoryInfo Directory => new(".");
         public Ariadne.VFS.VirtualNode<ModFileEntry> Content { get; } =
@@ -33,12 +32,15 @@ public class NodeMenuItemsTests
     [Fact]
     public void Mod_Nodes_Get_Rename_And_Remove_Bound_To_Own_Commands()
     {
-        var node = new ModEntryNodeViewModel(new FakeMod("A"));
+        var node = new ModEntryNodeViewModel(new ModListEntry(new FakeMod("A"), true));
         var items = NodeMenuItems.For(node);
 
-        Assert.Equal(new[] { "Rename", "Remove" }, items.Select(item => item.Header));
+        Assert.Equal(new[] { "Rename", "Forget", "Delete" }, items.Select(item => item.Header));
         Assert.Same(node.StartRenameCommand, items[0].Command);
-        Assert.Same(node.RemoveCommand, items[1].Command);
+        Assert.Same(node.ForgetFromProfileCommand, items[1].Command);
+        Assert.Same(node.DeleteFromDiskCommand, items[2].Command);
+        Assert.Contains("without deleting", items[1].Tooltip!);
+        Assert.Contains("cannot be undone", items[2].Tooltip!);
     }
 
     [Fact]
@@ -71,7 +73,7 @@ public class NodeMenuItemsTests
                 null,
                 entry
             ),
-            new ModEntryNodeViewModel(mod)
+            new ModEntryNodeViewModel(new ModListEntry(mod, true))
         );
         var items = NodeMenuItems.For(node);
 
@@ -89,7 +91,7 @@ public class NodeMenuItemsTests
                 null,
                 default
             ),
-            new ModEntryNodeViewModel(new FakeMod("M"))
+            new ModEntryNodeViewModel(new ModListEntry(new FakeMod("M"), true))
         );
 
         Assert.Empty(NodeMenuItems.For(node));
@@ -98,7 +100,7 @@ public class NodeMenuItemsTests
     [Fact]
     public void Mod_Nodes_Get_Target_Submenu_For_Game_InstallTargets()
     {
-        var node = new ModEntryNodeViewModel(new FakeMod("A"));
+        var node = new ModEntryNodeViewModel(new ModListEntry(new FakeMod("A"), true));
         var targets = new IGamePath[]
         {
             new GamePath("Data", "Data", [], []),
@@ -123,7 +125,7 @@ public class NodeMenuItemsTests
     [Fact]
     public void Mod_Nodes_Without_Targets_Get_No_Target_Item()
     {
-        var node = new ModEntryNodeViewModel(new FakeMod("A"));
+        var node = new ModEntryNodeViewModel(new ModListEntry(new FakeMod("A"), true));
 
         Assert.DoesNotContain(NodeMenuItems.For(node), item => item.Header == "Target...");
         Assert.DoesNotContain(NodeMenuItems.For(node, []), item => item.Header == "Target...");
@@ -133,7 +135,7 @@ public class NodeMenuItemsTests
     public void Target_Submenu_Command_Sets_Mod_Target()
     {
         var mod = new FakeMod("A");
-        var node = new ModEntryNodeViewModel(mod);
+        var node = new ModEntryNodeViewModel(new ModListEntry(mod, true));
         var target = new GamePath("Data", "Data", [], []);
         var changed = 0;
         node.TargetChanged.Subscribe(_ => changed++);

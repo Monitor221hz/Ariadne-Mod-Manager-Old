@@ -8,6 +8,4 @@ public interface IModInfo
     string Version { get; }
     List<string> Categories { get; }
     string Target { get; set; }
-    uint Priority { get; set; }
-    bool Active { get; set; }
 }

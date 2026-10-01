@@ -1,7 +1,9 @@
 namespace Ariadne.Contracts.ModManager;
 
-public interface IModList : IList<ILibraryMod>
+public interface IModList : IList<IModListEntry>
 {
-    IList<ILibraryMod> LooseMods { get; }
+    IList<IModListEntry> LooseMods { get; }
     IList<IModGroup> ModGroups { get; }
+
+    bool Contains(ILibraryMod mod);
 }

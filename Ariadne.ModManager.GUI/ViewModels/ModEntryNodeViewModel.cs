@@ -13,8 +13,9 @@ namespace Ariadne.ModManager.GUI.ViewModels;
 
 public sealed class ModEntryNodeViewModel : TreeNodeViewModel
 {
-    private readonly ILibraryMod _mod;
+    private readonly IModListEntry _entry;
     private readonly Subject<Unit> _removeRequested = new();
+    private readonly Subject<Unit> _removeFromProfileRequested = new();
     private uint _priorityValue;
     private bool _active;
     private SelectedModVerdict? _conflictVerdict;
@@ -23,15 +24,16 @@ public sealed class ModEntryNodeViewModel : TreeNodeViewModel
     private readonly ObservableAsPropertyHelper<VirtualNode<ModFileEntry>?> _content;
     private readonly ObservableAsPropertyHelper<string> _sizeText;
     private string _displayName;
-    public ILibraryMod Model => _mod;
+    public IModListEntry Entry => _entry;
+    public ILibraryMod Model => _entry.Mod;
     public override uint? PriorityValue => _priorityValue;
-    public override string? VersionText => _mod.Info.Version;
+    public override string? VersionText => _entry.Mod.Info.Version;
     public bool Active
     {
         get => _active;
         set
         {
-            _mod.Info.Active = value;
+            _entry.Active = value;
             this.RaiseAndSetIfChanged(ref _active, value);
         }
     }
@@ -61,26 +63,29 @@ public sealed class ModEntryNodeViewModel : TreeNodeViewModel
 
     public void ReloadContent()
     {
-        _mod.RefreshContent();
+        _entry.Mod.RefreshContent();
         _beginLoad.OnNext(CancellationToken.None);
     }
 
-    public ModEntryNodeViewModel(ILibraryMod mod)
+    public ModEntryNodeViewModel(IModListEntry entry)
     {
+        var mod = entry.Mod;
+        _entry = entry;
         _displayName = mod.Name;
-        _mod = mod;
-        _priorityValue = mod.Info.Priority;
-        _active = mod.Info.Active;
-        RemoveCommand = ReactiveCommand.Create(() => _removeRequested.OnNext(Unit.Default));
+        _active = entry.Active;
+        DeleteFromDiskCommand = ReactiveCommand.Create(() => _removeRequested.OnNext(Unit.Default));
+        ForgetFromProfileCommand = ReactiveCommand.Create(() =>
+            _removeFromProfileRequested.OnNext(Unit.Default)
+        );
         SetTargetCommand = ReactiveCommand.Create<IGamePath>(target =>
         {
-            _mod.Info.Target = target.Key;
+            mod.Info.Target = target.Key;
             this.RaisePropertyChanged(nameof(Target));
             _targetChanged.OnNext(Unit.Default);
         });
 
         var content = _beginLoad
-            .Select(ct => Observable.FromAsync(t2 => Task.Run(() => _mod.Content, t2)))
+            .Select(ct => Observable.FromAsync(t2 => Task.Run(() => mod.Content, t2)))
             .Switch()
             .Catch<VirtualNode<ModFileEntry>, OperationCanceledException>(_ =>
                 Observable.Empty<VirtualNode<ModFileEntry>>()
@@ -108,21 +113,23 @@ public sealed class ModEntryNodeViewModel : TreeNodeViewModel
     }
 
     public IObservable<Unit> RemoveRequested => _removeRequested;
-    public ReactiveCommand<Unit, Unit> RemoveCommand { get; }
+    public ReactiveCommand<Unit, Unit> DeleteFromDiskCommand { get; }
 
-    public string Target => _mod.Info.Target;
+    public IObservable<Unit> RemoveFromProfileRequested => _removeFromProfileRequested;
+    public ReactiveCommand<Unit, Unit> ForgetFromProfileCommand { get; }
+
+    public string Target => _entry.Mod.Info.Target;
     public IObservable<Unit> TargetChanged => _targetChanged;
     public ReactiveCommand<IGamePath, Unit> SetTargetCommand { get; }
 
-    public void RefreshFromModel()
+    internal void SetPriorityDisplay(uint priority)
     {
-        this.RaiseAndSetIfChanged(ref _priorityValue, _mod.Info.Priority, nameof(PriorityValue));
-        this.RaiseAndSetIfChanged(ref _active, _mod.Info.Active, nameof(Active));
+        this.RaiseAndSetIfChanged(ref _priorityValue, priority, nameof(PriorityValue));
     }
 
     protected override string ApplyRename(string name)
     {
-        _mod.RenameTo(name);
-        return _mod.Name;
+        _entry.Mod.RenameTo(name);
+        return _entry.Mod.Name;
     }
 }

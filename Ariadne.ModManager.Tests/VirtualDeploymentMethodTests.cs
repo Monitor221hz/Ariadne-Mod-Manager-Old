@@ -38,11 +38,7 @@ public class VirtualDeploymentMethodTests : IDisposable
     private LibraryMod CreateMod(string name, string target, out DirectoryInfo modDir)
     {
         modDir = Directory.CreateDirectory(_temp.Combine("mods", name));
-        return new LibraryMod(
-            new ModInfo(1, SourceType.Local, "1.0", [], target, 0, false),
-            modDir,
-            []
-        );
+        return new LibraryMod(new ModInfo(1, SourceType.Local, "1.0", [], target), modDir, []);
     }
 
     [Fact]
@@ -103,6 +99,19 @@ public class VirtualDeploymentMethodTests : IDisposable
         Assert.True(foundAppData);
         Assert.Equal(Path.Combine(_stagingDir.FullName, "Root"), rootDir!.FullName);
         Assert.Equal(_appDataDir.FullName, appDataDir!.FullName);
+    }
+
+    [Fact]
+    public void Deploy_CreatesMissingOverwriteDirectory()
+    {
+        var game = CreateGame();
+        _overwriteDir.Delete(true);
+
+        using var method = CreateMethod();
+        var exception = Record.Exception(() => method.Deploy(game, []));
+
+        Assert.Null(exception);
+        Assert.True(Directory.Exists(_overwriteDir.FullName));
     }
 
     [Fact]
@@ -194,11 +203,7 @@ public class VirtualDeploymentMethodTests : IDisposable
     {
         var game = CreateGame();
         var missing = new DirectoryInfo(_temp.Combine("mods", "ghost"));
-        var mod = new LibraryMod(
-            new ModInfo(2, SourceType.Local, "1.0", [], "Root", 0, false),
-            missing,
-            []
-        );
+        var mod = new LibraryMod(new ModInfo(2, SourceType.Local, "1.0", [], "Root"), missing, []);
 
         using var method = CreateMethod();
 

@@ -59,11 +59,7 @@ public class SkyrimSELoadOrderBuilderTests : IDisposable
     private LibraryMod CreateMod(string name, out DirectoryInfo modDir)
     {
         modDir = Directory.CreateDirectory(_temp.Combine("mods", name));
-        return new LibraryMod(
-            new ModInfo(1, SourceType.Local, "1.0", [], "Data", 0, false),
-            modDir,
-            []
-        );
+        return new LibraryMod(new ModInfo(1, SourceType.Local, "1.0", [], "Data"), modDir, []);
     }
 
     private static FileInfo WritePlugin(DirectoryInfo dir, string fileName)
@@ -107,7 +103,12 @@ public class SkyrimSELoadOrderBuilderTests : IDisposable
 
         var builder = new SkyrimSELoadOrderBuilder();
 
-        var results = builder.Fetch(_game, new ModList([modA, modB], [])).ToList();
+        var results = builder
+            .Fetch(
+                _game,
+                new ModList([new ModListEntry(modA, true), new ModListEntry(modB, true)], [])
+            )
+            .ToList();
 
         Assert.Equal(2, results.Count);
         var baseInfo = Assert.Single(results, r => ((IModKeyed)r).ModKey.FileName == "Base.esm");
@@ -131,7 +132,12 @@ public class SkyrimSELoadOrderBuilderTests : IDisposable
 
         var builder = new SkyrimSELoadOrderBuilder();
 
-        var results = builder.Fetch(_game, new ModList([modA, modB], [])).ToList();
+        var results = builder
+            .Fetch(
+                _game,
+                new ModList([new ModListEntry(modA, true), new ModListEntry(modB, true)], [])
+            )
+            .ToList();
 
         var baseInfo = results.Single(r => ((IModKeyed)r).ModKey == baseKey);
         var depInfo = results.Single(r => ((IModKeyed)r).ModKey.FileName == "Dependent.esp");
@@ -150,7 +156,9 @@ public class SkyrimSELoadOrderBuilderTests : IDisposable
 
         var builder = new SkyrimSELoadOrderBuilder();
 
-        var results = builder.Fetch(_game, new ModList([modB], [])).ToList();
+        var results = builder
+            .Fetch(_game, new ModList([new ModListEntry(modB, true)], []))
+            .ToList();
 
         var depInfo = Assert.Single(results);
         Assert.Empty(depInfo.Dependencies);
@@ -165,7 +173,61 @@ public class SkyrimSELoadOrderBuilderTests : IDisposable
 
         var builder = new SkyrimSELoadOrderBuilder();
 
-        Assert.Empty(builder.Fetch(_game, new ModList([mod], [])));
+        Assert.Empty(builder.Fetch(_game, new ModList([new ModListEntry(mod, true)], [])));
+    }
+
+    [Fact]
+    public void Sort_AppendsPluginsMissingFromPluginsTxt_AsActive()
+    {
+        var modA = CreateMod("ModA", out var dirA);
+        var modB = CreateMod("ModB", out var dirB);
+        WritePlugin(dirA, "Known.esp");
+        WritePlugin(dirB, "New.esp");
+        var profileDir = Directory.CreateDirectory(_temp.Combine("profile"));
+        File.WriteAllText(
+            System.IO.Path.Combine(profileDir.FullName, "plugins.txt"),
+            "*Known.esp\n"
+        );
+        var profile = new ModProfile("P", new ModList([], []), new Version(1, 0), profileDir);
+        var builder = new SkyrimSELoadOrderBuilder();
+        var infos = builder
+            .Fetch(
+                _game,
+                new ModList([new ModListEntry(modA, true), new ModListEntry(modB, true)], [])
+            )
+            .ToList();
+
+        var sorted = builder.Sort(profile, infos).ToList();
+
+        Assert.Equal(
+            new[] { "Known.esp", "New.esp" },
+            sorted.Select(i => ((IModKeyed)i).ModKey.FileName.ToString()).ToArray()
+        );
+        Assert.All(sorted, info => Assert.True(info.Active));
+    }
+
+    [Fact]
+    public void Sort_EmptyPluginsTxt_YieldsAllActive()
+    {
+        var modA = CreateMod("ModA", out var dirA);
+        var modB = CreateMod("ModB", out var dirB);
+        WritePlugin(dirA, "A.esp");
+        WritePlugin(dirB, "B.esp");
+        var profileDir = Directory.CreateDirectory(_temp.Combine("profile"));
+        File.WriteAllText(System.IO.Path.Combine(profileDir.FullName, "plugins.txt"), "");
+        var profile = new ModProfile("P", new ModList([], []), new Version(1, 0), profileDir);
+        var builder = new SkyrimSELoadOrderBuilder();
+        var infos = builder
+            .Fetch(
+                _game,
+                new ModList([new ModListEntry(modA, true), new ModListEntry(modB, true)], [])
+            )
+            .ToList();
+
+        var sorted = builder.Sort(profile, infos).ToList();
+
+        Assert.Equal(2, sorted.Count);
+        Assert.All(sorted, info => Assert.True(info.Active));
     }
 
     [SkippableFact]
@@ -187,7 +249,12 @@ public class SkyrimSELoadOrderBuilderTests : IDisposable
         var inactiveFile = WritePlugin(dirB, "Inactive.esp");
 
         var builder = new SkyrimSELoadOrderBuilder();
-        var infos = builder.Fetch(_game, new ModList([modA, modB], [])).ToList();
+        var infos = builder
+            .Fetch(
+                _game,
+                new ModList([new ModListEntry(modA, true), new ModListEntry(modB, true)], [])
+            )
+            .ToList();
         infos.Single(i => ((IModKeyed)i).ModKey == activeKey).Active = true;
         infos.Single(i => ((IModKeyed)i).ModKey == inactiveKey).Active = false;
 

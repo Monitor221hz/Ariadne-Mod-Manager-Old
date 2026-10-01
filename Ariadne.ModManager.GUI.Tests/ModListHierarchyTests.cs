@@ -1,7 +1,7 @@
-using Avalonia.Controls.DataGridHierarchical;
 using Ariadne.Contracts.ModManager;
 using Ariadne.ModManager;
 using Ariadne.ModManager.GUI.ViewModels;
+using Avalonia.Controls.DataGridHierarchical;
 using Xunit;
 
 namespace Ariadne.ModManager.GUI.Tests;
@@ -10,8 +10,7 @@ public class ModListHierarchyTests
 {
     private sealed class FakeMod(string name) : ILibraryMod
     {
-        public IModInfo Info { get; } =
-            new ModManager.ModInfo(0, SourceType.Local, "1.0", [], "", 0, false);
+        public IModInfo Info { get; } = new ModManager.ModInfo(0, SourceType.Local, "1.0", [], "");
         public string Name { get; } = name;
         public DirectoryInfo Directory => new(".");
         public Ariadne.VFS.VirtualNode<ModFileEntry> Content { get; } =
@@ -34,7 +33,10 @@ public class ModListHierarchyTests
     ) CreateModel(params string[] looseNames)
     {
         var loose = looseNames
-            .Select(name => (TreeNodeViewModel)new ModEntryNodeViewModel(new FakeMod(name)))
+            .Select(name =>
+                (TreeNodeViewModel)
+                    new ModEntryNodeViewModel(new ModListEntry(new FakeMod(name), true))
+            )
             .ToList();
         var group = new GroupHeaderNodeViewModel(new ModGroup("G", []));
         var roots = new System.Collections.ObjectModel.ObservableCollection<TreeNodeViewModel>(
@@ -69,7 +71,9 @@ public class ModListHierarchyTests
         model.Collapse(node);
         Assert.True(node.IsExpanded);
 
-        group.ObservableChildren.Add(new ModEntryNodeViewModel(new FakeMod("X")));
+        group.ObservableChildren.Add(
+            new ModEntryNodeViewModel(new ModListEntry(new FakeMod("X"), true))
+        );
 
         var expandedNode = model.Flattened.Single(n => ReferenceEquals(n.Item, group));
         model.Collapse(expandedNode);
@@ -137,7 +141,9 @@ public class ModListHierarchyTests
     {
         var (model, group) = CreateModel("B", "A");
         group.IsExpanded = true;
-        group.ObservableChildren.Add(new ModEntryNodeViewModel(new FakeMod("Child")));
+        group.ObservableChildren.Add(
+            new ModEntryNodeViewModel(new ModListEntry(new FakeMod("Child"), true))
+        );
         model.ApplySiblingComparer(
             Comparer<TreeNodeViewModel>.Create(
                 (left, right) =>

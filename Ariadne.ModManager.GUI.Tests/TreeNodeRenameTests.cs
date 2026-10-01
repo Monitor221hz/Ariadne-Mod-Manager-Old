@@ -12,8 +12,7 @@ public class TreeNodeRenameTests
 {
     private sealed class FakeMod(string name) : ILibraryMod
     {
-        public IModInfo Info { get; } =
-            new ModManager.ModInfo(0, SourceType.Local, "1.0", [], "", 0, false);
+        public IModInfo Info { get; } = new ModManager.ModInfo(0, SourceType.Local, "1.0", [], "");
         public string Name { get; private set; } = name;
         public DirectoryInfo Directory => new(".");
         public Ariadne.VFS.VirtualNode<ModFileEntry> Content { get; } =
@@ -40,7 +39,7 @@ public class TreeNodeRenameTests
     public async Task Successful_Rename_Emits_RenameCommitted()
     {
         var mod = new FakeMod("Old Name");
-        var node = new ModEntryNodeViewModel(mod);
+        var node = new ModEntryNodeViewModel(new ModListEntry(mod, true));
         var committedTask = node
             .RenameCommitted.Timeout(TimeSpan.FromSeconds(5))
             .FirstAsync()
@@ -59,7 +58,7 @@ public class TreeNodeRenameTests
     public async Task Unchanged_Rename_Reverts_Display_And_Does_Not_Emit()
     {
         var mod = new FakeMod("Old Name");
-        var node = new ModEntryNodeViewModel(mod);
+        var node = new ModEntryNodeViewModel(new ModListEntry(mod, true));
         var emitted = false;
         using var subscription = node.RenameCommitted.Subscribe(_ => emitted = true);
 
@@ -77,7 +76,7 @@ public class TreeNodeRenameTests
     public async Task Whitespace_Rename_Reverts_Display_And_Does_Not_Emit()
     {
         var mod = new FakeMod("Old Name");
-        var node = new ModEntryNodeViewModel(mod);
+        var node = new ModEntryNodeViewModel(new ModListEntry(mod, true));
         var emitted = false;
         using var subscription = node.RenameCommitted.Subscribe(_ => emitted = true);
 

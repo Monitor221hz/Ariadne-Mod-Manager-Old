@@ -8,7 +8,5 @@ public sealed record class ModInfoRecord(
     [property: JsonConverter(typeof(JsonStringEnumConverter))] SourceType IDSource,
     string Version,
     List<string> Categories,
-    string Target,
-    uint Priority,
-    bool IsEnabled
+    string Target
 );

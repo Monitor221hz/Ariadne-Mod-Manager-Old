@@ -4,12 +4,12 @@ using Ariadne.Contracts.ModManager;
 
 namespace Ariadne.ModManager;
 
-public partial class ModList : IList<ILibraryMod>, IModList
+public partial class ModList : IList<IModListEntry>, IModList
 {
-    private readonly List<ILibraryMod> _looseMods;
+    private readonly List<IModListEntry> _looseMods;
     private readonly List<IModGroup> _modGroups;
     private readonly HashSet<ILibraryMod> _modSet;
-    public IList<ILibraryMod> LooseMods => _looseMods;
+    public IList<IModListEntry> LooseMods => _looseMods;
     public IList<IModGroup> ModGroups => _modGroups;
 
     public int Count
@@ -27,11 +27,11 @@ public partial class ModList : IList<ILibraryMod>, IModList
 
     public bool IsReadOnly => false;
 
-    public ModList(List<ILibraryMod> looseMods, List<IModGroup> groupedMods)
+    public ModList(List<IModListEntry> looseMods, List<IModGroup> modGroups)
     {
         _looseMods = looseMods;
-        _modGroups = groupedMods;
-        _modSet = new(looseMods.Concat(groupedMods.SelectMany(g => g)));
+        _modGroups = modGroups;
+        _modSet = new(looseMods.Concat(modGroups.SelectMany(g => g)).Select(e => e.Mod));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -52,7 +52,7 @@ public partial class ModList : IList<ILibraryMod>, IModList
         throw new ArgumentOutOfRangeException("index");
     }
 
-    private ILibraryMod GetAt(int index)
+    private IModListEntry GetAt(int index)
     {
         if (IsLoose(index))
         {
@@ -61,7 +61,7 @@ public partial class ModList : IList<ILibraryMod>, IModList
         return GroupOf(index - _looseMods.Count, out int localIndex)[localIndex];
     }
 
-    private void SetAt(int index, ILibraryMod value)
+    private void SetAt(int index, IModListEntry value)
     {
         if (IsLoose(index))
         {
@@ -71,13 +71,13 @@ public partial class ModList : IList<ILibraryMod>, IModList
         GroupOf(index - _looseMods.Count, out int localIndex)[localIndex] = value;
     }
 
-    public ILibraryMod this[int index]
+    public IModListEntry this[int index]
     {
         get => GetAt(index);
         set => SetAt(index, value);
     }
 
-    public int IndexOf(ILibraryMod item)
+    public int IndexOf(IModListEntry item)
     {
         int index = _looseMods.IndexOf(item);
         if (index != -1)
@@ -97,7 +97,7 @@ public partial class ModList : IList<ILibraryMod>, IModList
         return -1;
     }
 
-    public void Insert(int index, ILibraryMod item)
+    public void Insert(int index, IModListEntry item)
     {
         if (index < 0 || index > Count)
         {
@@ -106,7 +106,7 @@ public partial class ModList : IList<ILibraryMod>, IModList
 
         if (index <= _looseMods.Count)
         {
-            if (_modSet.Add(item))
+            if (_modSet.Add(item.Mod))
             {
                 _looseMods.Insert(index, item);
             }
@@ -119,7 +119,7 @@ public partial class ModList : IList<ILibraryMod>, IModList
             var group = _modGroups[groupIndex];
             if (localIndex < group.Count || groupIndex == _modGroups.Count - 1)
             {
-                if (_modSet.Add(item))
+                if (_modSet.Add(item.Mod))
                 {
                     group.Insert(localIndex, item);
                 }
@@ -134,18 +134,18 @@ public partial class ModList : IList<ILibraryMod>, IModList
     {
         if (IsLoose(index))
         {
-            _modSet.Remove(_looseMods[index]);
+            _modSet.Remove(_looseMods[index].Mod);
             _looseMods.RemoveAt(index);
             return;
         }
         var group = GroupOf(index - _looseMods.Count, out int localIndex);
-        _modSet.Remove(group[localIndex]);
+        _modSet.Remove(group[localIndex].Mod);
         group.RemoveAt(localIndex);
     }
 
-    public void Add(ILibraryMod item)
+    public void Add(IModListEntry item)
     {
-        if (_modSet.Add(item))
+        if (_modSet.Add(item.Mod))
         {
             _looseMods.Add(item);
         }
@@ -158,12 +158,17 @@ public partial class ModList : IList<ILibraryMod>, IModList
         _modSet.Clear();
     }
 
-    public bool Contains(ILibraryMod item)
+    public bool Contains(IModListEntry item)
     {
-        return _modSet.Contains(item);
+        return _modSet.Contains(item.Mod);
     }
 
-    public void CopyTo(ILibraryMod[] array, int arrayIndex)
+    public bool Contains(ILibraryMod mod)
+    {
+        return _modSet.Contains(mod);
+    }
+
+    public void CopyTo(IModListEntry[] array, int arrayIndex)
     {
         _looseMods.CopyTo(array, arrayIndex);
         arrayIndex += _looseMods.Count;
@@ -174,16 +179,16 @@ public partial class ModList : IList<ILibraryMod>, IModList
         }
     }
 
-    public bool Remove(ILibraryMod item)
+    public bool Remove(IModListEntry item)
     {
-        if (!_modSet.Contains(item))
+        if (!_modSet.Contains(item.Mod))
         {
             return false;
         }
 
         if (_looseMods.Remove(item))
         {
-            _modSet.Remove(item);
+            _modSet.Remove(item.Mod);
             return true;
         }
 
@@ -191,16 +196,26 @@ public partial class ModList : IList<ILibraryMod>, IModList
         {
             if (group.Remove(item))
             {
-                _modSet.Remove(item);
+                _modSet.Remove(item.Mod);
                 return true;
             }
         }
         return false;
     }
 
+    internal void RebuildSet()
+    {
+        _modSet.Clear();
+        _modSet.UnionWith(_looseMods.Select(entry => entry.Mod));
+        foreach (var group in _modGroups)
+        {
+            _modSet.UnionWith(group.Select(entry => entry.Mod));
+        }
+    }
+
     public ModListEnumerator GetEnumerator() => new(this);
 
-    IEnumerator<ILibraryMod> IEnumerable<ILibraryMod>.GetEnumerator() => GetEnumerator();
+    IEnumerator<IModListEntry> IEnumerable<IModListEntry>.GetEnumerator() => GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }

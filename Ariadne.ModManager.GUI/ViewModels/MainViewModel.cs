@@ -26,10 +26,12 @@ public class MainViewModel : ViewModelBase
     private readonly IModInstallService? _installService;
     private readonly IDeploymentService? _deploymentService;
     private readonly ILaunchTargetService? _launchTargetService;
+    private readonly IProfileService? _profiles;
 
     private object? _currentViewModel;
     private ProfileViewModel? _activeProfile;
-    private IDisposable? _workspaceLink;
+    private System.Reactive.Disposables.CompositeDisposable _workspaceLinks = [];
+    private string? _sidePanelTabTitle;
     private bool _trayListView;
     private string? _selectedProfileName;
     private string? _currentGameText;
@@ -44,8 +46,8 @@ public class MainViewModel : ViewModelBase
             {
                 return;
             }
-            _workspaceLink?.Dispose();
-            _workspaceLink = null;
+            _workspaceLinks.Dispose();
+            _workspaceLinks = [];
             (_currentViewModel as IDisposable)?.Dispose();
             this.RaiseAndSetIfChanged(ref _currentViewModel, value);
             this.RaisePropertyChanged(nameof(WorkspaceVisible));
@@ -74,7 +76,11 @@ public class MainViewModel : ViewModelBase
         set
         {
             this.RaiseAndSetIfChanged(ref _selectedProfileName, value);
-            if (value is not null && !_suppressProfileSwitch && value != ActiveProfile?.Name)
+            if (
+                value is not null
+                && !_suppressProfileSwitch
+                && value != _profiles?.Active?.ProfileFolder.Name
+            )
             {
                 LoadProfile(value);
             }
@@ -88,8 +94,11 @@ public class MainViewModel : ViewModelBase
     }
 
     public ObservableCollection<InstanceEntryViewModel> Instances { get; } = [];
+    public ObservableCollection<InstanceMenuOptionViewModel> SwitchInstanceItems { get; } = [];
+    public ObservableCollection<InstanceMenuOptionViewModel> RemoveInstanceItems { get; } = [];
     public ObservableCollection<ThemeEntryViewModel> Themes { get; } = [];
     public ObservableCollection<LaunchTargetItemViewModel> TrayItems { get; } = [];
+    public ObservableCollection<ProfileImportOptionViewModel> ImportItems { get; } = [];
 
     public bool HasTrayItems => TrayItems.Count > 0;
 
@@ -101,6 +110,7 @@ public class MainViewModel : ViewModelBase
 
     public Interaction<string, InstanceDeleteChoice> ConfirmDeleteInstance { get; } = new();
     public Interaction<(string Title, string Text), Unit> ShowInfo { get; } = new();
+    public Interaction<Unit, string?> AskProfileName { get; } = new();
 
     public ReactiveCommand<Unit, Unit> InitializeCommand { get; }
     public ReactiveCommand<Unit, Unit> ExitCommand { get; }
@@ -108,6 +118,9 @@ public class MainViewModel : ViewModelBase
     public ReactiveCommand<string, Unit> AskDeleteCommand { get; }
     public ReactiveCommand<Unit, Unit> CreateModCommand { get; }
     public ReactiveCommand<Unit, Unit> CreateGroupCommand { get; }
+    public ReactiveCommand<Unit, Unit> CreateProfileCommand { get; }
+    public ReactiveCommand<Unit, Unit> ImportFromAllProfilesCommand { get; }
+    public ReactiveCommand<string, Unit> ImportFromProfileCommand { get; }
 
     private ModListViewModel? ActiveModList => (CurrentViewModel as WorkspaceViewModel)?.ModList;
 
@@ -121,6 +134,9 @@ public class MainViewModel : ViewModelBase
         AskDeleteCommand = ReactiveCommand.Create<string>(_ => { });
         CreateModCommand = ReactiveCommand.Create(() => { });
         CreateGroupCommand = ReactiveCommand.Create(() => { });
+        CreateProfileCommand = ReactiveCommand.Create(() => { });
+        ImportFromAllProfilesCommand = ReactiveCommand.Create(() => { });
+        ImportFromProfileCommand = ReactiveCommand.Create<string>(_ => { });
     }
 
     public MainViewModel(
@@ -137,7 +153,8 @@ public class MainViewModel : ViewModelBase
         ILibraryModFactory? modFactory = null,
         IModInstallService? installService = null,
         IDeploymentService? deploymentService = null,
-        ILaunchTargetService? launchTargetService = null
+        ILaunchTargetService? launchTargetService = null,
+        IProfileService? profiles = null
     )
     {
         _profileSerializer = profileSerializer;
@@ -153,6 +170,7 @@ public class MainViewModel : ViewModelBase
         _installService = installService;
         _deploymentService = deploymentService;
         _launchTargetService = launchTargetService;
+        _profiles = profiles;
 
         foreach (var theme in AppTheme.All)
         {
@@ -180,6 +198,15 @@ public class MainViewModel : ViewModelBase
             () => ActiveModList!.CreateGroupCommand.Execute(),
             workspaceActive
         );
+        CreateProfileCommand = ReactiveCommand.CreateFromTask(CreateProfileAsync);
+        ImportFromAllProfilesCommand = ReactiveCommand.Create(
+            ImportFromAllProfiles,
+            workspaceActive
+        );
+        ImportFromProfileCommand = ReactiveCommand.Create<string>(
+            ImportFromProfile,
+            workspaceActive
+        );
 
         if (sources is not null)
         {
@@ -192,6 +219,39 @@ public class MainViewModel : ViewModelBase
             RebuildTrayItems();
             launchTargetService.LaunchTargetsChanged += (_, _) =>
                 Avalonia.Threading.Dispatcher.UIThread.Post(RebuildTrayItems);
+        }
+
+        ProfileNames.CollectionChanged += (_, _) => RebuildImportItems();
+        this.WhenAnyValue(x => x.ActiveProfile).Subscribe(_ => RebuildImportItems());
+        RebuildImportItems();
+    }
+
+    private void RebuildImportItems()
+    {
+        ImportItems.Clear();
+        if (_profiles is null)
+        {
+            return;
+        }
+        ImportItems.Add(
+            new ProfileImportOptionViewModel(
+                "All",
+                ImportFromAllProfilesCommand,
+                Gesture: new Avalonia.Input.KeyGesture(
+                    Avalonia.Input.Key.I,
+                    Avalonia.Input.KeyModifiers.Control
+                )
+            )
+        );
+        var active = _profiles.Active?.ProfileFolder.Name;
+        foreach (var name in ProfileNames)
+        {
+            if (name != active)
+            {
+                ImportItems.Add(
+                    new ProfileImportOptionViewModel(name, ImportFromProfileCommand, name)
+                );
+            }
         }
     }
 
@@ -247,29 +307,17 @@ public class MainViewModel : ViewModelBase
     private async Task InitializeAsync()
     {
         RefreshInstances();
-        if (_instances!.Current is null)
+        if (_instances!.Current is null || _profiles is null)
         {
             ShowGameSelection();
             return;
         }
-        var profilesRoot = _paths!.ProfilesFolder;
-        var (profile, currentGame) = await Task.Run(() =>
+        var currentGame = await Task.Run(() =>
         {
-            profilesRoot.Create();
-            var latestProfileFile = profilesRoot
-                .EnumerateDirectories()
-                .Select(dir => new FileInfo(Path.Join(dir.FullName, ModProfileSerializer.FileName)))
-                .Where(file => file.Exists)
-                .OrderByDescending(file => file.LastWriteTimeUtc)
-                .FirstOrDefault();
-            var loaded = latestProfileFile is not null
-                ? _profileSerializer!.Load(latestProfileFile)
-                : CreateDefaultProfile(
-                    new DirectoryInfo(Path.Join(profilesRoot.FullName, "Default"))
-                );
-            NormalizePriorities(loaded);
-            return (loaded, _instances.Current?.Game);
+            _profiles.ActivateLatestOrDefault();
+            return _instances.Current?.Game;
         });
+        var profile = _profiles.Active!;
         ActiveProfile = new ProfileViewModel(profile);
         RefreshProfileNames();
         SyncSelectedProfile(profile.ProfileFolder.Name);
@@ -322,9 +370,20 @@ public class MainViewModel : ViewModelBase
             _deploymentService
         );
         CurrentViewModel = viewModel;
-        _workspaceLink = viewModel.DeploymentFailed.Subscribe(failure =>
-            _ = ShowInfo.Handle(failure)
-        );
+        if (_sidePanelTabTitle is not null)
+        {
+            viewModel.SelectedTab =
+                viewModel.SidePanelTabs.FirstOrDefault(tab => tab.Title == _sidePanelTabTitle)
+                ?? viewModel.SelectedTab;
+        }
+        _workspaceLinks = new System.Reactive.Disposables.CompositeDisposable
+        {
+            viewModel.DeploymentFailed.Subscribe(failure => _ = ShowInfo.Handle(failure)),
+            viewModel
+                .WhenAnyValue(x => x.SelectedTab)
+                .WhereNotNull()
+                .Subscribe(tab => _sidePanelTabTitle = tab.Title),
+        };
         _ = viewModel
             .InitializeAsync()
             .ContinueWith(t => Debug.WriteLine(t.Exception), TaskContinuationOptions.OnlyOnFaulted);
@@ -332,34 +391,62 @@ public class MainViewModel : ViewModelBase
 
     private void LoadProfile(string name)
     {
-        if (_paths is null || _profileSerializer is null)
+        if (_profiles is null)
         {
             return;
         }
-        var profileFolder = new DirectoryInfo(Path.Join(_paths.ProfilesFolder.FullName, name));
-        var profile = _profileSerializer.Load(profileFolder);
-        NormalizePriorities(profile);
+        var profile = _profiles.Switch(name);
         ActiveProfile = new ProfileViewModel(profile);
         ShowWorkspace();
+    }
+
+    private void ImportFromAllProfiles()
+    {
+        if (_profiles is null)
+        {
+            return;
+        }
+        _profiles.RefreshNames();
+        var active = _profiles.Active?.ProfileFolder.Name;
+        foreach (var name in _profiles.Names.Where(name => name != active).ToList())
+        {
+            ImportFromProfile(name);
+        }
+    }
+
+    private void ImportFromProfile(string name)
+    {
+        if (
+            _profiles is null
+            || _profiles.Active is null
+            || ActiveModList is null
+            || name == _profiles.Active.ProfileFolder.Name
+        )
+        {
+            return;
+        }
+        var activeMods = _profiles.Active.ModList;
+        foreach (var entry in _profiles.Read(name).ModList)
+        {
+            if (activeMods.Contains(entry.Mod))
+            {
+                continue;
+            }
+            ActiveModList.RegisterMod(entry.Mod);
+        }
     }
 
     private void RefreshProfileNames()
     {
         ProfileNames.Clear();
-        var profilesRoot = _paths!.ProfilesFolder;
-        profilesRoot.Refresh();
-        if (!profilesRoot.Exists)
+        if (_profiles is null)
         {
             return;
         }
-        foreach (
-            var dir in profilesRoot
-                .EnumerateDirectories()
-                .Where(dir => File.Exists(Path.Join(dir.FullName, ModProfileSerializer.FileName)))
-                .OrderBy(dir => dir.Name, StringComparer.OrdinalIgnoreCase)
-        )
+        _profiles.RefreshNames();
+        foreach (var name in _profiles.Names)
         {
-            ProfileNames.Add(dir.Name);
+            ProfileNames.Add(name);
         }
     }
 
@@ -376,41 +463,36 @@ public class MainViewModel : ViewModelBase
         }
     }
 
-    private IModProfile CreateDefaultProfile(DirectoryInfo profileFolder)
+    private async Task CreateProfileAsync()
     {
-        var profile = new ModProfile(
-            "Default",
-            new ModList([], []),
-            new Version(1, 0),
-            profileFolder
-        );
-        profile.InitializeDisk();
-        _profileSerializer!.Save(profile);
-        return profile;
-    }
-
-    internal static void NormalizePriorities(IModProfile profile)
-    {
-        var modList = profile.ModList;
-        ModOrderSync.ApplyOrder(
-            modList.LooseMods.ToList(),
-            modList.ModGroups.ToList(),
-            modList.ModGroups.Select(group => (IReadOnlyList<ILibraryMod>)group.ToList()).ToList(),
-            modList
-        );
+        if (_profiles is null)
+        {
+            return;
+        }
+        var name = await AskProfileName.Handle(Unit.Default);
+        name = name?.Trim();
+        if (string.IsNullOrEmpty(name) || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+        {
+            return;
+        }
+        if (!ProfileNames.Contains(name, StringComparer.OrdinalIgnoreCase))
+        {
+            await Task.Run(() => _profiles.Create(name));
+            RefreshProfileNames();
+        }
+        SelectedProfileName = name;
     }
 
     public void SaveActiveProfile()
     {
-        if (ActiveProfile is not null)
-        {
-            _profileSerializer!.Save(ActiveProfile.Model);
-        }
+        _profiles?.SaveActive();
     }
 
     private void RefreshInstances()
     {
         Instances.Clear();
+        SwitchInstanceItems.Clear();
+        RemoveInstanceItems.Clear();
         if (_instances is null)
         {
             return;
@@ -422,8 +504,22 @@ public class MainViewModel : ViewModelBase
             )
         )
         {
-            Instances.Add(
-                new InstanceEntryViewModel(name, folder.FullName, name == _instances.Current?.Name)
+            var entry = new InstanceEntryViewModel(
+                name,
+                folder.FullName,
+                name == _instances.Current?.Name
+            );
+            Instances.Add(entry);
+            SwitchInstanceItems.Add(
+                new InstanceMenuOptionViewModel(
+                    entry.DisplayHeader,
+                    SwitchInstanceCommand,
+                    name,
+                    !entry.IsCurrent
+                )
+            );
+            RemoveInstanceItems.Add(
+                new InstanceMenuOptionViewModel(entry.RemoveHeader, AskDeleteCommand, name)
             );
         }
     }

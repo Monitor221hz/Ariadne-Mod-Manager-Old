@@ -47,8 +47,13 @@ public class SkyrimSELoadOrderBuilder : ILoadOrderBuilder
     public IEnumerable<ILoadOrderInfo> Fetch(IInstalledGame game, IModList mods)
     {
         Dictionary<ModKey, BethesdaPluginInfoStub> _depLookupMap = new();
-        foreach (var mod in mods)
+        foreach (var entry in mods)
         {
+            if (!entry.Active)
+            {
+                continue;
+            }
+            var mod = entry.Mod;
             foreach (var node in mod.Content.Children)
             {
                 if (node.IsDirectory)
@@ -114,10 +119,11 @@ public class SkyrimSELoadOrderBuilder : ILoadOrderBuilder
         IEnumerable<ILoadOrderInfo> loadOrderInfos
     )
     {
+        var infos = loadOrderInfos.ToList();
         var filePath = Path.Join(currentProfile.ProfileFolder.FullName, PLUGINS_TXT);
         if (!File.Exists(filePath))
         {
-            foreach (var info in loadOrderInfos)
+            foreach (var info in infos)
             {
                 info.Active = true;
                 yield return info;
@@ -126,7 +132,7 @@ public class SkyrimSELoadOrderBuilder : ILoadOrderBuilder
         }
         string[] pluginLines = File.ReadAllLines(filePath);
         Dictionary<ModKey, ILoadOrderInfo> pluginLookup = new();
-        foreach (var plugin in loadOrderInfos)
+        foreach (var plugin in infos)
         {
             if (plugin is not BethesdaPluginInfo bethPlugin)
             {
@@ -134,6 +140,7 @@ public class SkyrimSELoadOrderBuilder : ILoadOrderBuilder
             }
             pluginLookup.Add(bethPlugin.ModKey, plugin);
         }
+        var emitted = new HashSet<ModKey>();
         foreach (var pluginLine in pluginLines)
         {
             bool active = pluginLine.StartsWith("*");
@@ -145,7 +152,16 @@ public class SkyrimSELoadOrderBuilder : ILoadOrderBuilder
             if (pluginLookup.TryGetValue(modKey, out var pluginInfo))
             {
                 pluginInfo.Active = active;
+                emitted.Add(modKey);
                 yield return pluginInfo;
+            }
+        }
+        foreach (var plugin in infos)
+        {
+            if (plugin is BethesdaPluginInfo bethPlugin && emitted.Add(bethPlugin.ModKey))
+            {
+                plugin.Active = true;
+                yield return plugin;
             }
         }
     }
