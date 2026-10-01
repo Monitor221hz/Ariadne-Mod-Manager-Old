@@ -25,10 +25,12 @@ public class MainViewModel : ViewModelBase
     private readonly IDownloadQueue? _downloads;
     private readonly IModInstallService? _installService;
     private readonly IDeploymentService? _deploymentService;
+    private readonly ILaunchTargetService? _launchTargetService;
 
     private object? _currentViewModel;
     private ProfileViewModel? _activeProfile;
     private IDisposable? _workspaceLink;
+    private bool _trayListView;
     private string? _selectedProfileName;
     private string? _currentGameText;
     private bool _suppressProfileSwitch;
@@ -87,6 +89,15 @@ public class MainViewModel : ViewModelBase
 
     public ObservableCollection<InstanceEntryViewModel> Instances { get; } = [];
     public ObservableCollection<ThemeEntryViewModel> Themes { get; } = [];
+    public ObservableCollection<LaunchTargetItemViewModel> TrayItems { get; } = [];
+
+    public bool HasTrayItems => TrayItems.Count > 0;
+
+    public bool TrayListView
+    {
+        get => _trayListView;
+        set => this.RaiseAndSetIfChanged(ref _trayListView, value);
+    }
 
     public Interaction<string, InstanceDeleteChoice> ConfirmDeleteInstance { get; } = new();
     public Interaction<(string Title, string Text), Unit> ShowInfo { get; } = new();
@@ -125,7 +136,8 @@ public class MainViewModel : ViewModelBase
         IDownloadQueue? downloads = null,
         ILibraryModFactory? modFactory = null,
         IModInstallService? installService = null,
-        IDeploymentService? deploymentService = null
+        IDeploymentService? deploymentService = null,
+        ILaunchTargetService? launchTargetService = null
     )
     {
         _profileSerializer = profileSerializer;
@@ -140,6 +152,7 @@ public class MainViewModel : ViewModelBase
         _modFactory = modFactory;
         _installService = installService;
         _deploymentService = deploymentService;
+        _launchTargetService = launchTargetService;
 
         foreach (var theme in AppTheme.All)
         {
@@ -172,6 +185,60 @@ public class MainViewModel : ViewModelBase
         {
             Sources = sources;
             _ = sources.RefreshCommand.Execute().Subscribe();
+        }
+
+        if (launchTargetService is not null)
+        {
+            RebuildTrayItems();
+            launchTargetService.LaunchTargetsChanged += (_, _) =>
+                Avalonia.Threading.Dispatcher.UIThread.Post(RebuildTrayItems);
+        }
+    }
+
+    private void RebuildTrayItems()
+    {
+        TrayItems.Clear();
+        if (_launchTargetService is null)
+        {
+            return;
+        }
+        foreach (var target in _launchTargetService.LaunchTargets)
+        {
+            TrayItems.Add(
+                new LaunchTargetItemViewModel(
+                    target.Name,
+                    ExtractIcon(target.AbsolutePath),
+                    ReactiveCommand.Create(() => _launchTargetService.Launch(target))
+                )
+            );
+        }
+        this.RaisePropertyChanged(nameof(HasTrayItems));
+    }
+
+    private static Avalonia.Media.Imaging.Bitmap? ExtractIcon(string path)
+    {
+        try
+        {
+            using var icon = System.Drawing.Icon.ExtractAssociatedIcon(path);
+            if (icon is null)
+            {
+                return null;
+            }
+            using var bitmap = icon.ToBitmap();
+            var stream = new MemoryStream();
+            bitmap.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
+            stream.Position = 0;
+            return new Avalonia.Media.Imaging.Bitmap(stream);
+        }
+        catch (Exception ex)
+            when (ex
+                    is IOException
+                        or InvalidOperationException
+                        or ArgumentException
+                        or PlatformNotSupportedException
+            )
+        {
+            return null;
         }
     }
 

@@ -112,6 +112,7 @@ public class GameCatalogTests : IDisposable
         Assert.True(game.ContainsKey("_appData"));
         var appData = game["_appData"];
         Assert.True(Path.IsPathFullyQualified(appData.DirectoryPath));
+        Assert.Equal(0, game.LaunchTargets["skse64_loader.exe"]);
 
         var data = Assert.Single(game.InstallTargets, target => target.Key == "Data");
         Assert.Equal("_root", data.BasedOn);

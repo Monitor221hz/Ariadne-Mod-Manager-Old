@@ -12,6 +12,7 @@ public class SupportedGame : ISupportedGame
     public IGamePath Root { get; }
     public IReadOnlyList<IGamePath> Deployments { get; }
     public IReadOnlyList<IGamePath> InstallTargets { get; }
+    public IReadOnlyDictionary<string, int> LaunchTargets { get; }
     public IEnumerable<string> Keys => _pathNameMap.Keys;
     public IReadOnlyDictionary<string, string> ProtocolGameIds => _protocolGameIds;
 
@@ -32,7 +33,8 @@ public class SupportedGame : ISupportedGame
         IGamePath root,
         IReadOnlyList<IGamePath> deployments,
         IReadOnlyList<IGamePath> installTargets,
-        IReadOnlyDictionary<string, string>? protocolGameIds = null
+        IReadOnlyDictionary<string, string>? protocolGameIds = null,
+        IReadOnlyDictionary<string, int>? launchTargets = null
     )
     {
         Name = name;
@@ -41,6 +43,8 @@ public class SupportedGame : ISupportedGame
         Root = root;
         Deployments = deployments;
         InstallTargets = installTargets;
+        LaunchTargets =
+            launchTargets ?? (IReadOnlyDictionary<string, int>)new Dictionary<string, int>();
         var paths = Deployments.Concat(InstallTargets).Prepend(root);
         _pathNameMap = paths.ToDictionary(t => t.Key, t => t);
         _protocolGameIds = (

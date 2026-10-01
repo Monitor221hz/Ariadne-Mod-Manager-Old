@@ -12,4 +12,5 @@ public interface ISupportedGame : IReadOnlyDictionary<string, IGamePath>
     IGamePath Root { get; }
     IReadOnlyList<IGamePath> Deployments { get; }
     IReadOnlyList<IGamePath> InstallTargets { get; }
+    IReadOnlyDictionary<string, int> LaunchTargets { get; }
 }

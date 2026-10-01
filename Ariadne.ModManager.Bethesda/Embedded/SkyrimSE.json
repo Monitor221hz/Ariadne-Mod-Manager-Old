@@ -24,6 +24,12 @@
     "nxm": "skyrimspecialedition",
     "modl": "skyrimse"
   },
+  "LaunchTargets": {
+    "skse64_loader.exe": 0,
+    "SkyrimSE.exe": 1,
+    "SkyrimSELauncher.exe": 2,
+    "Pandora*.exe": 3
+  },
   "Root": {
     "Key": "_root",
     "DirectoryPath": "",

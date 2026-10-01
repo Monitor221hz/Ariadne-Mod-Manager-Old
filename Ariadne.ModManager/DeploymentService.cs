@@ -13,6 +13,26 @@ public sealed class DeploymentService(
 
     public bool IsDeployed { get; private set; }
 
+    public IReadOnlyList<DirectoryInfo> DeployedPaths
+    {
+        get
+        {
+            if (_deployment is null || !instances.TryGetInstanceGame(out var game))
+            {
+                return [];
+            }
+            var paths = new List<DirectoryInfo>();
+            foreach (var path in game.Configuration.Deployments.Prepend(game.Configuration.Root))
+            {
+                if (_deployment.TryGetDeployedPath(game, path, out var directory))
+                {
+                    paths.Add(directory);
+                }
+            }
+            return paths;
+        }
+    }
+
     public event EventHandler? DeploymentChanged;
 
     public async Task DeployAsync(

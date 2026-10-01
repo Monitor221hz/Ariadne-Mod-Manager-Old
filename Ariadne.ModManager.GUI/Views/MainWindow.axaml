@@ -98,7 +98,7 @@
                     BorderBrush="{DynamicResource AriadneToolbarBorder}"
                     BorderThickness="0,0,0,1"
                     Padding="12,8">
-                <Grid ColumnDefinitions="*,Auto">
+                <Grid ColumnDefinitions="*,Auto,Auto">
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
                         <TextBlock VerticalAlignment="Center"
                                    FontWeight="SemiBold"
@@ -113,16 +113,107 @@
                     </StackPanel>
                     <Button Grid.Column="1"
                             VerticalAlignment="Center"
+                            Padding="8,4"
+                            Margin="0,0,6,0"
+                            IsVisible="{Binding HasTrayItems}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <fi:FluentIcon Icon="Apps" FontSize="18" VerticalAlignment="Center" />
+                            <TextBlock VerticalAlignment="Center" Text="Run" />
+                        </StackPanel>
+                        <Button.Flyout>
+                            <Flyout Placement="Bottom">
+                                <DockPanel>
+                                    <ToggleButton DockPanel.Dock="Top"
+                                                  HorizontalAlignment="Right"
+                                                  Padding="4"
+                                                  Margin="0,0,2,4"
+                                                  Background="Transparent"
+                                                  ToolTip.Tip="Toggle list view"
+                                                  IsChecked="{Binding TrayListView}">
+                                        <Grid Width="16" Height="16">
+                                            <fi:FluentIcon Icon="Grid"
+                                                           FontSize="16"
+                                                           IsVisible="{Binding TrayListView}" />
+                                            <fi:FluentIcon Icon="List"
+                                                           FontSize="16"
+                                                           IsVisible="{Binding !TrayListView}" />
+                                        </Grid>
+                                    </ToggleButton>
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                                  MaxHeight="288">
+                                        <Grid>
+                                            <ItemsControl ItemsSource="{Binding TrayItems}"
+                                                          Width="232"
+                                                          IsVisible="{Binding !TrayListView}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <WrapPanel Orientation="Horizontal" />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="vm:LaunchTargetItemViewModel">
+                                                        <Button Padding="6"
+                                                                Margin="2"
+                                                                Background="Transparent"
+                                                                BorderThickness="0"
+                                                                ToolTip.Tip="{Binding Name}"
+                                                                Command="{Binding LaunchCommand}">
+                                                            <Grid Width="32" Height="32">
+                                                                <fi:FluentIcon Icon="AppGeneric"
+                                                                               FontSize="28"
+                                                                               IsVisible="{Binding Icon, Converter={x:Static dc:ObjectConverters.IsNull}}" />
+                                                                <Image Source="{Binding Icon}"
+                                                                       Stretch="Uniform" />
+                                                            </Grid>
+                                                        </Button>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <ItemsControl ItemsSource="{Binding TrayItems}"
+                                                          Width="300"
+                                                          IsVisible="{Binding TrayListView}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="vm:LaunchTargetItemViewModel">
+                                                        <Button Padding="6,4"
+                                                                Margin="1"
+                                                                Background="Transparent"
+                                                                BorderThickness="0"
+                                                                HorizontalContentAlignment="Left"
+                                                                Command="{Binding LaunchCommand}">
+                                                            <StackPanel Orientation="Horizontal"
+                                                                        Spacing="10">
+                                                                <Grid Width="32" Height="32">
+                                                                    <fi:FluentIcon Icon="AppGeneric"
+                                                                                   FontSize="28"
+                                                                                   IsVisible="{Binding Icon, Converter={x:Static dc:ObjectConverters.IsNull}}" />
+                                                                    <Image Source="{Binding Icon}"
+                                                                           Stretch="Uniform" />
+                                                                </Grid>
+                                                                <TextBlock VerticalAlignment="Center"
+                                                                           Text="{Binding Name}" />
+                                                            </StackPanel>
+                                                        </Button>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </Grid>
+                                    </ScrollViewer>
+                                </DockPanel>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+                    <Button Grid.Column="2"
+                            VerticalAlignment="Center"
                             Padding="10,4"
                             Command="{Binding ActiveWorkspace.ToggleDeploymentCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <fi:FluentIcon Icon="Play"
-                                           FontSize="14"
+                                           FontSize="18"
                                            VerticalAlignment="Center"
 
                                            IsVisible="{Binding ActiveWorkspace.IsDeployed, Converter={x:Static dc:BoolConverters.Not}}" />
                             <fi:FluentIcon Icon="Stop"
-                                           FontSize="14"
+                                           FontSize="18"
                                            VerticalAlignment="Center"
                                            IsVisible="{Binding ActiveWorkspace.IsDeployed}" />
                             <TextBlock VerticalAlignment="Center"

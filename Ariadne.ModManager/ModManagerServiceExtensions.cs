@@ -47,6 +47,7 @@ public static class ModManagerServiceExtensions
         );
         services.AddSingleton<IModDeploymentMethodFactory, ModDeploymentMethodFactory>();
         services.AddSingleton<IDeploymentService, DeploymentService>();
+        services.AddSingleton<ILaunchTargetService, LaunchTargetService>();
         return services;
     }
 }

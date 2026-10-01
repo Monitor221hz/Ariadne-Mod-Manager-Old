@@ -450,6 +450,7 @@ public class DownloadListViewModelTests : IDisposable
         public IGamePath Root => null!;
         public IReadOnlyList<IGamePath> Deployments => [];
         public IReadOnlyList<IGamePath> InstallTargets => installTargets;
+        public IReadOnlyDictionary<string, int> LaunchTargets => new Dictionary<string, int>();
         public IGamePath this[string key] => throw new KeyNotFoundException();
         public IEnumerable<string> Keys => [];
         public IEnumerable<IGamePath> Values => [];
