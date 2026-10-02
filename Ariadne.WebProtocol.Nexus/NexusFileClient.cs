@@ -28,8 +28,7 @@ public sealed class NexusFileClient : INexusFileClient
                 $"games/{link.GameDomain}/mods/{link.ModId}/files/{link.FileId}.json"
             );
 
-            using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
-            request.Headers.Add("apikey", apiKey);
+            using var request = NexusRequest.Create(HttpMethod.Get, requestUri, apiKey);
 
             using var response = await _client.SendAsync(request, cancellationToken);
             if (!response.IsSuccessStatusCode)

@@ -36,8 +36,7 @@ public sealed class NexusDownloadResolver : INexusDownloadResolver
                     + $"?key={Uri.EscapeDataString(link.Key)}&expires={link.Expires}"
             );
 
-            using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
-            request.Headers.Add("apikey", apiKey);
+            using var request = NexusRequest.Create(HttpMethod.Get, requestUri, apiKey);
 
             using var response = await _client.SendAsync(request, cancellationToken);
             UpdateRequestLimits(response.Headers);

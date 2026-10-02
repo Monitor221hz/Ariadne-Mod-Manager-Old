@@ -23,11 +23,11 @@ public sealed class NexusAccountClient : INexusAccountClient
     {
         try
         {
-            using var request = new HttpRequestMessage(
+            using var request = NexusRequest.Create(
                 HttpMethod.Get,
-                new Uri(ApiBaseUri, "users/validate")
+                new Uri(ApiBaseUri, "users/validate"),
+                apiKey
             );
-            request.Headers.Add("apikey", apiKey);
 
             using var response = await _client.SendAsync(request, cancellationToken);
             if (!response.IsSuccessStatusCode)
