@@ -1,5 +1,4 @@
-﻿using Avalonia;
-using Ariadne.Contracts.Games;
+﻿using Ariadne.Contracts.Games;
 using Ariadne.Downloads;
 using Ariadne.ModManager.Bethesda;
 using Ariadne.Security;
@@ -8,6 +7,7 @@ using Ariadne.Security.Libsecret;
 using Ariadne.WebProtocol;
 using Ariadne.WebProtocol.Modl;
 using Ariadne.WebProtocol.Nexus;
+using Avalonia;
 using Microsoft.Extensions.DependencyInjection;
 using ReactiveUI.Avalonia;
 
@@ -80,7 +80,11 @@ sealed class Program
                     : new LibsecretSecretStore("Ariadne")
             );
             services.AddSingleton<IUrlLauncher, UrlLauncher>();
+            services.AddSingleton<IFileOpener, ShellFileOpener>();
+            services.AddSingleton<IIconProvider, ShellIconProvider>();
+            services.AddSingleton<IAppLifecycleService, AppLifecycleService>();
             services.AddSingleton<INexusAccountCache>(_ => new NexusAccountCache("Ariadne"));
+            services.AddSingleton<INexusAccountService, NexusAccountService>();
             services.AddSingleton<ViewModels.SourcesMenuViewModel>();
             services.AddSingleton(links);
             services.AddSingleton<NexusLinkProcessor>();

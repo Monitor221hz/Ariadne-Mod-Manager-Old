@@ -1,14 +1,14 @@
 using System.Collections.Generic;
-using Ariadne.Extensions.IO;
+using Ariadne.Contracts.ModManager;
 using Ariadne.ModManager.GUI.ViewModels;
 using Avalonia.Controls.DataGridDragDrop;
 using Avalonia.Input;
 
 namespace Ariadne.ModManager.GUI.DragDrop;
 
-public static class ModListDropRules
+public sealed class ModListDropRules(IContentMoveService moves)
 {
-    public static bool IsLegal(
+    public bool IsLegal(
         IReadOnlyList<TreeNodeViewModel> dragged,
         TreeNodeViewModel? target,
         TreeNodeViewModel? targetParent,
@@ -67,7 +67,7 @@ public static class ModListDropRules
         && target is ModEntryNodeViewModel mod
         && ReferenceEquals(dragged.Owner, mod);
 
-    public static IReadOnlyList<ModEntryNodeViewModel> ExecuteContentDrop(
+    public IReadOnlyList<ModEntryNodeViewModel> ExecuteContentDrop(
         IReadOnlyList<TreeNodeViewModel> dragged,
         TreeNodeViewModel target
     )
@@ -79,11 +79,16 @@ public static class ModListDropRules
             {
                 if (target is ModEntryNodeViewModel mod && IsFlattenDrop(node, mod))
                 {
-                    FlattenIntoModRoot(node, mod);
+                    moves.FlattenIntoModRoot(node.DiskPath, mod.Model.Directory.FullName);
                 }
                 else
                 {
-                    Move(node, DestinationDirectory(target));
+                    moves.MoveInto(
+                        node.DiskPath,
+                        node is DirectoryNodeViewModel,
+                        node.DisplayName,
+                        DestinationDirectory(target)
+                    );
                 }
                 affected.Add(node.Owner);
                 if (TargetOwner(target) is { } targetOwner)
@@ -111,7 +116,7 @@ public static class ModListDropRules
         };
     }
 
-    private static bool IsLegalContentDrop(
+    private bool IsLegalContentDrop(
         ContentNodeViewModel dragged,
         TreeNodeViewModel? target,
         DataGridRowDropPosition position
@@ -124,55 +129,22 @@ public static class ModListDropRules
         return target switch
         {
             DirectoryNodeViewModel directory => directory.IsDiskBacked
-                && CanMoveInto(dragged, directory.DiskPath),
+                && moves.CanMoveInto(
+                    dragged.DiskPath,
+                    dragged is DirectoryNodeViewModel,
+                    dragged.DisplayName,
+                    directory.DiskPath
+                ),
             ModEntryNodeViewModel mod => IsFlattenDrop(dragged, mod)
-                ? CanFlatten(dragged, mod)
-                : CanMoveInto(dragged, mod.Model.Directory.FullName),
+                ? moves.CanFlattenIntoModRoot(dragged.DiskPath, mod.Model.Directory.FullName)
+                : moves.CanMoveInto(
+                    dragged.DiskPath,
+                    dragged is DirectoryNodeViewModel,
+                    dragged.DisplayName,
+                    mod.Model.Directory.FullName
+                ),
             _ => false,
         };
-    }
-
-    private static bool CanMoveInto(ContentNodeViewModel dragged, string destinationDirectory)
-    {
-        var source = dragged.DiskPath;
-        if (dragged is DirectoryNodeViewModel && IsSameOrDescendant(destinationDirectory, source))
-        {
-            return false;
-        }
-        if (
-            string.Equals(
-                Path.GetDirectoryName(source),
-                destinationDirectory,
-                StringComparison.OrdinalIgnoreCase
-            )
-        )
-        {
-            return false;
-        }
-        return !Path.Exists(Path.Join(destinationDirectory, dragged.DisplayName));
-    }
-
-    private static bool CanFlatten(ContentNodeViewModel dragged, ModEntryNodeViewModel mod)
-    {
-        var source = new DirectoryInfo(dragged.DiskPath);
-        if (!source.Exists)
-        {
-            return false;
-        }
-        var root = mod.Model.Directory.FullName;
-        return source
-            .EnumerateFileSystemInfos()
-            .All(child => !Path.Exists(Path.Join(root, child.Name)));
-    }
-
-    private static bool IsSameOrDescendant(string candidate, string directory)
-    {
-        var trimmed = directory.TrimEnd(Path.DirectorySeparatorChar);
-        return string.Equals(candidate, trimmed, StringComparison.OrdinalIgnoreCase)
-            || candidate.StartsWith(
-                trimmed + Path.DirectorySeparatorChar,
-                StringComparison.OrdinalIgnoreCase
-            );
     }
 
     private static string DestinationDirectory(TreeNodeViewModel target) =>
@@ -190,40 +162,4 @@ public static class ModListDropRules
             DirectoryNodeViewModel directory => directory.Owner,
             _ => null,
         };
-
-    private static void Move(ContentNodeViewModel node, string destinationDirectory)
-    {
-        var destination = Path.Join(destinationDirectory, node.DisplayName);
-        if (node is DirectoryNodeViewModel)
-        {
-            Directory.Move(node.DiskPath, destination);
-        }
-        else
-        {
-            File.Move(node.DiskPath, destination);
-        }
-    }
-
-    private static void FlattenIntoModRoot(ContentNodeViewModel folder, ModEntryNodeViewModel mod)
-    {
-        var source = new DirectoryInfo(folder.DiskPath);
-        var root = mod.Model.Directory.FullName;
-        foreach (var child in source.EnumerateFileSystemInfos())
-        {
-            var destination = Path.Join(root, child.Name);
-            if (child is DirectoryInfo directory)
-            {
-                directory.MergeTo(destination);
-            }
-            else
-            {
-                ((FileInfo)child).MoveTo(destination);
-            }
-        }
-        source.Refresh();
-        if (source.Exists && !source.EnumerateFileSystemInfos().Any())
-        {
-            source.Delete();
-        }
-    }
 }

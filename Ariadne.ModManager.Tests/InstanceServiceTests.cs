@@ -1,4 +1,5 @@
 using Ariadne.Contracts.Games;
+using Ariadne.Contracts.ModManager;
 using Ariadne.Games;
 using Ariadne.Games.Serialization;
 using Xunit;
@@ -151,6 +152,19 @@ public class InstanceServiceTests : IDisposable
 
         Assert.False(Directory.Exists(folder.FullName));
         Assert.Empty(sut.Instances);
+    }
+
+    [Fact]
+    public void SuggestInstanceName_SuffixesUntilUnique()
+    {
+        var (sut, _) = CreateService();
+        sut.Create("Default", new DirectoryInfo(_temp.Combine("A")), CreateGame());
+        sut.Create("Default 2", new DirectoryInfo(_temp.Combine("B")), CreateGame());
+
+        var service = (IInstanceService)sut;
+
+        Assert.Equal("Default 3", service.SuggestInstanceName());
+        Assert.Equal("Other", service.SuggestInstanceName("Other"));
     }
 
     [Fact]

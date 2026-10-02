@@ -27,7 +27,7 @@ public sealed class DownloadListViewModel : ViewModelBase, IWorkspaceTab, IDispo
     );
     private readonly Dictionary<Guid, IDisposable> _rowSubscriptions = new();
     private readonly CompositeDisposable _subscriptions = new();
-    private FileSystemWatcher? _watcher;
+    private readonly IDownloadFolderWatcher _folderWatcher;
 
     public DownloadListViewModel(
         IDownloadQueue queue,
@@ -36,7 +36,8 @@ public sealed class DownloadListViewModel : ViewModelBase, IWorkspaceTab, IDispo
         IModInstallService? installService = null,
         Action<ILibraryMod>? onInstalled = null,
         IScheduler? sampleScheduler = null,
-        IScheduler? notifyScheduler = null
+        IScheduler? notifyScheduler = null,
+        IDownloadFolderWatcher? folderWatcher = null
     )
     {
         _queue = queue;
@@ -50,6 +51,7 @@ public sealed class DownloadListViewModel : ViewModelBase, IWorkspaceTab, IDispo
                 : [];
         sampleScheduler ??= Scheduler.Default;
         notifyScheduler ??= AvaloniaScheduler.Instance;
+        _folderWatcher = folderWatcher ?? new DownloadFolderWatcher(_downloadsFolder);
 
         var queued = EventStream<DownloadJob>(
             handler => queue.JobQueued += handler,
@@ -103,7 +105,14 @@ public sealed class DownloadListViewModel : ViewModelBase, IWorkspaceTab, IDispo
         }
         SeedFromFolder();
 
-        _subscriptions.Add(WatchFolder(notifyScheduler));
+        _subscriptions.Add(
+            EventStream<string>(
+                    handler => _folderWatcher.PathChanged += handler,
+                    handler => _folderWatcher.PathChanged -= handler
+                )
+                .ObserveOn(notifyScheduler)
+                .Subscribe(OnFolderChanged)
+        );
 
         NotifyCollectionChangedEventHandler rowsChangedHandler = (_, _) =>
         {
@@ -154,7 +163,7 @@ public sealed class DownloadListViewModel : ViewModelBase, IWorkspaceTab, IDispo
             subscription.Dispose();
         }
         _rowSubscriptions.Clear();
-        _watcher?.Dispose();
+        _folderWatcher.Dispose();
     }
 
     private static IObservable<T> EventStream<T>(
@@ -234,18 +243,7 @@ public sealed class DownloadListViewModel : ViewModelBase, IWorkspaceTab, IDispo
         row.IsInstalling = true;
         try
         {
-            var manifest = DownloadManifestStore.TryRead(row.Job.Destination);
-            var name = manifest?.ModFileName is { Length: > 0 } modFileName
-                ? modFileName
-                : Path.GetFileNameWithoutExtension(manifest?.FileName ?? row.Job.Destination.Name);
-            var mod = await _installService.InstallAsync(
-                name,
-                manifest?.Version,
-                row.Job.Destination,
-                ManifestProvenance(manifest),
-                InstallType.Replace,
-                target
-            );
+            var mod = await _installService.InstallDownloadAsync(row.Job.Destination, target);
             if (mod is null)
             {
                 row.InstallFailed = true;
@@ -257,22 +255,6 @@ public sealed class DownloadListViewModel : ViewModelBase, IWorkspaceTab, IDispo
         {
             row.IsInstalling = false;
         }
-    }
-
-    private static ModID? ManifestProvenance(DownloadManifest? manifest)
-    {
-        if (manifest?.ModId is not { } modId)
-        {
-            return null;
-        }
-
-        var source = manifest.Repository switch
-        {
-            ProtocolSchemes.Nxm => SourceType.NexusMods,
-            ProtocolSchemes.Modl => SourceType.ModPub,
-            _ => SourceType.Local,
-        };
-        return new ModID((ulong)modId, source);
     }
 
     private void AddRow(DownloadJob job)
@@ -311,63 +293,14 @@ public sealed class DownloadListViewModel : ViewModelBase, IWorkspaceTab, IDispo
 
     private void SeedFromFolder()
     {
-        _downloadsFolder.Refresh();
-        if (!_downloadsFolder.Exists)
+        foreach (var file in _folderWatcher.ScanArchives())
         {
-            _downloadsFolder.Create();
-        }
-
-        foreach (var file in _downloadsFolder.EnumerateFiles())
-        {
-            if (!IsModArchive(file))
-            {
-                continue;
-            }
             if (_rowsByPath.ContainsKey(file.FullName))
             {
                 continue;
             }
             AddRow(DiskJob(file));
         }
-    }
-
-    private IDisposable WatchFolder(IScheduler notifyScheduler)
-    {
-        var watcher = new FileSystemWatcher(_downloadsFolder.FullName)
-        {
-            NotifyFilter =
-                NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.CreationTime,
-            IncludeSubdirectories = false,
-            EnableRaisingEvents = true,
-        };
-        _watcher = watcher;
-
-        var recreated = Observable
-            .FromEventPattern<FileSystemEventHandler, FileSystemEventArgs>(
-                handler => _watcher.Created += handler,
-                handler => _watcher.Created -= handler
-            )
-            .Select(pattern => pattern.EventArgs.FullPath);
-        var removed = Observable
-            .FromEventPattern<FileSystemEventHandler, FileSystemEventArgs>(
-                handler => _watcher.Deleted += handler,
-                handler => _watcher.Deleted -= handler
-            )
-            .Select(pattern => pattern.EventArgs.FullPath);
-        var renamed = Observable
-            .FromEventPattern<RenamedEventHandler, RenamedEventArgs>(
-                handler => watcher.Renamed += handler,
-                handler => watcher.Renamed -= handler
-            )
-            .SelectMany(pattern =>
-                new[] { pattern.EventArgs.OldFullPath, pattern.EventArgs.FullPath }
-            );
-
-        return recreated
-            .Merge(removed)
-            .Merge(renamed)
-            .ObserveOn(notifyScheduler)
-            .Subscribe(OnFolderChanged);
     }
 
     private void OnFolderChanged(string path)
@@ -383,23 +316,11 @@ public sealed class DownloadListViewModel : ViewModelBase, IWorkspaceTab, IDispo
         }
 
         var file = new FileInfo(path);
-        if (!IsModArchive(file) || _rowsByPath.ContainsKey(path))
+        if (!DownloadArchiveFilter.IsModArchive(file) || _rowsByPath.ContainsKey(path))
         {
             return;
         }
         AddRow(DiskJob(file));
-    }
-
-    private static bool IsModArchive(FileInfo file)
-    {
-        return file.Extension switch
-        {
-            { } extension when extension.Equals(".download", StringComparison.OrdinalIgnoreCase) =>
-                false,
-            { } extension when extension.Equals(".json", StringComparison.OrdinalIgnoreCase) =>
-                false,
-            _ => true,
-        };
     }
 
     private static DownloadJob DiskJob(FileInfo file)

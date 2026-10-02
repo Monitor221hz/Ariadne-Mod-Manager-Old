@@ -1,5 +1,6 @@
 using Ariadne.Contracts.Games;
 using Ariadne.Contracts.ModManager;
+using Ariadne.Downloads;
 
 namespace Ariadne.ModManager;
 
@@ -37,6 +38,24 @@ public sealed class ModInstallService : IModInstallService
                 InstallProgressChanged?.Invoke(this, new InstallProgress(archive, args.EntryPath));
             }
         };
+    }
+
+    public Task<ILibraryMod?> InstallDownloadAsync(
+        FileInfo archive,
+        IGamePath? target = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var manifest = DownloadManifestStore.TryRead(archive);
+        return InstallAsync(
+            DownloadInstallInfo.SuggestName(archive, manifest),
+            manifest?.Version,
+            archive,
+            DownloadInstallInfo.Provenance(manifest),
+            InstallType.Replace,
+            target,
+            cancellationToken
+        );
     }
 
     public async Task<ILibraryMod?> InstallAsync(

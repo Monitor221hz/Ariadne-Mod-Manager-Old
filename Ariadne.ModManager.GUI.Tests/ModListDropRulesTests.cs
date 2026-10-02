@@ -49,6 +49,7 @@ public class ModListDropRulesTests : IDisposable
     }
 
     private readonly TempDirectory _temp = new();
+    private readonly ModListDropRules _rules = new(new ContentMoveService());
 
     public void Dispose() => _temp.Dispose();
 
@@ -101,8 +102,8 @@ public class ModListDropRulesTests : IDisposable
         ""
     );
 
-    private static bool IsLegal(TreeNodeViewModel dragged, TreeNodeViewModel? target) =>
-        ModListDropRules.IsLegal(
+    private bool IsLegal(TreeNodeViewModel dragged, TreeNodeViewModel? target) =>
+        _rules.IsLegal(
             [dragged],
             target,
             null,
@@ -120,7 +121,7 @@ public class ModListDropRulesTests : IDisposable
         var folderVm = new DirectoryNodeViewModel(folder, owner);
 
         Assert.True(IsLegal(fileVm, folderVm));
-        var affected = ModListDropRules.ExecuteContentDrop([fileVm], folderVm);
+        var affected = _rules.ExecuteContentDrop([fileVm], folderVm);
 
         Assert.True(File.Exists(Path.Combine(ModDir("ModA"), "stuff", "a.txt")));
         Assert.False(File.Exists(Path.Combine(ModDir("ModA"), "a.txt")));
@@ -138,7 +139,7 @@ public class ModListDropRulesTests : IDisposable
         var miscVm = new DirectoryNodeViewModel(misc, owner);
 
         Assert.True(IsLegal(stuffVm, miscVm));
-        ModListDropRules.ExecuteContentDrop([stuffVm], miscVm);
+        _rules.ExecuteContentDrop([stuffVm], miscVm);
 
         Assert.True(File.Exists(Path.Combine(ModDir("ModA"), "misc", "stuff", "inner.txt")));
         Assert.False(Directory.Exists(Path.Combine(ModDir("ModA"), "stuff")));
@@ -154,7 +155,7 @@ public class ModListDropRulesTests : IDisposable
         var stuffVm = new DirectoryNodeViewModel(stuff, owner);
 
         Assert.True(IsLegal(stuffVm, owner));
-        var affected = ModListDropRules.ExecuteContentDrop([stuffVm], owner);
+        var affected = _rules.ExecuteContentDrop([stuffVm], owner);
 
         Assert.True(File.Exists(Path.Combine(ModDir("ModA"), "a.txt")));
         Assert.True(File.Exists(Path.Combine(ModDir("ModA"), "b.txt")));
@@ -172,7 +173,7 @@ public class ModListDropRulesTests : IDisposable
         var stuffVm = new DirectoryNodeViewModel(stuff, ownerA);
 
         Assert.True(IsLegal(stuffVm, ownerB));
-        var affected = ModListDropRules.ExecuteContentDrop([stuffVm], ownerB);
+        var affected = _rules.ExecuteContentDrop([stuffVm], ownerB);
 
         Assert.True(File.Exists(Path.Combine(ModDir("ModB"), "stuff", "inner.txt")));
         Assert.False(Directory.Exists(Path.Combine(ModDir("ModA"), "stuff")));
@@ -190,7 +191,7 @@ public class ModListDropRulesTests : IDisposable
         var fileVm = new FileLeafNodeViewModel(file, ownerA);
 
         Assert.True(IsLegal(fileVm, ownerB));
-        ModListDropRules.ExecuteContentDrop([fileVm], ownerB);
+        _rules.ExecuteContentDrop([fileVm], ownerB);
 
         Assert.True(File.Exists(Path.Combine(ModDir("ModB"), "a.txt")));
         Assert.False(File.Exists(Path.Combine(ModDir("ModA"), "a.txt")));
@@ -205,7 +206,7 @@ public class ModListDropRulesTests : IDisposable
         var fileVm = new FileLeafNodeViewModel(file, owner);
 
         Assert.True(IsLegal(fileVm, owner));
-        ModListDropRules.ExecuteContentDrop([fileVm], owner);
+        _rules.ExecuteContentDrop([fileVm], owner);
 
         Assert.True(File.Exists(Path.Combine(ModDir("ModA"), "a.txt")));
         Assert.False(File.Exists(Path.Combine(ModDir("ModA"), "stuff", "a.txt")));
@@ -303,7 +304,7 @@ public class ModListDropRulesTests : IDisposable
 
         Assert.True(archiveVm.IsDiskBacked);
         Assert.True(IsLegal(archiveVm, folderVm));
-        ModListDropRules.ExecuteContentDrop([archiveVm], folderVm);
+        _rules.ExecuteContentDrop([archiveVm], folderVm);
 
         Assert.True(File.Exists(Path.Combine(ModDir("ModA"), "stuff", "pack.zip")));
     }
@@ -318,7 +319,7 @@ public class ModListDropRulesTests : IDisposable
         var folderVm = new DirectoryNodeViewModel(folder, owner);
 
         Assert.False(
-            ModListDropRules.IsLegal(
+            _rules.IsLegal(
                 [fileVm],
                 folderVm,
                 null,
@@ -338,7 +339,7 @@ public class ModListDropRulesTests : IDisposable
         var folderVm = new DirectoryNodeViewModel(folder, owner);
 
         Assert.False(
-            ModListDropRules.IsLegal(
+            _rules.IsLegal(
                 [fileVm],
                 folderVm,
                 null,

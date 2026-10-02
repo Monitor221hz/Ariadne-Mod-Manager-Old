@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
+using Ariadne.Contracts.ModManager;
 using Ariadne.ModManager.GUI.ViewModels;
 using Avalonia.Controls;
 using Avalonia.Controls.DataGridDragDrop;
@@ -12,6 +13,7 @@ using ReactiveUI;
 namespace Ariadne.ModManager.GUI.DragDrop;
 
 public sealed class ModListRowDropHandler(
+    IContentMoveService contentMoves,
     Func<bool> isSorted,
     Func<bool> isReadOnly,
     Func<IList<TreeNodeViewModel>> getRoots,
@@ -19,6 +21,7 @@ public sealed class ModListRowDropHandler(
 ) : IDataGridRowDropHandler
 {
     private readonly DataGridHierarchicalRowReorderHandler _reorder = new();
+    private readonly ModListDropRules _rules = new(contentMoves);
 
     public bool Validate(DataGridRowDropEventArgs args)
     {
@@ -41,13 +44,7 @@ public sealed class ModListRowDropHandler(
         if (
             dragged.Count == 0
             || dragged.Any(node => node is null)
-            || !ModListDropRules.IsLegal(
-                dragged!,
-                target,
-                targetParent,
-                args.Position,
-                args.RequestedEffect
-            )
+            || !_rules.IsLegal(dragged!, target, targetParent, args.Position, args.RequestedEffect)
         )
         {
             args.EffectiveEffect = DragDropEffects.None;
@@ -155,7 +152,7 @@ public sealed class ModListRowDropHandler(
         {
             return false;
         }
-        var affected = ModListDropRules.ExecuteContentDrop(dragged, target);
+        var affected = _rules.ExecuteContentDrop(dragged, target);
         if (affected.Count == 0)
         {
             return false;

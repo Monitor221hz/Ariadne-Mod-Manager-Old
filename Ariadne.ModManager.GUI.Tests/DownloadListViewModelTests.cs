@@ -404,6 +404,23 @@ public class DownloadListViewModelTests : IDisposable
         public bool Succeed = true;
         public TaskCompletionSource? Gate;
 
+        public Task<ILibraryMod?> InstallDownloadAsync(
+            FileInfo archive,
+            IGamePath? target = null,
+            CancellationToken cancellationToken = default
+        )
+        {
+            return InstallAsync(
+                Path.GetFileNameWithoutExtension(archive.Name),
+                null,
+                archive,
+                null,
+                InstallType.Replace,
+                target,
+                cancellationToken
+            );
+        }
+
         public Task<ILibraryMod?> InstallAsync(
             string name,
             string? version,
@@ -724,57 +741,6 @@ public class DownloadListViewModelTests : IDisposable
             Assert.True(row.InstallFailed);
             Assert.Equal("Install failed", row.StatusText);
             Assert.Empty(installed);
-        }
-    }
-
-    [Fact]
-    public async Task InstallCommand_UsesManifestNameAndVersion()
-    {
-        var (queue, viewModel, installer, installed) = CreateInstallViewModel();
-        using (viewModel)
-        {
-            var row = AddCompletedRowViaQueue(viewModel, queue, "archive.7z");
-            DownloadManifestStore.Write(
-                row.Job.Destination,
-                new DownloadManifest
-                {
-                    Repository = "nxm",
-                    ModId = 12604,
-                    FileId = 360415,
-                    Version = "6.1",
-                    FileName = "SkyUI-12604-6-11-1778020881.zip",
-                    DownloadedUtc = DateTimeOffset.UtcNow,
-                }
-            );
-
-            await row.InstallCommand.Execute().ToTask();
-
-            Assert.Equal("SkyUI-12604-6-11-1778020881", installer.LastName);
-            Assert.Equal("6.1", installer.LastVersion);
-            Assert.Equal(new ModID(12604, SourceType.NexusMods), installer.LastProvenanceId);
-        }
-    }
-
-    [Fact]
-    public async Task InstallCommand_ModlManifest_MapsToModPubSource()
-    {
-        var (queue, viewModel, installer, installed) = CreateInstallViewModel();
-        using (viewModel)
-        {
-            var row = AddCompletedRowViaQueue(viewModel, queue, "My Mod.7z");
-            DownloadManifestStore.Write(
-                row.Job.Destination,
-                new DownloadManifest
-                {
-                    Repository = "modl",
-                    ModId = null,
-                    DownloadedUtc = DateTimeOffset.UtcNow,
-                }
-            );
-
-            await row.InstallCommand.Execute().ToTask();
-
-            Assert.Null(installer.LastProvenanceId);
         }
     }
 

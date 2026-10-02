@@ -10,6 +10,9 @@ public interface IProfileService
 
     IModProfile Create(string name);
 
+    bool IsValidName(string name) =>
+        !string.IsNullOrWhiteSpace(name) && name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0;
+
     IModProfile ActivateLatestOrDefault();
 
     IModProfile Switch(string name);

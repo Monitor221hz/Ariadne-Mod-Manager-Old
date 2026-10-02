@@ -1,10 +1,11 @@
 using System.Globalization;
+using Ariadne.Contracts.ModManager;
+using Ariadne.ModManager.GUI.ViewModels;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.DataGridHierarchical;
 using Avalonia.Data.Converters;
 using Avalonia.Media;
-using Ariadne.ModManager.GUI.ViewModels;
 
 namespace Ariadne.ModManager.GUI.Converters;
 

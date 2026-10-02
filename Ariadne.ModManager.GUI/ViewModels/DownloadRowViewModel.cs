@@ -53,22 +53,7 @@ public sealed class DownloadRowViewModel : ViewModelBase
 
     private void RemoveFiles()
     {
-        try
-        {
-            _job.Destination.Refresh();
-            if (_job.Destination.Exists)
-            {
-                _job.Destination.Delete();
-            }
-            var manifest = DownloadManifestStore.GetManifestPath(_job.Destination);
-            manifest.Refresh();
-            if (manifest.Exists)
-            {
-                manifest.Delete();
-            }
-        }
-        catch (IOException) { }
-        catch (UnauthorizedAccessException) { }
+        DownloadManifestStore.DeleteWithManifest(_job.Destination);
     }
 
     public DownloadJob Job => _job;

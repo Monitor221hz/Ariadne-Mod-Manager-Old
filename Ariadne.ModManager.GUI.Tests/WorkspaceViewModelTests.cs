@@ -138,13 +138,33 @@ public sealed class WorkspaceViewModelTests
 
     private sealed class NoEditor : IModProfileEditor
     {
-        public Task AddModAsync(IModProfile profile, DirectoryInfo folder) => Task.CompletedTask;
-
         public Task RemoveModAsync(IModProfile profile, ILibraryMod mod) => Task.CompletedTask;
 
-        public Task AddGroupAsync(IModProfile profile, IModGroup group) => Task.CompletedTask;
-
         public Task DissolveGroupAsync(IModProfile profile, IModGroup group) => Task.CompletedTask;
+
+        public bool TryAddMod(IModProfile profile, ILibraryMod mod)
+        {
+            var exists = profile.ModList.Any(entry =>
+                string.Equals(
+                    entry.Mod.Directory.FullName,
+                    mod.Directory.FullName,
+                    StringComparison.OrdinalIgnoreCase
+                )
+            );
+            if (exists)
+            {
+                return false;
+            }
+            profile.ModList.Add(new ModListEntry(mod, active: false));
+            return true;
+        }
+
+        public IModGroup CreateGroup(IModProfile profile)
+        {
+            var group = new ModGroup("New Group", []);
+            profile.ModList.ModGroups.Add(group);
+            return group;
+        }
     }
 
     private sealed class FakeModFactory : ILibraryModFactory

@@ -9,11 +9,11 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Reactive.Threading.Tasks;
 using Ariadne.Contracts.ModManager;
+using Ariadne.ModManager;
 using Ariadne.ModManager.Serialization;
 using Avalonia.Controls.DataGridDragDrop;
 using Avalonia.Controls.DataGridHierarchical;
 using Avalonia.Controls.DataGridSorting;
-using ByteSizeLib;
 using CP.Reactive.Collections;
 using ReactiveUI;
 using ReactiveUI.Avalonia;
@@ -27,10 +27,10 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
     private readonly IModProfile _profile;
     private readonly IModProfileSerializer _profileSerializer;
     private readonly ILibraryModSerializer _modSerializer;
-    private readonly IModManagerPaths _paths;
     private readonly IModProfileEditor _editor;
     private readonly IInstanceService _instanceService;
     private readonly ILibraryModFactory _modFactory;
+    private readonly IFileOpener _fileOpener;
     private CancellationTokenSource? _loadContentCts;
 
     private HierarchicalModel<TreeNodeViewModel>? _model;
@@ -130,7 +130,9 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
         IModManagerPaths paths,
         IModProfileEditor editor,
         IInstanceService instanceService,
-        IScheduler? syncScheduler = null
+        IScheduler? syncScheduler = null,
+        IFileOpener? fileOpener = null,
+        IContentMoveService? contentMoves = null
     )
     {
         TreeNodeViewModel
@@ -145,10 +147,10 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
         _profile = profile;
         _profileSerializer = profileSerializer;
         _modSerializer = modSerializer;
-        _paths = paths;
         _editor = editor;
         _instanceService = instanceService;
         _modFactory = modFactory;
+        _fileOpener = fileOpener ?? new ShellFileOpener();
 
         CreateModCommand = ReactiveCommand.CreateFromTask(
             CreateEmptyMod,
@@ -180,6 +182,7 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
                 _ = SyncDomainFromTreeAsync();
             });
         DropHandler = new DragDrop.ModListRowDropHandler(
+            contentMoves ?? new ContentMoveService(),
             () => SortActive,
             () => IsDeployed,
             () => _roots is null ? Array.Empty<TreeNodeViewModel>() : _roots,
@@ -274,22 +277,24 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
 
     public void RegisterMod(ILibraryMod mod)
     {
-        var existing = EnumerateModEntries()
-            .FirstOrDefault(entry =>
-                string.Equals(
-                    entry.Model.Directory.FullName,
-                    mod.Directory.FullName,
-                    StringComparison.OrdinalIgnoreCase
-                )
-            );
-        if (existing is not null)
+        if (!_editor.TryAddMod(_profile, mod))
         {
-            existing.Model.RefreshContent();
-            _structureChanged.OnNext(Unit.Default);
+            var existing = EnumerateModEntries()
+                .FirstOrDefault(entry =>
+                    string.Equals(
+                        entry.Model.Directory.FullName,
+                        mod.Directory.FullName,
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                );
+            if (existing is not null)
+            {
+                existing.Model.RefreshContent();
+                _structureChanged.OnNext(Unit.Default);
+            }
             return;
         }
 
-        _profile.ModList.Add(new ModListEntry(mod, active: false));
         _profileSerializer.Save(_profile);
         var vm = new ModEntryNodeViewModel(_profile.ModList.LooseMods[^1]);
         int insertAt = _roots!.TakeWhile(n => n is ModEntryNodeViewModel).Count();
@@ -301,9 +306,7 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
     private Task CreateEmptyMod() =>
         Task.Run(() =>
         {
-            var folder = UniqueModFolder(_paths.ModsFolder);
-            var mod = new LibraryMod(new ModInfo(0, SourceType.Local, "1.0.0", [], ""), folder, []);
-            folder.Create();
+            var mod = _modFactory.Create(new ModInfo(0, SourceType.Local, "1.0.0", [], ""));
             _modSerializer.Save(mod);
 
             Avalonia.Threading.Dispatcher.UIThread.Post(() => RegisterMod(mod));
@@ -311,56 +314,11 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
 
     private void CreateGroup()
     {
-        var baseName = "New Group";
-        var name = baseName;
-        var suffix = 2;
-        while (_profile.ModList.ModGroups.Any(group => group.Name == name))
-        {
-            name = $"{baseName} {suffix++}";
-        }
-        var group = new ModGroup(name, [], RandomHeaderColor());
-        _profile.ModList.ModGroups.Add(group);
+        var group = _editor.CreateGroup(_profile);
         _profileSerializer.Save(_profile);
         var groupVm = new GroupHeaderNodeViewModel(group);
         _roots!.Add(groupVm);
         HookGroupNode(groupVm);
-    }
-
-    private static DirectoryInfo UniqueModFolder(DirectoryInfo modsFolder)
-    {
-        var candidate = new DirectoryInfo(Path.Join(modsFolder.FullName, "New Mod"));
-        for (var i = 2; candidate.Exists; i++)
-        {
-            candidate = new DirectoryInfo(Path.Join(modsFolder.FullName, $"New Mod {i}"));
-        }
-        return candidate;
-    }
-
-    // wcag
-
-    private static System.Drawing.Color RandomHeaderColor()
-    {
-        for (var attempt = 0; attempt < 32; attempt++)
-        {
-            var color = System.Drawing.Color.FromArgb(
-                255,
-                Random.Shared.Next(40, 100),
-                Random.Shared.Next(40, 140),
-                Random.Shared.Next(40, 160)
-            );
-            if (RelativeLuminance(color.R, color.G, color.B) <= 0.17)
-            {
-                return color;
-            }
-        }
-        return System.Drawing.Color.FromArgb(255, 69, 71, 90);
-    }
-
-    private static double RelativeLuminance(byte r, byte g, byte b)
-    {
-        static double Linear(double c) =>
-            c <= 0.03928 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4);
-        return 0.2126 * Linear(r / 255.0) + 0.7152 * Linear(g / 255.0) + 0.0722 * Linear(b / 255.0);
     }
 
     private static IEnumerable<ModEntryNodeViewModel> FlattenEntries(TreeNodeViewModel node)
@@ -627,23 +585,10 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private async Task OpenFileNode(FileLeafNodeViewModel node)
+    private Task OpenFileNode(FileLeafNodeViewModel node)
     {
-        try
-        {
-            var processStartInfo = new ProcessStartInfo
-            {
-                FileName = node.AbsolutePath,
-                UseShellExecute = true,
-                WorkingDirectory = Path.GetDirectoryName(node.AbsolutePath),
-            };
-            Process.Start(processStartInfo);
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine(ex);
-        }
-        await Task.CompletedTask;
+        _fileOpener.OpenFile(node.AbsolutePath);
+        return Task.CompletedTask;
     }
 
     private async Task SyncDomainFromTreeAsync()

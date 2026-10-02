@@ -1,6 +1,7 @@
 using System.Reactive;
 using Ariadne.Contracts.Games;
 using Ariadne.Contracts.ModManager;
+using Ariadne.ModManager;
 using Ariadne.VFS;
 using Avalonia.Controls.DataGridHierarchical;
 using Avalonia.Controls.DataGridSorting;
@@ -11,18 +12,13 @@ namespace Ariadne.ModManager.GUI.ViewModels;
 
 public sealed class DeployedViewModel : ViewModelBase, IWorkspaceTab
 {
-    private sealed record DeployedTargetBucket(
-        string Display,
-        IGamePath? Path,
-        List<ILibraryMod> Mods
-    );
-
     private readonly IModProfile _profile;
     private readonly IInstanceService _instances;
+    private readonly IDeploymentPreviewService _preview;
     private Task? _initTask;
     private string _summaryTitle = "";
     private string? _selectedTarget;
-    private IReadOnlyList<DeployedTargetBucket> _buckets = [];
+    private IReadOnlyList<DeploymentTargetGroup> _buckets = [];
     private IReadOnlyList<DeployedRowViewModel> _rows = [];
 
     public string Title => "Deployed";
@@ -81,10 +77,15 @@ public sealed class DeployedViewModel : ViewModelBase, IWorkspaceTab
         }
     }
 
-    public DeployedViewModel(IModProfile profile, IInstanceService instances)
+    public DeployedViewModel(
+        IModProfile profile,
+        IInstanceService instances,
+        IDeploymentPreviewService? preview = null
+    )
     {
         _profile = profile;
         _instances = instances;
+        _preview = preview ?? new DeploymentPreviewService();
     }
 
     public Task EnsureInitializedAsync() => _initTask ??= InitializeAsync();
@@ -115,29 +116,17 @@ public sealed class DeployedViewModel : ViewModelBase, IWorkspaceTab
             .Select(entry => entry.Mod)
             .ToList();
 
-        var groupedRaw = mods.GroupBy(
-                m => (m.Info.Target ?? "").Trim('\\', '/'),
-                StringComparer.OrdinalIgnoreCase
-            )
-            .ToList();
-
-        var buckets = groupedRaw
-            .Select(group => new DeployedTargetBucket(
-                ResolveDisplayKey(group.Key, config),
-                ResolveGamePath(group.Key, config),
-                group.ToList()
-            ))
-            .ToList();
+        var buckets = _preview.GroupByTarget(mods, config);
 
         SummaryTitle =
             buckets.Count == 1 && buckets[0].Path is not null
-                ? $"{gameName}/{buckets[0].Display}"
+                ? $"{gameName}/{buckets[0].DisplayKey}"
                 : gameName;
 
-        TargetRoots = buckets.Select(b => b.Display).ToList();
+        TargetRoots = buckets.Select(b => b.DisplayKey).ToList();
         _buckets = buckets;
 
-        var stillExists = buckets.FirstOrDefault(b => b.Display == _selectedTarget);
+        var stillExists = buckets.FirstOrDefault(b => b.DisplayKey == _selectedTarget);
         if (initialized || stillExists is null)
         {
             var preferred = buckets.FirstOrDefault(b =>
@@ -146,44 +135,15 @@ public sealed class DeployedViewModel : ViewModelBase, IWorkspaceTab
                     t.Key.Equals(pp.Key, StringComparison.OrdinalIgnoreCase)
                 ) == true
             );
-            SelectedTarget = preferred?.Display ?? (TargetRoots.Count > 0 ? TargetRoots[0] : null);
+            SelectedTarget =
+                preferred?.DisplayKey ?? (TargetRoots.Count > 0 ? TargetRoots[0] : null);
         }
         RebuildRows();
     }
 
-    private static string ResolveDisplayKey(string rawTarget, ISupportedGame? config)
-    {
-        if (string.IsNullOrEmpty(rawTarget))
-        {
-            return config?.InstallTargets.FirstOrDefault(t => t.DirectoryPath.Length == 0)?.Key
-                ?? "Root";
-        }
-        return
-            config?.InstallTargets.FirstOrDefault(t =>
-                t.Key.Equals(rawTarget, StringComparison.OrdinalIgnoreCase)
-                || t.DirectoryPath.Equals(rawTarget, StringComparison.OrdinalIgnoreCase)
-            )
-                is { } targ
-            ? targ.Key
-            : $"<unresolved: {rawTarget}>";
-    }
-
-    private static IGamePath? ResolveGamePath(string rawTarget, ISupportedGame? config)
-    {
-        if (string.IsNullOrEmpty(rawTarget))
-        {
-            return config?.InstallTargets.FirstOrDefault(t => t.DirectoryPath.Length == 0)
-                ?? config?.Root;
-        }
-        return config?.InstallTargets.FirstOrDefault(t =>
-            t.Key.Equals(rawTarget, StringComparison.OrdinalIgnoreCase)
-            || t.DirectoryPath.Equals(rawTarget, StringComparison.OrdinalIgnoreCase)
-        );
-    }
-
     private void RebuildRows()
     {
-        var selected = _buckets.FirstOrDefault(b => b.Display == _selectedTarget);
+        var selected = _buckets.FirstOrDefault(b => b.DisplayKey == _selectedTarget);
         if (selected is null)
         {
             Rows = [];
@@ -192,37 +152,10 @@ public sealed class DeployedViewModel : ViewModelBase, IWorkspaceTab
         Rows = ComputeRows(selected);
     }
 
-    private List<DeployedRowViewModel> ComputeRows(DeployedTargetBucket bucket)
+    private List<DeployedRowViewModel> ComputeRows(DeploymentTargetGroup bucket)
     {
-        var mods = bucket.Mods;
-
-        var merged = new VirtualNode<ModFileEntry>("", NodeFlags.Directory, null, null);
-        var namesByInfo = mods.ToDictionary(m => m.Info, m => m.Name);
-
-        foreach (var mod in mods)
-        {
-            var content = mod.Content;
-            var stack = new Stack<(VirtualNode<ModFileEntry> Node, string Prefix)>();
-            stack.Push((content, ""));
-            while (stack.Count > 0)
-            {
-                var (node, prefix) = stack.Pop();
-                foreach (var child in node.Children)
-                {
-                    var relative = prefix.Length == 0 ? child.Name : prefix + "\\" + child.Name;
-                    if (child.Data is not null)
-                    {
-                        merged.AddFile(
-                            relative,
-                            child.Data,
-                            child.IsDirectory ? NodeFlags.Directory : NodeFlags.None
-                        );
-                    }
-                    stack.Push((child, relative));
-                }
-            }
-        }
-
+        var merged = _preview.MergeContent(bucket.Mods);
+        var namesByInfo = bucket.Mods.ToDictionary(m => m.Info, m => m.Name);
         return BuildRows(merged, namesByInfo);
     }
 
@@ -235,7 +168,7 @@ public sealed class DeployedViewModel : ViewModelBase, IWorkspaceTab
         foreach (var child in node.Children)
         {
             var children = child.IsDirectory ? BuildRows(child, namesByInfo) : [];
-            var entry = child.Data is not null ? child.Data : CreateDirectoryEntry(child.Name);
+            var entry = child.Data!;
             var origin =
                 entry.Origin is not null && namesByInfo.TryGetValue(entry.Origin, out var who)
                     ? who
@@ -243,23 +176,5 @@ public sealed class DeployedViewModel : ViewModelBase, IWorkspaceTab
             result.Add(new DeployedRowViewModel(child.Name, entry, origin, children));
         }
         return result;
-    }
-
-    private static ModFileEntry CreateDirectoryEntry(string name) =>
-        new(name, ModEntryKind.Directory, DirectoryOrigin.Value, "", 0, DateTimeOffset.MinValue);
-}
-
-file static class DirectoryOrigin
-{
-    public static readonly IModInfo Value = new PlaceholderModInfo();
-
-    private sealed class PlaceholderModInfo : IModInfo
-    {
-        public ModID ID => new(0, SourceType.Local);
-        public string Version => "";
-        public List<string> Categories => [];
-        public string Target { get; set; } = "";
-        public uint Priority { get; set; }
-        public bool Active { get; set; }
     }
 }

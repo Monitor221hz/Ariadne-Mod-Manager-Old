@@ -5,8 +5,8 @@ using System.Reactive.Linq;
 using Ariadne.Contracts.Games;
 using Ariadne.Contracts.ModManager;
 using Ariadne.Downloads;
+using Ariadne.ModManager;
 using Ariadne.ModManager.Serialization;
-using Avalonia.Controls.ApplicationLifetimes;
 using ReactiveUI;
 
 namespace Ariadne.ModManager.GUI.ViewModels;
@@ -27,6 +27,13 @@ public class MainViewModel : ViewModelBase
     private readonly IDeploymentService? _deploymentService;
     private readonly ILaunchTargetService? _launchTargetService;
     private readonly IProfileService? _profiles;
+    private readonly ILibraryImportService? _imports;
+    private readonly IIconProvider _icons = new ShellIconProvider();
+    private readonly IAppLifecycleService _appLifecycle = new AppLifecycleService();
+    private readonly IFileOpener? _fileOpener;
+    private readonly IContentMoveService? _contentMoves;
+    private readonly IConflictAnalysisService? _conflicts;
+    private readonly IDeploymentPreviewService? _deploymentPreview;
 
     private object? _currentViewModel;
     private ProfileViewModel? _activeProfile;
@@ -160,7 +167,14 @@ public class MainViewModel : ViewModelBase
         IModInstallService? installService = null,
         IDeploymentService? deploymentService = null,
         ILaunchTargetService? launchTargetService = null,
-        IProfileService? profiles = null
+        IProfileService? profiles = null,
+        ILibraryImportService? imports = null,
+        IIconProvider? icons = null,
+        IAppLifecycleService? appLifecycle = null,
+        IFileOpener? fileOpener = null,
+        IContentMoveService? contentMoves = null,
+        IConflictAnalysisService? conflicts = null,
+        IDeploymentPreviewService? deploymentPreview = null
     )
     {
         _profileSerializer = profileSerializer;
@@ -177,6 +191,13 @@ public class MainViewModel : ViewModelBase
         _deploymentService = deploymentService;
         _launchTargetService = launchTargetService;
         _profiles = profiles;
+        _imports = imports ?? new LibraryImportService(paths, modSerializer);
+        _icons = icons ?? new ShellIconProvider();
+        _appLifecycle = appLifecycle ?? new AppLifecycleService();
+        _fileOpener = fileOpener;
+        _contentMoves = contentMoves;
+        _conflicts = conflicts;
+        _deploymentPreview = deploymentPreview;
 
         foreach (var theme in AppTheme.All)
         {
@@ -283,39 +304,12 @@ public class MainViewModel : ViewModelBase
             TrayItems.Add(
                 new LaunchTargetItemViewModel(
                     target.Name,
-                    ExtractIcon(target.AbsolutePath),
+                    _icons.ExtractIcon(target.AbsolutePath),
                     ReactiveCommand.Create(() => _launchTargetService.Launch(target))
                 )
             );
         }
         this.RaisePropertyChanged(nameof(HasTrayItems));
-    }
-
-    private static Avalonia.Media.Imaging.Bitmap? ExtractIcon(string path)
-    {
-        try
-        {
-            using var icon = System.Drawing.Icon.ExtractAssociatedIcon(path);
-            if (icon is null)
-            {
-                return null;
-            }
-            using var bitmap = icon.ToBitmap();
-            var stream = new MemoryStream();
-            bitmap.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
-            stream.Position = 0;
-            return new Avalonia.Media.Imaging.Bitmap(stream);
-        }
-        catch (Exception ex)
-            when (ex
-                    is IOException
-                        or InvalidOperationException
-                        or ArgumentException
-                        or PlatformNotSupportedException
-            )
-        {
-            return null;
-        }
     }
 
     public SourcesMenuViewModel? Sources { get; }
@@ -383,7 +377,11 @@ public class MainViewModel : ViewModelBase
             _instances!,
             _downloads,
             _installService,
-            _deploymentService
+            _deploymentService,
+            conflicts: _conflicts,
+            deploymentPreview: _deploymentPreview,
+            fileOpener: _fileOpener,
+            contentMoves: _contentMoves
         );
         CurrentViewModel = viewModel;
         if (_sidePanelTabTitle is not null)
@@ -456,45 +454,20 @@ public class MainViewModel : ViewModelBase
             Debug.WriteLine(ex);
             return;
         }
-        var activeMods = _profiles.Active.ModList;
-        foreach (var entry in source.ModList)
+        foreach (var mod in _imports!.FindMissingMods(_profiles.Active, source))
         {
-            if (activeMods.Contains(entry.Mod))
-            {
-                continue;
-            }
-            ActiveModList.RegisterMod(entry.Mod);
+            ActiveModList.RegisterMod(mod);
         }
     }
 
     private void ImportFromDisk()
     {
-        if (_paths is null || _modSerializer is null || ActiveModList is null)
+        if (_imports is null || ActiveModList is null)
         {
             return;
         }
-        var modsFolder = _paths.ModsFolder;
-        modsFolder.Refresh();
-        if (!modsFolder.Exists)
+        foreach (var mod in _imports.ScanLibrary())
         {
-            return;
-        }
-        foreach (var folder in modsFolder.EnumerateDirectories())
-        {
-            ILibraryMod mod;
-            try
-            {
-                mod = _modSerializer.Load(folder);
-            }
-            catch (Exception ex)
-                when (ex
-                        is IOException
-                            or UnauthorizedAccessException
-                            or System.Text.Json.JsonException
-                )
-            {
-                continue;
-            }
             ActiveModList.RegisterMod(mod);
         }
     }
@@ -534,7 +507,7 @@ public class MainViewModel : ViewModelBase
         }
         var name = await AskProfileName.Handle(Unit.Default);
         name = name?.Trim();
-        if (string.IsNullOrEmpty(name) || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+        if (name is null || !_profiles.IsValidName(name))
         {
             return;
         }
@@ -594,7 +567,7 @@ public class MainViewModel : ViewModelBase
             return;
         }
         _instances.Switch(name);
-        RestartApplication();
+        _appLifecycle.Restart();
     }
 
     private async Task RemoveInstanceAsync(string name)
@@ -617,20 +590,8 @@ public class MainViewModel : ViewModelBase
         SaveActiveProfile();
     }
 
-    private static void Quit()
+    private void Quit()
     {
-        if (
-            Avalonia.Application.Current?.ApplicationLifetime
-            is IClassicDesktopStyleApplicationLifetime desktop
-        )
-        {
-            desktop.Shutdown();
-        }
-    }
-
-    private static void RestartApplication()
-    {
-        Process.Start(Environment.ProcessPath!);
-        Quit();
+        _appLifecycle.Quit();
     }
 }

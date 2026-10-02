@@ -8,19 +8,12 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using Ariadne.Contracts.ModManager;
 using Ariadne.Downloads;
-using Ariadne.VFS;
-using Avalonia.Threading;
+using Ariadne.ModManager;
 using CP.Reactive.Collections;
 using ReactiveUI;
 using ReactiveUI.Avalonia;
 
 namespace Ariadne.ModManager.GUI.ViewModels;
-
-public enum SelectedModVerdict
-{
-    LosesToSelected,
-    BeatsSelected,
-}
 
 public interface IWorkspaceTab
 {
@@ -32,6 +25,7 @@ public sealed class WorkspaceViewModel : ViewModelBase, IDisposable
 {
     private readonly IModProfile _profile;
     private readonly IDeploymentService? _deploymentService;
+    private readonly IConflictAnalysisService _conflicts;
     private readonly IDisposable[] _tabLifetime;
     private readonly LoadOrderViewModel _loadOrderTab;
     private readonly DeployedViewModel _deployedTab;
@@ -84,11 +78,16 @@ public sealed class WorkspaceViewModel : ViewModelBase, IDisposable
         IDownloadQueue? downloads = null,
         IModInstallService? installService = null,
         IDeploymentService? deploymentService = null,
-        IScheduler? notifyScheduler = null
+        IScheduler? notifyScheduler = null,
+        IConflictAnalysisService? conflicts = null,
+        IDeploymentPreviewService? deploymentPreview = null,
+        IFileOpener? fileOpener = null,
+        IContentMoveService? contentMoves = null
     )
     {
         _profile = profile;
         _deploymentService = deploymentService;
+        _conflicts = conflicts ?? new ConflictAnalysisService();
         ModList = new ModListViewModel(
             profile,
             modFactory,
@@ -97,10 +96,12 @@ public sealed class WorkspaceViewModel : ViewModelBase, IDisposable
             paths,
             editor,
             instances,
-            notifyScheduler
+            notifyScheduler,
+            fileOpener,
+            contentMoves
         );
         _loadOrderTab = new LoadOrderViewModel(profile, loadOrderBuilder, instances);
-        _deployedTab = new DeployedViewModel(profile, instances);
+        _deployedTab = new DeployedViewModel(profile, instances, deploymentPreview);
         if (downloads is not null)
         {
             _downloadTab = new DownloadListViewModel(
@@ -371,37 +372,11 @@ public sealed class WorkspaceViewModel : ViewModelBase, IDisposable
         {
             return Task.FromResult(EmptyVerdicts);
         }
-        var mods = _profile
-            .ModList.Where(entry => entry.Active)
-            .Select(entry => entry.Mod)
-            .ToList();
-        int focusIndex = mods.IndexOf(selected);
-        if (focusIndex < 0 || mods.Count < 2)
-        {
-            return Task.FromResult(EmptyVerdicts);
-        }
         return Task.Run<IReadOnlyDictionary<ILibraryMod, SelectedModVerdict>>(() =>
         {
             try
             {
-                var trees = mods.Select(m => m.Content).ToList();
-                var conflicts = ConflictMapper<ModFileEntry>.MapConflictsFor(trees, focusIndex);
-                var result = new Dictionary<ILibraryMod, SelectedModVerdict>();
-                foreach (var conflict in conflicts)
-                {
-                    foreach (var provider in conflict.Providers)
-                    {
-                        if (provider.Index == focusIndex)
-                        {
-                            continue;
-                        }
-                        result[mods[provider.Index]] =
-                            provider.Index < focusIndex
-                                ? SelectedModVerdict.LosesToSelected
-                                : SelectedModVerdict.BeatsSelected;
-                    }
-                }
-                return result;
+                return _conflicts.ComputeVerdicts(_profile, selected);
             }
             catch (Exception ex)
             {

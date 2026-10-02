@@ -35,6 +35,17 @@ public interface IInstanceService
         return true;
     }
 
+    string SuggestInstanceName(string baseName = "Default")
+    {
+        var name = baseName;
+        var suffix = 2;
+        while (Instances.Keys.Contains(name, StringComparer.OrdinalIgnoreCase))
+        {
+            name = $"{baseName} {suffix++}";
+        }
+        return name;
+    }
+
     DirectoryInfo Create(string name, DirectoryInfo folder, IInstalledGame game);
     void Switch(string name);
 

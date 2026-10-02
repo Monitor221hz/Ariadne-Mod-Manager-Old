@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Reactive;
 using System.Reactive.Linq;
-using Ariadne.Security;
 using Ariadne.WebProtocol.Modl;
 using Ariadne.WebProtocol.Nexus;
 using ReactiveUI;
@@ -10,15 +9,12 @@ namespace Ariadne.ModManager.GUI.ViewModels;
 
 public sealed class SourcesMenuViewModel : ViewModelBase
 {
-    public const string DevKeyEnvironmentVariable = "ARIADNE_NEXUS_API_KEY";
-    private const string ApiKeySecretName = "nexus-api-key";
+    public const string DevKeyEnvironmentVariable = NexusAccountService.DevKeyEnvironmentVariable;
 
     private readonly INxmProtocolRegistration? _nxmRegistration;
     private readonly IModlProtocolRegistration? _modlRegistration;
     private readonly INexusSsoSessionFactory? _ssoSessions;
-    private readonly INexusAccountClient? _accountClient;
-    private readonly INexusAccountCache? _accountCache;
-    private readonly ISecretStore? _secrets;
+    private readonly INexusAccountService? _accounts;
     private readonly IUrlLauncher? _urlLauncher;
 
     private CancellationTokenSource? _signInCancellation;
@@ -56,19 +52,15 @@ public sealed class SourcesMenuViewModel : ViewModelBase
         INxmProtocolRegistration nxmRegistration,
         IModlProtocolRegistration modlRegistration,
         INexusSsoSessionFactory ssoSessions,
-        INexusAccountClient accountClient,
-        ISecretStore secrets,
         IUrlLauncher urlLauncher,
-        INexusAccountCache accountCache
+        INexusAccountService accounts
     )
     {
         _nxmRegistration = nxmRegistration;
         _modlRegistration = modlRegistration;
         _ssoSessions = ssoSessions;
-        _accountClient = accountClient;
-        _secrets = secrets;
         _urlLauncher = urlLauncher;
-        _accountCache = accountCache;
+        _accounts = accounts;
 
         AssociationSupported = OperatingSystem.IsWindows();
 
@@ -325,7 +317,7 @@ public sealed class SourcesMenuViewModel : ViewModelBase
 
     private async Task SignInAsync()
     {
-        if (_ssoSessions is null || _secrets is null || _urlLauncher is null)
+        if (_ssoSessions is null || _accounts is null || _urlLauncher is null)
         {
             return;
         }
@@ -360,7 +352,7 @@ public sealed class SourcesMenuViewModel : ViewModelBase
                 return;
             }
 
-            await _secrets.SetAsync(ApiKeySecretName, result.ApiKey!, cancellation.Token);
+            await _accounts.StoreApiKeyAsync(result.ApiKey!, cancellation.Token);
             await RefreshAccountAsync(cancellation.Token);
         }
         catch (OperationCanceledException)
@@ -377,83 +369,51 @@ public sealed class SourcesMenuViewModel : ViewModelBase
 
     private async Task SignOutAsync()
     {
-        if (_secrets is null)
+        if (_accounts is null)
         {
             return;
         }
 
-        await _secrets.DeleteAsync(ApiKeySecretName);
-        _accountCache?.Clear();
-        if (UsingEnvironmentKey)
+        var snapshot = await _accounts.SignOutAsync();
+        ApplySnapshot(snapshot);
+        if (snapshot.UsingDevKey)
         {
             StatusText =
                 $"A development API key is active via the {DevKeyEnvironmentVariable} environment variable; it remains in effect until the variable is unset.";
-            return;
         }
-        SignedIn = false;
-        AccountStatusText = "Not signed in";
     }
 
     private async Task RefreshAccountAsync(CancellationToken cancellationToken)
     {
-        if (_secrets is null || _accountClient is null || _accountCache is null)
+        if (_accounts is null)
         {
             return;
         }
 
-        var apiKey = GetEnvironmentApiKey();
-        UsingEnvironmentKey = apiKey is not null;
-        apiKey ??= await _secrets.GetAsync(ApiKeySecretName, cancellationToken);
-        if (apiKey is null)
-        {
-            _accountCache.Clear();
-            SignedIn = false;
-            AccountStatusText = "Not signed in";
-            return;
-        }
+        ApplySnapshot(await _accounts.RefreshAsync(cancellationToken));
+    }
 
-        var account = _accountCache.Read(apiKey);
-        if (account is null)
-        {
-            account = await _accountClient.ValidateAsync(apiKey, cancellationToken);
-            if (account is null)
-            {
-                if (!UsingEnvironmentKey)
-                {
-                    await _secrets.DeleteAsync(ApiKeySecretName, cancellationToken);
-                    StatusText = "Stored Nexus Mods API key was rejected; please sign in again.";
-                }
-                else
-                {
-                    StatusText =
-                        $"The development API key in {DevKeyEnvironmentVariable} was rejected by Nexus Mods.";
-                }
-                _accountCache.Clear();
-                SignedIn = false;
-                AccountStatusText = "Not signed in";
-                return;
-            }
-            _accountCache.Write(apiKey, account);
-        }
-
-        SignedIn = true;
-        AccountStatusText = account.IsPremium
-            ? $"Signed in as {account.Name} (Premium)"
-            : $"Signed in as {account.Name}";
-        if (UsingEnvironmentKey)
+    private void ApplySnapshot(NexusAccountSnapshot snapshot)
+    {
+        UsingEnvironmentKey = snapshot.UsingDevKey;
+        SignedIn = snapshot.SignedIn;
+        AccountStatusText = snapshot.Account is { } account
+            ? account.IsPremium
+                ? $"Signed in as {account.Name} (Premium)"
+                : $"Signed in as {account.Name}"
+            : "Not signed in";
+        if (snapshot.Account is not null && snapshot.UsingDevKey)
         {
             AccountStatusText += " - dev key";
         }
-    }
-
-    private static string? GetEnvironmentApiKey()
-    {
-#if DEBUG
-        var key = Environment.GetEnvironmentVariable(DevKeyEnvironmentVariable);
-        return string.IsNullOrWhiteSpace(key) ? null : key;
-#else
-        return null;
-#endif
+        StatusText = snapshot.Failure switch
+        {
+            NexusCredentialFailure.StoredKeyRejected =>
+                "Stored Nexus Mods API key was rejected; please sign in again.",
+            NexusCredentialFailure.DevKeyRejected =>
+                $"The development API key in {DevKeyEnvironmentVariable} was rejected by Nexus Mods.",
+            _ => StatusText,
+        };
     }
 
     private void OpenDefaultAppsSettings()

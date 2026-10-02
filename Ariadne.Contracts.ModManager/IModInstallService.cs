@@ -17,4 +17,10 @@ public interface IModInstallService
         IGamePath? target = null,
         CancellationToken cancellationToken = default
     );
+
+    Task<ILibraryMod?> InstallDownloadAsync(
+        FileInfo archive,
+        IGamePath? target = null,
+        CancellationToken cancellationToken = default
+    );
 }

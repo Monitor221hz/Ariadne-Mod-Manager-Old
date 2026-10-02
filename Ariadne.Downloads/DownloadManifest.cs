@@ -64,6 +64,26 @@ public static class DownloadManifestStore
         File.WriteAllText(path.FullName, json);
     }
 
+    public static void DeleteWithManifest(FileInfo downloaded)
+    {
+        try
+        {
+            downloaded.Refresh();
+            if (downloaded.Exists)
+            {
+                downloaded.Delete();
+            }
+            var manifest = GetManifestPath(downloaded);
+            manifest.Refresh();
+            if (manifest.Exists)
+            {
+                manifest.Delete();
+            }
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+    }
+
     public static DownloadManifest? TryRead(FileInfo downloaded)
     {
         var path = GetManifestPath(downloaded);

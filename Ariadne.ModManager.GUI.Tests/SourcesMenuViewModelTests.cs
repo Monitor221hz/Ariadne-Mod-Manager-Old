@@ -256,10 +256,8 @@ public class SourcesMenuViewModelTests
                 Nxm,
                 Modl,
                 Sso,
-                Accounts,
-                Secrets,
                 Launcher,
-                AccountCache
+                new NexusAccountService(Secrets, Accounts, AccountCache)
             );
         }
 
