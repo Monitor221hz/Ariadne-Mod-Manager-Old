@@ -323,7 +323,8 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
         var group = _editor.CreateGroup(_profile);
         _profileSerializer.Save(_profile);
         var groupVm = new GroupHeaderNodeViewModel(group);
-        _roots!.Add(groupVm);
+        var overwriteIndex = OverwriteNode is not null ? _roots!.IndexOf(OverwriteNode) : -1;
+        _roots!.Insert(overwriteIndex >= 0 ? overwriteIndex : _roots.Count, groupVm);
         HookGroupNode(groupVm);
     }
 

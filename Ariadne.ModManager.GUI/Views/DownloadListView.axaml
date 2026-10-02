@@ -6,8 +6,8 @@
              x:Class="Ariadne.ModManager.GUI.Views.DownloadListView"
              x:DataType="vm:DownloadListViewModel">
 
-    <DockPanel>
-        <Border DockPanel.Dock="Top"
+    <Grid RowDefinitions="Auto,*">
+        <Border Grid.Row="0"
                 Background="{DynamicResource AriadneToolbarBackground}"
                 BorderBrush="{DynamicResource AriadneToolbarBorder}"
                 BorderThickness="0,0,0,1"
@@ -17,13 +17,8 @@
                        Text="{Binding SummaryText}" />
         </Border>
 
-        <TextBlock Text="No downloads yet"
-                   Foreground="{DynamicResource FgDimmedBrush}"
-                   HorizontalAlignment="Center"
-                   VerticalAlignment="Center"
-                   IsVisible="{Binding HasRows, Converter={x:Static dc:BoolConverters.Not}}" />
-
-        <ScrollViewer>
+        <ScrollViewer Grid.Row="1"
+                      IsVisible="{Binding HasRows}">
             <ListBox ItemsSource="{Binding Rows}">
                 <ListBox.Styles>
                     <Style Selector="ListBoxItem">
@@ -105,5 +100,12 @@
                 </ListBox.ItemTemplate>
             </ListBox>
         </ScrollViewer>
-    </DockPanel>
+
+        <TextBlock Grid.Row="1"
+                   Text="No downloads yet"
+                   Foreground="{DynamicResource FgDimmedBrush}"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   IsVisible="{Binding HasRows, Converter={x:Static dc:BoolConverters.Not}}" />
+    </Grid>
 </UserControl>
