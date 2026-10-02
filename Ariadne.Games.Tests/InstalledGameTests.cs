@@ -14,8 +14,6 @@ public class InstalledGameTests
         public string DirectoryPath => "FakeDir";
         public IReadOnlyList<string> Patterns => [];
 
-        public IReadOnlyCollection<string> Aliases => [];
-
         public int ResolveCount;
         public string Result = "initial";
 
@@ -35,8 +33,8 @@ public class InstalledGameTests
 
     private static InstalledGame CreateGame()
     {
-        var root = new GamePath("Root", "", [], []);
-        var data = new GamePath("Data", "Data", [], [], basedOn: "Root");
+        var root = new GamePath("Root", "", []);
+        var data = new GamePath("Data", "Data", [], basedOn: "Root");
         var config = new SupportedGame("Test Game", [], new VendorInfo(0, 0), root, [], [data]);
         return new InstalledGame(InstallPath, config);
     }

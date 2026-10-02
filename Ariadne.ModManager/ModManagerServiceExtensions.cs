@@ -36,7 +36,7 @@ public static class ModManagerServiceExtensions
         services.AddSingleton<ILibraryImportService, LibraryImportService>();
         services.AddSingleton<IArchiveExtractor, StandardArchiveExtractor>();
         services.AddSingleton<IModTargeter, QuickPatternModTargeter>();
-        services.AddSingleton<IModInstaller, AliasedModInstaller>();
+        services.AddSingleton<IModInstaller, StandardModInstaller>();
         services.AddSingleton<IModInstallService, ModInstallService>();
         services.AddSingleton<ILibraryModFactory, InstancedModFactory>(
             sp => new InstancedModFactory(

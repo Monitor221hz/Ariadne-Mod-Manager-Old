@@ -266,7 +266,7 @@ public class NexusLinkProcessorTests
                 "Skyrim Special Edition",
                 [],
                 new VendorInfo(0, 0),
-                new GamePath("Root", "", [], []),
+                new GamePath("Root", "", []),
                 [],
                 [],
                 new Dictionary<string, string> { [ProtocolSchemes.Nxm] = SkyrimNexusDomain }
@@ -393,7 +393,7 @@ public class NexusLinkProcessorTests
             "Oblivion",
             [],
             new VendorInfo(0, 0),
-            new GamePath("Root", "", [], []),
+            new GamePath("Root", "", []),
             [],
             [],
             new Dictionary<string, string> { [ProtocolSchemes.Nxm] = "oblivion" }

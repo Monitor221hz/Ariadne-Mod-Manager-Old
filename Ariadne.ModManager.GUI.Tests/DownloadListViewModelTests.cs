@@ -662,7 +662,7 @@ public class DownloadListViewModelTests : IDisposable
         var instances = new FakeInstances(
             new FakeGame(
                 new FakeGameConfiguration(
-                    [new GamePath("Data", "Data", [], []), new GamePath("Root", "", [], [])]
+                    [new GamePath("Data", "Data", []), new GamePath("Root", "", [])]
                 )
             )
         );
@@ -695,7 +695,7 @@ public class DownloadListViewModelTests : IDisposable
     [Fact]
     public void InstallToCommand_CanExecute_ForCompletedRow()
     {
-        var target = new GamePath("Data", "Data", [], []);
+        var target = new GamePath("Data", "Data", []);
         var instances = new FakeInstances(new FakeGame(new FakeGameConfiguration([target])));
         var (queue, viewModel, _, _) = CreateInstallViewModel(instances: instances);
         using (viewModel)
@@ -709,9 +709,9 @@ public class DownloadListViewModelTests : IDisposable
     [Fact]
     public async Task InstallToCommand_InstallsWithSelectedTarget()
     {
-        var target = new GamePath("Root", "", [], []);
+        var target = new GamePath("Root", "", []);
         var instances = new FakeInstances(
-            new FakeGame(new FakeGameConfiguration([new GamePath("Data", "Data", [], []), target]))
+            new FakeGame(new FakeGameConfiguration([new GamePath("Data", "Data", []), target]))
         );
         var (queue, viewModel, installer, installed) = CreateInstallViewModel(instances: instances);
         using (viewModel)

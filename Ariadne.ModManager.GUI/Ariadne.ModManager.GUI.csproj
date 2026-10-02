@@ -16,6 +16,7 @@
 
   <PropertyGroup>
     <AssemblyName>Ariadne</AssemblyName>
+    <ApplicationIcon>ariadne_icon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>

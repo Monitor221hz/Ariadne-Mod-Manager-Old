@@ -113,7 +113,6 @@ public sealed class ModInstallService : IModInstallService
                 {
                     if (target is null)
                     {
-                        _targeter.ApplyAliases(game.Configuration, mod);
                         target = _targeter.GetTarget(game.Configuration, mod);
                     }
                     mod.Info.Target = target.Key;

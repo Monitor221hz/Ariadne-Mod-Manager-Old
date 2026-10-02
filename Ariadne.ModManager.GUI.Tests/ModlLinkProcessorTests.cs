@@ -141,7 +141,7 @@ public class ModlLinkProcessorTests
                 "Skyrim Special Edition",
                 [],
                 new VendorInfo(0, 0),
-                new GamePath("Root", "", [], []),
+                new GamePath("Root", "", []),
                 [],
                 [],
                 new Dictionary<string, string> { [ProtocolSchemes.Modl] = SkyrimModlId }
@@ -219,7 +219,7 @@ public class ModlLinkProcessorTests
             "Oblivion",
             [],
             new VendorInfo(0, 0),
-            new GamePath("Root", "", [], []),
+            new GamePath("Root", "", []),
             [],
             [],
             new Dictionary<string, string> { [ProtocolSchemes.Modl] = SkyrimModlId }

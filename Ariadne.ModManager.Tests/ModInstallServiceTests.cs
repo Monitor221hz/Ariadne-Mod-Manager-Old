@@ -119,15 +119,12 @@ public class ModInstallServiceTests : IDisposable
 
         public FakeTargeter(string targetKey) => _targetKey = targetKey;
 
-        public int ApplyAliasesCalls { get; private set; }
         public int GetTargetCalls { get; private set; }
-
-        public void ApplyAliases(ISupportedGame game, ILibraryMod mod) => ApplyAliasesCalls++;
 
         public IGamePath GetTarget(ISupportedGame game, ILibraryMod mod)
         {
             GetTargetCalls++;
-            return new GamePath(_targetKey, _targetKey, [], []);
+            return new GamePath(_targetKey, _targetKey, []);
         }
     }
 
@@ -263,7 +260,7 @@ public class ModInstallServiceTests : IDisposable
         var targeter = new FakeTargeter("Data");
         var serializer = new FakeSerializer();
         var service = CreateService(extractor, [installer], targeter, serializer);
-        var explicitTarget = new GamePath("Meshes", "Meshes", [], []);
+        var explicitTarget = new GamePath("Meshes", "Meshes", []);
 
         var mod = await service.InstallAsync(
             "SkyUI",
@@ -274,7 +271,6 @@ public class ModInstallServiceTests : IDisposable
 
         Assert.NotNull(mod);
         Assert.Equal("Meshes", mod.Info.Target);
-        Assert.Equal(0, targeter.ApplyAliasesCalls);
         Assert.Equal(0, targeter.GetTargetCalls);
         Assert.Equal(1, serializer.SaveCalls);
     }
@@ -382,7 +378,6 @@ public class ModInstallServiceTests : IDisposable
                 {
                   "Key": "Data",
                   "DirectoryPath": "Data",
-                  "Aliases": ["data"],
                   "Patterns": ["*.esp"],
                   "BasedOn": "_root"
                 }
@@ -402,7 +397,7 @@ public class ModInstallServiceTests : IDisposable
 
         var paths = new ModManagerPaths(new DirectoryInfo(_temp.Path), instances);
         var serializer = new LibraryModSerializer([]);
-        var installer = new AliasedModInstaller(new InstancedModFactory([], paths), serializer);
+        var installer = new StandardModInstaller(new InstancedModFactory([], paths), serializer);
         var service = new ModInstallService(
             new StandardArchiveExtractor(),
             [installer],
@@ -415,14 +410,13 @@ public class ModInstallServiceTests : IDisposable
         var mod = await service.InstallAsync(
             "SkyUI",
             "6.1",
-            WriteRealZipArchive(("data/plugin.esp", 100))
+            WriteRealZipArchive(("plugin.esp", 100))
         );
 
         Assert.NotNull(mod);
         var modDir = new DirectoryInfo(Path.Combine(paths.ModsFolder.FullName, "SkyUI"));
         Assert.True(File.Exists(Path.Combine(modDir.FullName, "plugin.esp")));
         Assert.True(File.Exists(Path.Combine(modDir.FullName, LibraryModSerializer.FileName)));
-        Assert.False(Directory.Exists(Path.Combine(modDir.FullName, "data")));
         Assert.Equal("Data", mod.Info.Target);
         Assert.Empty(Directory.GetDirectories(paths.TemporaryFolder.FullName));
     }
@@ -446,7 +440,6 @@ public class ModInstallServiceTests : IDisposable
                 {
                   "Key": "Data",
                   "DirectoryPath": "Data",
-                  "Aliases": ["data"],
                   "Patterns": ["*.esp"],
                   "BasedOn": "_root"
                 }
@@ -466,7 +459,7 @@ public class ModInstallServiceTests : IDisposable
 
         var paths = new ModManagerPaths(new DirectoryInfo(_temp.Path), instances);
         var serializer = new LibraryModSerializer([]);
-        var installer = new AliasedModInstaller(new InstancedModFactory([], paths), serializer);
+        var installer = new StandardModInstaller(new InstancedModFactory([], paths), serializer);
         var service = new ModInstallService(
             new StandardArchiveExtractor(),
             [installer],
@@ -479,7 +472,7 @@ public class ModInstallServiceTests : IDisposable
         var first = await service.InstallAsync(
             "SkyUI",
             "6.1",
-            WriteRealZipArchive(("data/plugin.esp", 100))
+            WriteRealZipArchive(("plugin.esp", 100))
         );
         Assert.NotNull(first);
 
@@ -489,14 +482,13 @@ public class ModInstallServiceTests : IDisposable
         var second = await service.InstallAsync(
             "SkyUI",
             "6.2",
-            WriteRealZipArchive(("data/plugin.esp", 250), ("data/extra.dds", 50)),
+            WriteRealZipArchive(("plugin.esp", 250), ("extra.dds", 50)),
             installType: InstallType.Replace
         );
 
         Assert.NotNull(second);
         Assert.Equal(250, new FileInfo(Path.Combine(modDir.FullName, "plugin.esp")).Length);
         Assert.True(File.Exists(Path.Combine(modDir.FullName, "extra.dds")));
-        Assert.False(Directory.Exists(Path.Combine(modDir.FullName, "data")));
         Assert.Equal("6.2", second.Info.Version);
     }
 

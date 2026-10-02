@@ -46,14 +46,12 @@
     {
       "Key": "Data",
       "DirectoryPath": "Data",
-      "Aliases": ["data"],
       "Patterns": ["*.esp", "*.esm", "*.esl", "*.bsa"],
       "BasedOn": "_root"
     }, 
     {
       "Key": "Root",
       "DirectoryPath":"",
-      "Aliases": ["root"],
       "Patterns":["skse64*.dll", "skse64*loader.exe", "skse64*loader.dll"],
       "BasedOn":"_root"
     }

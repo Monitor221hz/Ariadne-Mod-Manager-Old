@@ -5,7 +5,7 @@ using Ariadne.Contracts.ModManager;
 
 namespace Ariadne.ModManager;
 
-public sealed class AliasedModInstaller(
+public sealed class StandardModInstaller(
     ILibraryModFactory modFactory,
     ILibraryModSerializer serializer
 ) : ModInstaller(modFactory, serializer)

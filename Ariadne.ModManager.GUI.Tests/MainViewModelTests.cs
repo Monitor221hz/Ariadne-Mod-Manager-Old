@@ -166,7 +166,7 @@ public class MainViewModelTests : IDisposable
             "Test Game",
             [],
             new VendorInfo(0, 0),
-            new GamePath("_root", "", [], []),
+            new GamePath("_root", "", []),
             [],
             []
         );

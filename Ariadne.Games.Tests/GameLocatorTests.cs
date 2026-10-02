@@ -69,9 +69,9 @@ public class GameLocatorTests
             name,
             [],
             new VendorInfo(steamId, 0),
-            new GamePath("Root", "", [], []),
-            [new GamePath("AppData", @"D:\appdata", [], [])],
-            [new GamePath("Data", "Data", [], [], "Root")]
+            new GamePath("Root", "", []),
+            [new GamePath("AppData", @"D:\appdata", [])],
+            [new GamePath("Data", "Data", [], "Root")]
         );
 
     [Fact]

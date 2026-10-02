@@ -107,8 +107,8 @@ public class NodeMenuItemsTests
         var node = new ModEntryNodeViewModel(new ModListEntry(new FakeMod("A"), true));
         var targets = new IGamePath[]
         {
-            new GamePath("Data", "Data", [], []),
-            new GamePath("Root", "", [], []),
+            new GamePath("Data", "Data", []),
+            new GamePath("Root", "", []),
         };
 
         var items = NodeMenuItems.For(node, targets);
@@ -140,7 +140,7 @@ public class NodeMenuItemsTests
     {
         var mod = new FakeMod("A");
         var node = new ModEntryNodeViewModel(new ModListEntry(mod, true));
-        var target = new GamePath("Data", "Data", [], []);
+        var target = new GamePath("Data", "Data", []);
         var changed = 0;
         node.TargetChanged.Subscribe(_ => changed++);
 

@@ -15,17 +15,11 @@ public class QuickPatternModTargeterTests : IDisposable
         "Test Game",
         [],
         new VendorInfo(0, 0),
-        new GamePath("_root", "", [], []),
+        new GamePath("_root", "", []),
         [],
         [
-            new GamePath("Data", "Data", ["data"], ["*.esp", "*.esm", "*.bsa"], basedOn: "_root"),
-            new GamePath(
-                "Root",
-                "",
-                ["root"],
-                ["skse64*.dll", "skse64*loader.exe"],
-                basedOn: "_root"
-            ),
+            new GamePath("Data", "Data", ["*.esp", "*.esm", "*.bsa"], basedOn: "_root"),
+            new GamePath("Root", "", ["skse64*.dll", "skse64*loader.exe"], basedOn: "_root"),
         ]
     );
 
@@ -47,25 +41,9 @@ public class QuickPatternModTargeterTests : IDisposable
     {
         var mod = ModWith("plugin.esp");
         var targeter = new QuickPatternModTargeter();
-        targeter.ApplyAliases(Game, mod);
 
         Assert.Equal("Data", targeter.GetTarget(Game, mod).Key);
         Assert.True(File.Exists(Path.Combine(mod.Directory.FullName, "plugin.esp")));
-    }
-
-    [Fact]
-    public void AliasedTopLevelFolder_FlattensThenTargets()
-    {
-        var mod = ModWith("data/plugin.esp", "data/textures/x.dds");
-        var targeter = new QuickPatternModTargeter();
-
-        targeter.ApplyAliases(Game, mod);
-        var target = targeter.GetTarget(Game, mod);
-
-        Assert.Equal("Data", target.Key);
-        Assert.True(File.Exists(Path.Combine(mod.Directory.FullName, "plugin.esp")));
-        Assert.True(File.Exists(Path.Combine(mod.Directory.FullName, "textures", "x.dds")));
-        Assert.False(Directory.Exists(Path.Combine(mod.Directory.FullName, "data")));
     }
 
     [Fact]
@@ -79,30 +57,12 @@ public class QuickPatternModTargeterTests : IDisposable
     }
 
     [Fact]
-    public void AliasedFolderWithoutPatternMatches_IsStillFlattened()
+    public void RootPattern_MatchesRootTarget()
     {
-        var mod = ModWith("data/readme.txt");
+        var mod = ModWith("skse64_loader.exe");
         var targeter = new QuickPatternModTargeter();
 
-        targeter.ApplyAliases(Game, mod);
-        var target = targeter.GetTarget(Game, mod);
-
-        Assert.Equal("Data", target.Key);
-        Assert.True(File.Exists(Path.Combine(mod.Directory.FullName, "readme.txt")));
-        Assert.False(Directory.Exists(Path.Combine(mod.Directory.FullName, "data")));
-    }
-
-    [Fact]
-    public void RootAliasFolder_FlattensForRootTarget()
-    {
-        var mod = ModWith("root/skse64_loader.exe");
-        var targeter = new QuickPatternModTargeter();
-
-        targeter.ApplyAliases(Game, mod);
-        var target = targeter.GetTarget(Game, mod);
-
-        Assert.Equal("Root", target.Key);
-        Assert.True(File.Exists(Path.Combine(mod.Directory.FullName, "skse64_loader.exe")));
+        Assert.Equal("Root", targeter.GetTarget(Game, mod).Key);
     }
 
     [Fact]
@@ -110,23 +70,7 @@ public class QuickPatternModTargeterTests : IDisposable
     {
         var mod = ModWith("readme.txt");
         var targeter = new QuickPatternModTargeter();
-        targeter.ApplyAliases(Game, mod);
 
         Assert.Equal("Data", targeter.GetTarget(Game, mod).Key);
-    }
-
-    [Fact]
-    public void AliasFlatten_MergesIntoExistingDirectory()
-    {
-        var mod = ModWith("textures/a.dds", "data/plugin.esp", "data/textures/b.dds");
-        var targeter = new QuickPatternModTargeter();
-
-        targeter.ApplyAliases(Game, mod);
-        var target = targeter.GetTarget(Game, mod);
-
-        Assert.Equal("Data", target.Key);
-        Assert.True(File.Exists(Path.Combine(mod.Directory.FullName, "textures", "a.dds")));
-        Assert.True(File.Exists(Path.Combine(mod.Directory.FullName, "textures", "b.dds")));
-        Assert.True(File.Exists(Path.Combine(mod.Directory.FullName, "plugin.esp")));
     }
 }

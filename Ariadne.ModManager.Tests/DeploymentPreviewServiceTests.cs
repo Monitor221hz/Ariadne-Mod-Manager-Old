@@ -47,9 +47,9 @@ public class DeploymentPreviewServiceTests
         "Test Game",
         [],
         new VendorInfo(0, 0),
-        new GamePath("_root", "", [], []),
+        new GamePath("_root", "", []),
         [],
-        [new GamePath("Data", "Data", [], []), new GamePath("Root", "", [], [])]
+        [new GamePath("Data", "Data", []), new GamePath("Root", "", [])]
     );
 
     private readonly DeploymentPreviewService _service = new();

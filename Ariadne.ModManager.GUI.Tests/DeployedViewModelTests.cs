@@ -15,7 +15,7 @@ public class DeployedViewModelTests
         public IVendorInfo Vendors => null!;
         public IReadOnlyDictionary<string, string> ProtocolGameIds =>
             new Dictionary<string, string>();
-        public IGamePath Root => new GamePath("_root", "", [], []);
+        public IGamePath Root => new GamePath("_root", "", []);
         public IReadOnlyList<IGamePath> Deployments => [];
         public IReadOnlyList<IGamePath> InstallTargets => installTargets;
         public IReadOnlyDictionary<string, int> LaunchTargets => new Dictionary<string, int>();
@@ -97,8 +97,8 @@ public class DeployedViewModelTests
 
     private static readonly IReadOnlyList<IGamePath> Targets =
     [
-        new GamePath("Data", "Data", [], []),
-        new GamePath("Root", "", [], []),
+        new GamePath("Data", "Data", []),
+        new GamePath("Root", "", []),
     ];
 
     private static DeployedViewModel CreateViewModel(params FakeMod[] mods)
