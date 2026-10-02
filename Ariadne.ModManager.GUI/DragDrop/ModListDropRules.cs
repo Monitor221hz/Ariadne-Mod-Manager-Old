@@ -26,7 +26,8 @@ public sealed class ModListDropRules(IContentMoveService moves)
             {
                 ModEntryNodeViewModel => IsLegalModDrop(target, targetParent, position),
                 GroupHeaderNodeViewModel => position != DataGridRowDropPosition.Inside
-                    && targetParent is null,
+                    && targetParent is null
+                    && target is ModEntryNodeViewModel or GroupHeaderNodeViewModel,
                 ContentNodeViewModel content => IsLegalContentDrop(content, target, position),
                 _ => false,
             };
@@ -67,12 +68,12 @@ public sealed class ModListDropRules(IContentMoveService moves)
         && target is ModEntryNodeViewModel mod
         && ReferenceEquals(dragged.Owner, mod);
 
-    public IReadOnlyList<ModEntryNodeViewModel> ExecuteContentDrop(
+    public IReadOnlyList<ContentHostNodeViewModel> ExecuteContentDrop(
         IReadOnlyList<TreeNodeViewModel> dragged,
         TreeNodeViewModel target
     )
     {
-        var affected = new HashSet<ModEntryNodeViewModel>();
+        var affected = new HashSet<ContentHostNodeViewModel>();
         foreach (var node in dragged.OfType<ContentNodeViewModel>())
         {
             try
@@ -83,12 +84,25 @@ public sealed class ModListDropRules(IContentMoveService moves)
                 }
                 else
                 {
+                    var destination = target as ModEntryNodeViewModel;
+                    var adoptInfo =
+                        destination is not null
+                        && !ReferenceEquals(node.Owner, destination)
+                        && moves.ShouldInheritInfo(destination.Model);
                     moves.MoveInto(
                         node.DiskPath,
                         node is DirectoryNodeViewModel,
                         node.DisplayName,
                         DestinationDirectory(target)
                     );
+                    if (adoptInfo)
+                    {
+                        moves.InheritInfo(node.Owner.Model, destination!.Model);
+                        RenameModUniquely(
+                            destination,
+                            $"{node.Owner.Model.Name} {MovedName(node)}"
+                        );
+                    }
                 }
                 affected.Add(node.Owner);
                 if (TargetOwner(target) is { } targetOwner)
@@ -143,6 +157,12 @@ public sealed class ModListDropRules(IContentMoveService moves)
                     dragged.DisplayName,
                     mod.Model.Directory.FullName
                 ),
+            OverwriteNodeViewModel overwrite => moves.CanMoveInto(
+                dragged.DiskPath,
+                dragged is DirectoryNodeViewModel,
+                dragged.DisplayName,
+                overwrite.ContentDirectory.FullName
+            ),
             _ => false,
         };
     }
@@ -152,13 +172,43 @@ public sealed class ModListDropRules(IContentMoveService moves)
         {
             DirectoryNodeViewModel directory => directory.DiskPath,
             ModEntryNodeViewModel mod => mod.Model.Directory.FullName,
+            OverwriteNodeViewModel overwrite => overwrite.ContentDirectory.FullName,
             _ => throw new ArgumentException("Unsupported drop target.", nameof(target)),
         };
 
-    private static ModEntryNodeViewModel? TargetOwner(TreeNodeViewModel target) =>
+    private static string MovedName(ContentNodeViewModel node) =>
+        node is DirectoryNodeViewModel
+            ? node.DisplayName
+            : Path.GetFileNameWithoutExtension(node.DisplayName);
+
+    private static void RenameModUniquely(ModEntryNodeViewModel destination, string baseName)
+    {
+        var mod = destination.Model;
+        var parent = mod.Directory.Parent!.FullName;
+        var candidate = PathName.Filter(baseName.Trim());
+        if (candidate.Length == 0)
+        {
+            return;
+        }
+        for (
+            var i = 2;
+            Directory.Exists(Path.Join(parent, candidate))
+                && !candidate.Equals(mod.Name, StringComparison.OrdinalIgnoreCase);
+            i++
+        )
+        {
+            candidate = $"{baseName} {i}";
+        }
+        if (!candidate.Equals(mod.Name, StringComparison.OrdinalIgnoreCase))
+        {
+            destination.RenameTo(candidate);
+        }
+    }
+
+    private static ContentHostNodeViewModel? TargetOwner(TreeNodeViewModel target) =>
         target switch
         {
-            ModEntryNodeViewModel mod => mod,
+            ContentHostNodeViewModel host => host,
             DirectoryNodeViewModel directory => directory.Owner,
             _ => null,
         };

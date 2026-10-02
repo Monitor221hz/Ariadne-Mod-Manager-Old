@@ -15,6 +15,9 @@
         <DataTemplate DataType="vm:ModEntryNodeViewModel">
             <views:ModEntryNodeView />
         </DataTemplate>
+        <DataTemplate DataType="vm:OverwriteNodeViewModel">
+            <views:OverwriteNodeView />
+        </DataTemplate>
         <DataTemplate DataType="vm:GroupHeaderNodeViewModel">
             <views:GroupHeaderNodeView />
         </DataTemplate>

@@ -19,7 +19,7 @@ public sealed class InstanceSetupViewModel : ViewModelBase
     public string InstanceName
     {
         get => _instanceName;
-        set => this.RaiseAndSetIfChanged(ref _instanceName, value);
+        set => this.RaiseAndSetIfChanged(ref _instanceName, PathName.Filter(value));
     }
 
     public string InstanceFolder

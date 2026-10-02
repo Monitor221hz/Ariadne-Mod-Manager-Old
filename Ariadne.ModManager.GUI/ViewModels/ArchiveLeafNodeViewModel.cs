@@ -22,7 +22,7 @@ public sealed class ArchiveLeafNodeViewModel : ContentNodeViewModel
     public ModEntryKind Kind => Node.Data!.Kind;
     public string AbsolutePath => Node.Data!.AbsolutePath;
 
-    public ArchiveLeafNodeViewModel(VirtualNode<ModFileEntry> node, ModEntryNodeViewModel owner)
+    public ArchiveLeafNodeViewModel(VirtualNode<ModFileEntry> node, ContentHostNodeViewModel owner)
         : base(node, owner)
     {
         _sizeText = ByteSize.FromBytes(node.Data!.Size).ToString();

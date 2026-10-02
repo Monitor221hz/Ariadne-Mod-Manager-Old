@@ -3,7 +3,7 @@ using Ariadne.Extensions.IO;
 
 namespace Ariadne.ModManager;
 
-public sealed class ContentMoveService : IContentMoveService
+public sealed class ContentMoveService(ILibraryModSerializer serializer) : IContentMoveService
 {
     public bool CanMoveInto(
         string sourcePath,
@@ -79,6 +79,25 @@ public sealed class ContentMoveService : IContentMoveService
         {
             source.Delete();
         }
+    }
+
+    public bool ShouldInheritInfo(ILibraryMod destination)
+    {
+        return destination.Info.ID.Source is SourceType.Local
+            && destination.Content.Children.Count == 0;
+    }
+
+    public void InheritInfo(ILibraryMod source, ILibraryMod destination)
+    {
+        destination.ReplaceInfo(
+            new ModInfo(
+                source.Info.ID,
+                source.Info.Version,
+                [.. source.Info.Categories],
+                source.Info.Target
+            )
+        );
+        serializer.Save(destination);
     }
 
     private static bool IsSameOrDescendant(string candidate, string directory)

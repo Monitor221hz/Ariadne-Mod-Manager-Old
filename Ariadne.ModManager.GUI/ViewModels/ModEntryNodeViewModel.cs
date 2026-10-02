@@ -1,17 +1,13 @@
 using System.Reactive;
-using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using Ariadne.Contracts.Games;
 using Ariadne.Contracts.ModManager;
-using Ariadne.VFS;
-using ByteSizeLib;
 using ReactiveUI;
-using ReactiveUI.Avalonia;
 
 namespace Ariadne.ModManager.GUI.ViewModels;
 
-public sealed class ModEntryNodeViewModel : TreeNodeViewModel
+public sealed class ModEntryNodeViewModel : ContentHostNodeViewModel
 {
     private readonly IModListEntry _entry;
     private readonly Subject<Unit> _removeRequested = new();
@@ -19,13 +15,9 @@ public sealed class ModEntryNodeViewModel : TreeNodeViewModel
     private uint _priorityValue;
     private bool _active;
     private SelectedModVerdict? _conflictVerdict;
-    private readonly Subject<CancellationToken> _beginLoad = new();
     private readonly Subject<Unit> _targetChanged = new();
-    private readonly ObservableAsPropertyHelper<VirtualNode<ModFileEntry>?> _content;
-    private readonly ObservableAsPropertyHelper<string> _sizeText;
     private string _displayName;
     public IModListEntry Entry => _entry;
-    public ILibraryMod Model => _entry.Mod;
     public override uint? PriorityValue => _priorityValue;
     public override string? VersionText => _entry.Mod.Info.Version;
     public bool Active
@@ -40,7 +32,7 @@ public sealed class ModEntryNodeViewModel : TreeNodeViewModel
     public override string DisplayName
     {
         get => _displayName;
-        set => this.RaiseAndSetIfChanged(ref _displayName, value);
+        set => this.RaiseAndSetIfChanged(ref _displayName, PathName.Filter(value));
     }
 
     public override SelectedModVerdict? ConflictVerdict
@@ -49,25 +41,9 @@ public sealed class ModEntryNodeViewModel : TreeNodeViewModel
         set => this.RaiseAndSetIfChanged(ref _conflictVerdict, value);
     }
     public override bool RenameAllowed => true;
-    public override long SizeBytes =>
-        ContentTree is null ? -1 : ContentTree.SelfAndDescendants().Sum(n => n.Data?.Size ?? 0);
-    public override string SizeText => _sizeText.Value;
-    public VirtualNode<ModFileEntry>? ContentTree => _content.Value;
-
-    public override IEnumerable<TreeNodeViewModel> Children =>
-        ContentTree?.Children.Select(child => ContentNodeViewModel.Wrap(child, this))
-        ?? Enumerable.Empty<TreeNodeViewModel>();
-    public override bool HasChildren => ContentTree is { Children.Count: > 0 };
-
-    public void ConnectContentTree(CancellationToken ct) => _beginLoad.OnNext(ct);
-
-    public void ReloadContent()
-    {
-        _entry.Mod.RefreshContent();
-        _beginLoad.OnNext(CancellationToken.None);
-    }
 
     public ModEntryNodeViewModel(IModListEntry entry)
+        : base(entry.Mod)
     {
         var mod = entry.Mod;
         _entry = entry;
@@ -91,33 +67,6 @@ public sealed class ModEntryNodeViewModel : TreeNodeViewModel
             },
             writable
         );
-
-        var content = _beginLoad
-            .Select(ct => Observable.FromAsync(t2 => Task.Run(() => mod.Content, t2)))
-            .Switch()
-            .Catch<VirtualNode<ModFileEntry>, OperationCanceledException>(_ =>
-                Observable.Empty<VirtualNode<ModFileEntry>>()
-            )
-            .ObserveOn(AvaloniaScheduler.Instance)
-            .Replay(1)
-            .AutoConnect();
-
-        _content = content.ToProperty(this, x => x.ContentTree);
-        _sizeText = content
-            .Select(tree =>
-                ByteSize.FromBytes(tree.SelfAndDescendants().Sum(n => n.Data?.Size ?? 0)).ToString()
-            )
-            .StartWith("↺")
-            .ToProperty(this, x => x.SizeText);
-
-        this.WhenAnyValue(x => x.ContentTree)
-            .WhereNotNull()
-            .Subscribe(_ =>
-            {
-                this.RaisePropertyChanged(nameof(Children));
-                this.RaisePropertyChanged(nameof(HasChildren));
-                this.RaisePropertyChanged(nameof(SizeBytes));
-            });
     }
 
     public IObservable<Unit> RemoveRequested => _removeRequested;
@@ -139,5 +88,12 @@ public sealed class ModEntryNodeViewModel : TreeNodeViewModel
     {
         _entry.Mod.RenameTo(name);
         return _entry.Mod.Name;
+    }
+
+    internal void RenameTo(string newName)
+    {
+        _entry.Mod.RenameTo(newName);
+        DisplayName = newName;
+        NotifyRenamed();
     }
 }

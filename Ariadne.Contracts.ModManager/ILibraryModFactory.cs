@@ -8,5 +8,7 @@ public interface ILibraryModFactory
 
     ILibraryMod Create(IModInfo info);
 
+    ILibraryMod Open(DirectoryInfo folder);
+
     bool TryCreate(string name, IModInfo info, [NotNullWhen(true)] out ILibraryMod? mod);
 }

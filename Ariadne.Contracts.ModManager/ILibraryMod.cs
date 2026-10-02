@@ -10,6 +10,7 @@ public interface ILibraryMod : IEqualityComparer<ILibraryMod>, IEquatable<ILibra
     VirtualNode<ModFileEntry> Content { get; }
     void RefreshContent();
     public void RenameTo(string newName);
+    public void ReplaceInfo(IModInfo info);
 
     public bool TryCreateDirectory()
     {

@@ -5,14 +5,14 @@ namespace Ariadne.ModManager.GUI.ViewModels;
 
 public abstract class ContentNodeViewModel : TreeNodeViewModel
 {
-    protected ContentNodeViewModel(VirtualNode<ModFileEntry> node, ModEntryNodeViewModel owner)
+    protected ContentNodeViewModel(VirtualNode<ModFileEntry> node, ContentHostNodeViewModel owner)
     {
         Node = node;
         Owner = owner;
     }
 
     public VirtualNode<ModFileEntry> Node { get; }
-    public ModEntryNodeViewModel Owner { get; }
+    public ContentHostNodeViewModel Owner { get; }
 
     public bool IsDiskBacked
     {
@@ -38,7 +38,7 @@ public abstract class ContentNodeViewModel : TreeNodeViewModel
             {
                 parts.Push(current.Name);
             }
-            return Path.Join([Owner.Model.Directory.FullName, .. parts]);
+            return Path.Join([Owner.ContentDirectory.FullName, .. parts]);
         }
     }
 
@@ -53,7 +53,7 @@ public abstract class ContentNodeViewModel : TreeNodeViewModel
 
     public static TreeNodeViewModel Wrap(
         VirtualNode<ModFileEntry> node,
-        ModEntryNodeViewModel owner
+        ContentHostNodeViewModel owner
     ) =>
         node.IsDirectory ? new DirectoryNodeViewModel(node, owner)
         : node.Data!.Kind == ModEntryKind.Archive ? new ArchiveLeafNodeViewModel(node, owner)

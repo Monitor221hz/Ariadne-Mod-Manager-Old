@@ -1,6 +1,7 @@
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
+using Ariadne.Contracts.ModManager;
 using Ariadne.ModManager.GUI.ViewModels;
 using Avalonia;
 using Avalonia.Controls;
@@ -83,6 +84,17 @@ public partial class MainWindow : Window
         ProfileNameBox.Text = "";
         ProfileOverlay.IsVisible = true;
         ProfileNameBox.Focus();
+        using var filter = ProfileNameBox
+            .GetObservable(TextBox.TextProperty)
+            .WhereNotNull()
+            .Subscribe(text =>
+            {
+                var filtered = PathName.Filter(text);
+                if (filtered != text)
+                {
+                    ProfileNameBox.Text = filtered;
+                }
+            });
         var result = await Observable
             .Merge(
                 ButtonObservables.ClicksOf(ProfileCreateButton).Select(_ => ProfileNameBox.Text),

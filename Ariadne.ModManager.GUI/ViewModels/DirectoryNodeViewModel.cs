@@ -19,7 +19,7 @@ public sealed class DirectoryNodeViewModel : ContentNodeViewModel
         get => _sizeText;
     }
 
-    public DirectoryNodeViewModel(VirtualNode<ModFileEntry> node, ModEntryNodeViewModel owner)
+    public DirectoryNodeViewModel(VirtualNode<ModFileEntry> node, ContentHostNodeViewModel owner)
         : base(node, owner)
     {
         _sizeText = ByteSize.FromBytes(SizeBytes).ToString();

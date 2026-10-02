@@ -94,4 +94,6 @@ public abstract class TreeNodeViewModel : ViewModelBase
     }
 
     protected virtual string ApplyRename(string name) => name;
+
+    protected void NotifyRenamed() => _renameCommitted.OnNext(Unit.Default);
 }

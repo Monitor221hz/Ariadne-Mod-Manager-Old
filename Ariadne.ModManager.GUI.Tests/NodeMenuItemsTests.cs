@@ -20,6 +20,8 @@ public class NodeMenuItemsTests
 
         public void RefreshContent() { }
 
+        public void ReplaceInfo(IModInfo info) { }
+
         public void RenameTo(string newName) { }
 
         public bool Equals(ILibraryMod? x, ILibraryMod? y) => ReferenceEquals(x, y);

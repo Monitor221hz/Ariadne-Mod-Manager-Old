@@ -8,7 +8,7 @@ public sealed class LibraryMod : ILibraryMod
 {
     private readonly IReadOnlyList<IArchiveReader> _archiveReaders;
 
-    public IModInfo Info { get; }
+    public IModInfo Info { get; private set; }
     public DirectoryInfo Directory { get; private set; }
     public string Name => Directory.Name;
 
@@ -29,6 +29,8 @@ public sealed class LibraryMod : ILibraryMod
 
     public void RefreshContent() => _content = NewContentLazy();
 
+    public void ReplaceInfo(IModInfo info) => Info = info;
+
     public void RenameTo(string newName)
     {
         if (string.IsNullOrWhiteSpace(newName))
@@ -36,7 +38,7 @@ public sealed class LibraryMod : ILibraryMod
             throw new ArgumentException("Mod name must not be empty.", nameof(newName));
         }
         newName = newName.Trim();
-        if (newName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+        if (!PathName.IsValid(newName))
         {
             throw new ArgumentException(
                 $"\"{newName}\" contains invalid path characters.",

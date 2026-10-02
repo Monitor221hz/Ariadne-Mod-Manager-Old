@@ -32,14 +32,22 @@ public class ModListDropRulesTests : IDisposable
     private sealed class FakeLibraryMod(DirectoryInfo directory, VirtualNode<ModFileEntry> content)
         : ILibraryMod
     {
-        public IModInfo Info { get; } = new ModManager.ModInfo(1, SourceType.Local, "1.0", [], "");
+        public IModInfo Info { get; private set; } =
+            new ModManager.ModInfo(1, SourceType.Local, "1.0", [], "");
         public string Name => Directory.Name;
-        public DirectoryInfo Directory { get; } = directory;
+        public DirectoryInfo Directory { get; private set; } = directory;
         public VirtualNode<ModFileEntry> Content { get; } = content;
 
         public void RefreshContent() { }
 
-        public void RenameTo(string newName) { }
+        public void ReplaceInfo(IModInfo info) => Info = info;
+
+        public void RenameTo(string newName)
+        {
+            var destination = Path.Join(Directory.Parent!.FullName, newName);
+            Directory.MoveTo(destination);
+            Directory = new DirectoryInfo(destination);
+        }
 
         public bool Equals(ILibraryMod? x, ILibraryMod? y) => ReferenceEquals(x, y);
 
@@ -49,7 +57,9 @@ public class ModListDropRulesTests : IDisposable
     }
 
     private readonly TempDirectory _temp = new();
-    private readonly ModListDropRules _rules = new(new ContentMoveService());
+    private readonly ModListDropRules _rules = new(
+        new ContentMoveService(new LibraryModSerializer([]))
+    );
 
     public void Dispose() => _temp.Dispose();
 
@@ -167,7 +177,8 @@ public class ModListDropRulesTests : IDisposable
     public void Folder_IntoNonParentMod_MovesFolder()
     {
         var (ownerA, rootA) = CreateMod("ModA");
-        var (ownerB, _) = CreateMod("ModB");
+        var (ownerB, rootB) = CreateMod("ModB");
+        CreateFileNode(rootB, ModDir("ModB"), "existing.txt");
         var stuff = CreateDirectoryNode(rootA, ModDir("ModA"), "stuff");
         CreateFileNode(rootA, ModDir("ModA"), "stuff/inner.txt");
         var stuffVm = new DirectoryNodeViewModel(stuff, ownerA);
@@ -186,7 +197,8 @@ public class ModListDropRulesTests : IDisposable
     public void File_IntoNonParentMod_MovesFile()
     {
         var (ownerA, rootA) = CreateMod("ModA");
-        var (ownerB, _) = CreateMod("ModB");
+        var (ownerB, rootB) = CreateMod("ModB");
+        CreateFileNode(rootB, ModDir("ModB"), "existing.txt");
         var file = CreateFileNode(rootA, ModDir("ModA"), "a.txt");
         var fileVm = new FileLeafNodeViewModel(file, ownerA);
 
@@ -307,6 +319,153 @@ public class ModListDropRulesTests : IDisposable
         _rules.ExecuteContentDrop([archiveVm], folderVm);
 
         Assert.True(File.Exists(Path.Combine(ModDir("ModA"), "stuff", "pack.zip")));
+    }
+
+    private (OverwriteNodeViewModel Owner, VirtualNode<ModFileEntry> Root) CreateOverwrite(
+        string name
+    )
+    {
+        var directory = new DirectoryInfo(ModDir(name));
+        directory.Create();
+        var root = new VirtualNode<ModFileEntry>(name, NodeFlags.Directory, null, default);
+        var mod = new LibraryMod(new ModInfo(1, SourceType.Local, "1.0", [], ""), directory, []);
+        return (new OverwriteNodeViewModel(mod), root);
+    }
+
+    [Fact]
+    public void File_FromOverwrite_IntoModFolder_Moves()
+    {
+        var (modOwner, modRoot) = CreateMod("ModA");
+        var (overwriteOwner, overwriteRoot) = CreateOverwrite("Overwrite");
+        var file = CreateFileNode(overwriteRoot, ModDir("Overwrite"), "runtime.ini");
+        var folder = CreateDirectoryNode(modRoot, ModDir("ModA"), "stuff");
+        var fileVm = new FileLeafNodeViewModel(file, overwriteOwner);
+        var folderVm = new DirectoryNodeViewModel(folder, modOwner);
+
+        Assert.True(IsLegal(fileVm, folderVm));
+        _rules.ExecuteContentDrop([fileVm], folderVm);
+
+        Assert.True(File.Exists(Path.Combine(ModDir("ModA"), "stuff", "runtime.ini")));
+        Assert.False(File.Exists(Path.Combine(ModDir("Overwrite"), "runtime.ini")));
+    }
+
+    [Fact]
+    public void File_FromMod_IntoOverwrite_Moves()
+    {
+        var (modOwner, modRoot) = CreateMod("ModA");
+        var (overwriteOwner, _) = CreateOverwrite("Overwrite");
+        var file = CreateFileNode(modRoot, ModDir("ModA"), "a.txt");
+        var fileVm = new FileLeafNodeViewModel(file, modOwner);
+
+        Assert.True(IsLegal(fileVm, overwriteOwner));
+        _rules.ExecuteContentDrop([fileVm], overwriteOwner);
+
+        Assert.True(File.Exists(Path.Combine(ModDir("Overwrite"), "a.txt")));
+        Assert.False(File.Exists(Path.Combine(ModDir("ModA"), "a.txt")));
+    }
+
+    [Fact]
+    public void File_IntoEmptyLocalMod_InheritsSourceInfo()
+    {
+        var (sourceOwner, sourceRoot) = CreateMod("ModA");
+        sourceOwner.Model.ReplaceInfo(
+            new ModManager.ModInfo(new ModID(12604, SourceType.NexusMods), "6.1", [], "Data")
+        );
+        var (destinationOwner, _) = CreateMod("ModB");
+        var file = CreateFileNode(sourceRoot, ModDir("ModA"), "a.txt");
+        var fileVm = new FileLeafNodeViewModel(file, sourceOwner);
+
+        _rules.ExecuteContentDrop([fileVm], destinationOwner);
+
+        Assert.Equal(new ModID(12604, SourceType.NexusMods), destinationOwner.Model.Info.ID);
+        Assert.Equal("6.1", destinationOwner.Model.Info.Version);
+        Assert.Equal("Data", destinationOwner.Model.Info.Target);
+        Assert.Equal("ModA a", destinationOwner.DisplayName);
+        Assert.True(File.Exists(Path.Combine(_temp.Path, "ModA a", "a.txt")));
+        Assert.True(File.Exists(Path.Combine(_temp.Path, "ModA a", LibraryModSerializer.FileName)));
+    }
+
+    [Fact]
+    public void File_IntoEmptyLocalMod_ConflictingName_AppendsNumber()
+    {
+        CreateMod("ModA a");
+        var (sourceOwner, sourceRoot) = CreateMod("ModA");
+        var (destinationOwner, _) = CreateMod("ModB");
+        var file = CreateFileNode(sourceRoot, ModDir("ModA"), "a.txt");
+        var fileVm = new FileLeafNodeViewModel(file, sourceOwner);
+
+        _rules.ExecuteContentDrop([fileVm], destinationOwner);
+
+        Assert.Equal("ModA a 2", destinationOwner.DisplayName);
+        Assert.True(File.Exists(Path.Combine(_temp.Path, "ModA a 2", "a.txt")));
+    }
+
+    [Fact]
+    public void Folder_IntoEmptyLocalMod_RenamesWithFolderName()
+    {
+        var (sourceOwner, sourceRoot) = CreateMod("ModA");
+        var folder = CreateDirectoryNode(sourceRoot, ModDir("ModA"), "meshes");
+        var (destinationOwner, _) = CreateMod("ModB");
+        var folderVm = new DirectoryNodeViewModel(folder, sourceOwner);
+
+        _rules.ExecuteContentDrop([folderVm], destinationOwner);
+
+        Assert.Equal("ModA meshes", destinationOwner.DisplayName);
+        Assert.True(Directory.Exists(Path.Combine(_temp.Path, "ModA meshes", "meshes")));
+    }
+
+    [Fact]
+    public void File_IntoNonEmptyMod_KeepsDestinationInfo()
+    {
+        var (sourceOwner, sourceRoot) = CreateMod("ModA");
+        sourceOwner.Model.ReplaceInfo(
+            new ModManager.ModInfo(new ModID(12604, SourceType.NexusMods), "6.1", [], "Data")
+        );
+        var (destinationOwner, destinationRoot) = CreateMod("ModB");
+        CreateFileNode(destinationRoot, ModDir("ModB"), "existing.txt");
+        var file = CreateFileNode(sourceRoot, ModDir("ModA"), "a.txt");
+        var fileVm = new FileLeafNodeViewModel(file, sourceOwner);
+
+        _rules.ExecuteContentDrop([fileVm], destinationOwner);
+
+        Assert.Equal(new ModID(1, SourceType.Local), destinationOwner.Model.Info.ID);
+        Assert.True(File.Exists(Path.Combine(ModDir("ModB"), "a.txt")));
+    }
+
+    [Fact]
+    public void Group_OntoOverwrite_IsIllegal()
+    {
+        var (owner, _) = CreateOverwrite("Overwrite");
+        var group = new GroupHeaderNodeViewModel(new ModGroup("G", []));
+        var (modOwner, _) = CreateMod("ModA");
+
+        Assert.False(
+            _rules.IsLegal(
+                [group],
+                owner,
+                null,
+                DataGridRowDropPosition.After,
+                DragDropEffects.Move
+            )
+        );
+        Assert.False(
+            _rules.IsLegal(
+                [group],
+                owner,
+                null,
+                DataGridRowDropPosition.Before,
+                DragDropEffects.Move
+            )
+        );
+        Assert.True(
+            _rules.IsLegal(
+                [group],
+                modOwner,
+                null,
+                DataGridRowDropPosition.After,
+                DragDropEffects.Move
+            )
+        );
     }
 
     [Fact]

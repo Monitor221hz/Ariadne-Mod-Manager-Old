@@ -262,31 +262,42 @@
                             </Flyout>
                         </Button.Flyout>
                     </Button>
-                    <Button Grid.Column="2"
-                            VerticalAlignment="Center"
-                            Padding="10,4"
-                            Command="{Binding ActiveWorkspace.ToggleDeploymentCommand}">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <fi:FluentIcon Icon="Play"
-                                           FontSize="18"
-                                           VerticalAlignment="Center"
-
-                                           IsVisible="{Binding ActiveWorkspace.IsDeployed, Converter={x:Static dc:BoolConverters.Not}}" />
-                            <fi:FluentIcon Icon="Stop"
-                                           FontSize="18"
-                                           VerticalAlignment="Center"
-                                           IsVisible="{Binding ActiveWorkspace.IsDeployed}" />
-                            <TextBlock VerticalAlignment="Center"
-                                       Text="{Binding ActiveWorkspace.DeployText}" />
-                        </StackPanel>
-                    </Button>
+                    <ContentControl Grid.Column="2"
+                                    VerticalAlignment="Center"
+                                    Content="{Binding ActiveWorkspace}">
+                        <ContentControl.ContentTemplate>
+                            <DataTemplate DataType="vm:WorkspaceViewModel">
+                                <Button VerticalAlignment="Center"
+                                        Padding="10,4"
+                                        Command="{Binding ToggleDeploymentCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <fi:FluentIcon Icon="Play"
+                                                       FontSize="18"
+                                                       VerticalAlignment="Center"
+                                                       IsVisible="{Binding IsDeployed, Converter={x:Static dc:BoolConverters.Not}}" />
+                                        <fi:FluentIcon Icon="Stop"
+                                                       FontSize="18"
+                                                       VerticalAlignment="Center"
+                                                       IsVisible="{Binding IsDeployed}" />
+                                        <TextBlock VerticalAlignment="Center"
+                                                   Text="{Binding DeployText}" />
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ContentControl.ContentTemplate>
+                    </ContentControl>
                 </Grid>
             </Border>
 
-            <ProgressBar DockPanel.Dock="Top"
-                         Height="2"
-                         IsIndeterminate="True"
-                         IsVisible="{Binding ActiveWorkspace.IsDeploymentBusy}" />
+            <ContentControl DockPanel.Dock="Top" Content="{Binding ActiveWorkspace}">
+                <ContentControl.ContentTemplate>
+                    <DataTemplate DataType="vm:WorkspaceViewModel">
+                        <ProgressBar Height="2"
+                                     IsIndeterminate="True"
+                                     IsVisible="{Binding IsDeploymentBusy}" />
+                    </DataTemplate>
+                </ContentControl.ContentTemplate>
+            </ContentControl>
 
             <ContentControl Content="{Binding CurrentViewModel}" />
         </DockPanel>

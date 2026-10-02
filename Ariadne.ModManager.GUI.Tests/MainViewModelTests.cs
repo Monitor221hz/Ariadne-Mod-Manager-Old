@@ -122,6 +122,23 @@ public class MainViewModelTests : IDisposable
         public Task UndeployAsync() => Task.CompletedTask;
     }
 
+    private sealed class FakeModFactory : ILibraryModFactory
+    {
+        public ILibraryMod Create(string name, IModInfo info) =>
+            throw new InvalidOperationException();
+
+        public ILibraryMod Create(IModInfo info) => throw new InvalidOperationException();
+
+        public ILibraryMod Open(DirectoryInfo folder) =>
+            new LibraryMod(new ModInfo(0, SourceType.Local, "", [], ""), folder, []);
+
+        public bool TryCreate(string name, IModInfo info, out ILibraryMod? mod)
+        {
+            mod = null;
+            return false;
+        }
+    }
+
     private MainViewModel CreateViewModel(
         IInstalledGame? game = null,
         IDeploymentService? deployment = null
@@ -137,6 +154,7 @@ public class MainViewModelTests : IDisposable
             new GameCatalog([]),
             null!,
             new FakeBuilder(),
+            modFactory: new FakeModFactory(),
             deploymentService: deployment,
             profiles: new ProfileService(serializer, _paths)
         );

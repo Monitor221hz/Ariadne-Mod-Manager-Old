@@ -20,6 +20,8 @@ public sealed class WorkspaceViewModelTests
 
         public void RefreshContent() { }
 
+        public void ReplaceInfo(IModInfo info) { }
+
         public void RenameTo(string newName) => Name = newName;
 
         public bool Equals(ILibraryMod? x, ILibraryMod? y) => ReferenceEquals(x, y);
@@ -173,6 +175,8 @@ public sealed class WorkspaceViewModelTests
             throw new InvalidOperationException();
 
         public ILibraryMod Create(IModInfo info) => throw new InvalidOperationException();
+
+        public ILibraryMod Open(DirectoryInfo folder) => new FakeMod("Overwrite");
 
         public bool TryCreate(string name, IModInfo info, out ILibraryMod? mod)
         {
@@ -432,6 +436,16 @@ public sealed class WorkspaceViewModelTests
         h.Workspace.ModList.RenameSelectedCommand.Execute().Subscribe();
 
         Assert.True(entry.IsEditing);
+    }
+
+    [Fact]
+    public async Task OverwriteNode_Present_AndExcludedFromProfile()
+    {
+        var mod = new FakeMod("A");
+        using var h = await NewHarness([mod], []);
+
+        Assert.NotNull(h.Workspace.ModList.OverwriteNode);
+        Assert.Single(h.Profile.ModList);
     }
 
     [Fact]

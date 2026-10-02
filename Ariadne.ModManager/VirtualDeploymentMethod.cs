@@ -38,12 +38,6 @@ public sealed class VirtualDeploymentMethod : IModDeploymentMethod
         var sourcePath = game.LookupAbsolutePath(deploymentPath);
         var virtualRoot = new VirtualNode<BackedEntry>("", NodeFlags.Directory, null, default);
 
-        Directory.CreateDirectory(_paths.OverwriteDirectory.FullName);
-        virtualRoot.LinkDirectory(
-            _paths.OverwriteDirectory.FullName,
-            "",
-            LinkFlags.Recursive | LinkFlags.CreateTarget | LinkFlags.Whiteouts
-        );
         foreach (var rule in _outputRules)
         {
             Directory.CreateDirectory(rule.OutputDirectory);
@@ -180,6 +174,17 @@ public sealed class VirtualDeploymentMethod : IModDeploymentMethod
                     virtualRoot.LinkFile(content.Data!.AbsolutePath, virtualPath);
                 }
             }
+        }
+
+        foreach (var (key, virtualRoot) in virtualRootKeyMap)
+        {
+            var overwrite = Path.Join(_paths.OverwriteDirectory.FullName, key);
+            Directory.CreateDirectory(overwrite);
+            virtualRoot.LinkDirectory(
+                overwrite,
+                "",
+                LinkFlags.Recursive | LinkFlags.CreateTarget | LinkFlags.Whiteouts
+            );
         }
     }
 

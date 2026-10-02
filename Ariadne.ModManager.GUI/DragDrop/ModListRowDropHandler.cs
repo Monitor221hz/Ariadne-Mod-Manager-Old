@@ -165,7 +165,7 @@ public sealed class ModListRowDropHandler(
         return true;
     }
 
-    private async Task ReloadAndRefreshAsync(ModEntryNodeViewModel entry)
+    private async Task ReloadAndRefreshAsync(ContentHostNodeViewModel entry)
     {
         try
         {

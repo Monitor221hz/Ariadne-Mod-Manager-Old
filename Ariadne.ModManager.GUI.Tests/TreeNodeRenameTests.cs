@@ -32,7 +32,20 @@ public class TreeNodeRenameTests
 
         public void RefreshContent() { }
 
+        public void ReplaceInfo(IModInfo info) { }
+
         public void RenameTo(string newName) => Name = newName;
+    }
+
+    [Fact]
+    public void DisplayName_Strips_Invalid_Path_Characters()
+    {
+        var mod = new FakeMod("Old Name");
+        var node = new ModEntryNodeViewModel(new ModListEntry(mod, true));
+
+        node.DisplayName = "a<b>:c*d?e/f\\g|h\"i";
+
+        Assert.Equal("abcdefghi", node.DisplayName);
     }
 
     [Fact]

@@ -102,6 +102,26 @@ public class VirtualDeploymentMethodTests : IDisposable
     }
 
     [Fact]
+    public void Deploy_OverwriteContent_WinsOverModsAndGame()
+    {
+        var game = CreateGame();
+        File.WriteAllText(Path.Combine(_installDir.FullName, "game.txt"), "game");
+        var mod = CreateMod("ModA", "Root", out var modDir);
+        File.WriteAllText(Path.Combine(modDir.FullName, "game.txt"), "mod");
+        Directory.CreateDirectory(Path.Combine(_overwriteDir.FullName, "Root"));
+        File.WriteAllText(Path.Combine(_overwriteDir.FullName, "Root", "game.txt"), "overwrite");
+
+        using var method = CreateMethod();
+        method.Deploy(game, [mod]);
+
+        var node = _factory.Created[0].MountedRoot!.FindNode("game.txt");
+        Assert.Equal(
+            Path.Combine(_overwriteDir.FullName, "Root", "game.txt"),
+            node!.Data.PhysicalPath
+        );
+    }
+
+    [Fact]
     public void Deploy_CreatesMissingOverwriteDirectory()
     {
         var game = CreateGame();
@@ -111,7 +131,8 @@ public class VirtualDeploymentMethodTests : IDisposable
         var exception = Record.Exception(() => method.Deploy(game, []));
 
         Assert.Null(exception);
-        Assert.True(Directory.Exists(_overwriteDir.FullName));
+        Assert.True(Directory.Exists(Path.Combine(_overwriteDir.FullName, "Root")));
+        Assert.True(Directory.Exists(Path.Combine(_overwriteDir.FullName, "AppData")));
     }
 
     [Fact]

@@ -29,6 +29,8 @@ public class ModListTests
 
         public void RefreshContent() { }
 
+        public void ReplaceInfo(IModInfo info) { }
+
         public void RenameTo(string newName) { }
     }
 

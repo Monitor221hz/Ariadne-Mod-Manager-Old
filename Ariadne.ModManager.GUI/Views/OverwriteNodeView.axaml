@@ -1,0 +1,10 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Ariadne.ModManager.GUI.ViewModels"
+             x:Class="Ariadne.ModManager.GUI.Views.OverwriteNodeView"
+             x:DataType="vm:OverwriteNodeViewModel">
+    <TextBlock Text="{Binding DisplayName}"
+               FontStyle="Italic"
+               Foreground="{DynamicResource FgDimmedBrush}"
+               VerticalAlignment="Center" />
+</UserControl>

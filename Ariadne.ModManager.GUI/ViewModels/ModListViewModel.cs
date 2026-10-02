@@ -75,6 +75,8 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
 
     public IObservable<Unit> Renamed => _renamed;
 
+    public OverwriteNodeViewModel? OverwriteNode { get; private set; }
+
     public event Action<IReadOnlyList<TreeNodeViewModel>>? SelectionRequested;
 
     public void RequestSelection(IReadOnlyList<TreeNodeViewModel> rows) =>
@@ -116,6 +118,10 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
         foreach (var group in _roots.OfType<GroupHeaderNodeViewModel>())
         {
             group.IsReadOnly = _isDeployed;
+        }
+        if (OverwriteNode is not null)
+        {
+            OverwriteNode.IsReadOnly = _isDeployed;
         }
     }
 
@@ -182,7 +188,7 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
                 _ = SyncDomainFromTreeAsync();
             });
         DropHandler = new DragDrop.ModListRowDropHandler(
-            contentMoves ?? new ContentMoveService(),
+            contentMoves ?? new ContentMoveService(modSerializer),
             () => SortActive,
             () => IsDeployed,
             () => _roots is null ? Array.Empty<TreeNodeViewModel>() : _roots,
@@ -370,7 +376,7 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
     }
 
     private async Task LoadAllContentTreesAsync(
-        IReadOnlyList<ModEntryNodeViewModel> entries,
+        IReadOnlyList<ContentHostNodeViewModel> entries,
         HierarchicalModel<TreeNodeViewModel> model,
         CancellationToken cancellationToken = default
     )
@@ -418,7 +424,15 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
         _loadContentCts?.Dispose();
         _loadContentCts = new CancellationTokenSource();
         var roots = BuildRoots(modList);
-        var mods = roots.SelectMany(FlattenEntries).ToList();
+        var overwriteNode = new OverwriteNodeViewModel(_modFactory.Open(_profile.OverwriteFolder));
+        roots.Add(overwriteNode);
+        OverwriteNode = overwriteNode;
+        overwriteNode.IsReadOnly = IsDeployed;
+        var mods = roots
+            .SelectMany(FlattenEntries)
+            .Cast<ContentHostNodeViewModel>()
+            .Append(overwriteNode)
+            .ToList();
 
         HookDomainSync(roots);
         if (expandedPaths is not null)

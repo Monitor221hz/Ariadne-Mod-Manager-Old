@@ -1,7 +1,7 @@
 using System.Globalization;
+using Ariadne.ModManager.GUI.ViewModels;
 using Avalonia.Controls.DataGridHierarchical;
 using Avalonia.Data.Converters;
-using Ariadne.ModManager.GUI.ViewModels;
 using FluentIcons.Common;
 
 namespace Ariadne.ModManager.GUI.Converters;
@@ -27,6 +27,8 @@ public sealed class NodeChevronIconConverter : IMultiValueConverter
             (GroupHeaderNodeViewModel, false) => Icon.ChevronDoubleRight,
             (ModEntryNodeViewModel, true) => Icon.ChevronDown,
             (ModEntryNodeViewModel, false) => Icon.ChevronRight,
+            (OverwriteNodeViewModel, true) => Icon.ChevronDown,
+            (OverwriteNodeViewModel, false) => Icon.ChevronRight,
             (DirectoryNodeViewModel, true) => Icon.FolderOpen,
             (DirectoryNodeViewModel, false) => Icon.Folder,
             (ArchiveLeafNodeViewModel, true) => Icon.FolderOpen,

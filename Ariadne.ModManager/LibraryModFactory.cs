@@ -36,6 +36,15 @@ public sealed class InstancedModFactory(
         return new LibraryMod(info, directory, _archiveReaders);
     }
 
+    public ILibraryMod Open(DirectoryInfo folder)
+    {
+        return new LibraryMod(
+            new ModInfo(0, SourceType.Local, "", [], ""),
+            folder,
+            _archiveReaders
+        );
+    }
+
     public bool TryCreate(string name, IModInfo info, [NotNullWhen(true)] out ILibraryMod? mod)
     {
         var directory = new DirectoryInfo(Path.Join(_paths.ModsFolder.FullName, name));

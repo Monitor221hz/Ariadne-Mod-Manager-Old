@@ -18,6 +18,8 @@ public static class DownloadArchiveFilter
 public interface IDownloadFolderWatcher : IDisposable
 {
     event EventHandler<string>? PathChanged;
+
+    IReadOnlyList<FileInfo> ScanArchives();
 }
 
 public sealed class DownloadFolderWatcher : IDownloadFolderWatcher

@@ -13,7 +13,7 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
     private const int ALLOCATION_UNIT = 4096;
     private readonly VirtualNode<BackedEntry> _root;
     private readonly object _sync = new();
-    private readonly string _createTargetRootPath;
+    private string? _createTargetRootPath;
     private readonly bool _copyUpEnabled;
     private readonly uint _fileInfoTimeout;
     private readonly uint _dirInfoTimeout;
@@ -55,7 +55,6 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
                 options.PhysicalMountRoot
             );
         }
-        _createTargetRootPath = ComputeCreateTargetRootPath(root);
     }
 
     public override int ExceptionHandler(Exception ex)
@@ -85,8 +84,11 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
         host.PostCleanupWhenModifiedOnly = true;
         host.PassQueryDirectoryPattern = true;
         host.FlushAndPurgeOnCleanup = true;
-        host.VolumeCreationTime = (ulong)
-            File.GetCreationTimeUtc(GetCreateTargetRootPath()).ToFileTimeUtc();
+        if (FindCreateTargetRootPath(_root) is string createTargetRoot)
+        {
+            host.VolumeCreationTime = (ulong)
+                File.GetCreationTimeUtc(createTargetRoot).ToFileTimeUtc();
+        }
         host.VolumeSerialNumber = 0;
         return STATUS_SUCCESS;
     }
@@ -446,7 +448,8 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
         }
     }
 
-    private string GetCreateTargetRootPath() => _createTargetRootPath;
+    private string GetCreateTargetRootPath() =>
+        _createTargetRootPath ??= ComputeCreateTargetRootPath(_root);
 
     private string ResolveOutputTarget(string virtualPath, int originPid)
     {
@@ -465,6 +468,16 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
 
     private static string ComputeCreateTargetRootPath(VirtualNode<BackedEntry> root)
     {
+        if (FindCreateTargetRootPath(root) is string path)
+        {
+            return path;
+        }
+        Win32.ThrowIoExceptionWithNtStatus(FileSystemBase.STATUS_ACCESS_DENIED);
+        return null!;
+    }
+
+    private static string? FindCreateTargetRootPath(VirtualNode<BackedEntry> root)
+    {
         VirtualNode<BackedEntry>? deepest = null;
         if (root.HasFlag(NodeFlags.CreateTarget))
         {
@@ -474,11 +487,7 @@ public class OverlayFileSystem : FileSystem<FileSystemNode, FileSystemDescriptio
         {
             FindDeepestCreateTarget(child, ref deepest);
         }
-        if (deepest == null)
-        {
-            Win32.ThrowIoExceptionWithNtStatus(FileSystemBase.STATUS_ACCESS_DENIED);
-        }
-        return deepest!.Data.PhysicalPath;
+        return deepest?.Data.PhysicalPath;
     }
 
     private bool SubtreeInSink(VirtualNode<BackedEntry> node)
