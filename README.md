@@ -51,9 +51,7 @@ If one were to make comparisons, the most apt description would be a GUI of a co
 
 For example, whereas in a traditional mod manager, files and folders under a mod would open under a separate window (or even the default file explorer), Ariadne keeps them as part of the modlist view, underneath their respective mod.
 
-In addition, Ariadne has the concept of mod groups rather than separators. Mod groups are a first-class concept of rigid, atomic units containing multiple mods; for the user this means dragging a group effectively drags all its children along as well. Mods that are loose without a group will always be
-
-
+In addition, Ariadne has the concept of mod groups rather than separators. Mod groups are a first-class concept of rigid, atomic units containing multiple mods; for the user this means dragging a group effectively drags all its children along as well. Mods that are loose without a group will always have a lower priority than grouped mods.
 
 The driving UX philosophy is simple (ish); the interface should be comfortable to use, transparent about its current state, and yield control to the user without being overwhelming. 
 
