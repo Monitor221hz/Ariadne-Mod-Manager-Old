@@ -8,5 +8,6 @@ public sealed record class SupportedGameRecord(
     List<GamePathRecord> Deployments,
     List<GamePathRecord> InstallTargets,
     Dictionary<string, string>? ProtocolGameIds = null,
-    Dictionary<string, int>? LaunchTargets = null
+    Dictionary<string, int>? LaunchTargets = null,
+    string? LoadOrderBuilder = null
 );

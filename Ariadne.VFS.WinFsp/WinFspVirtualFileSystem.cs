@@ -12,7 +12,8 @@ public sealed class WinFspVirtualFileSystem : IVirtualFileSystem
     public void Mount(VirtualNode<BackedEntry> root, VirtualFileSystemSettings settings)
     {
         var mountPoint = settings.MountPoint.FullName;
-        if (settings.InPlaceTarget is { } inPlaceTarget)
+        var inPlaceTarget = settings.InPlaceTarget;
+        if (inPlaceTarget is not null)
         {
             mountPoint = PrepareInPlace(root, mountPoint, inPlaceTarget.FullName);
         }

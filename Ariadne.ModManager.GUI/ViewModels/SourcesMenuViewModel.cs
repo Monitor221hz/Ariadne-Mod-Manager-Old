@@ -397,12 +397,13 @@ public sealed class SourcesMenuViewModel : ViewModelBase
     {
         UsingEnvironmentKey = snapshot.UsingDevKey;
         SignedIn = snapshot.SignedIn;
-        AccountStatusText = snapshot.Account is { } account
+        var account = snapshot.Account;
+        AccountStatusText = account is not null
             ? account.IsPremium
                 ? $"Signed in as {account.Name} (Premium)"
                 : $"Signed in as {account.Name}"
             : "Not signed in";
-        if (snapshot.Account is not null && snapshot.UsingDevKey)
+        if (account is not null && snapshot.UsingDevKey)
         {
             AccountStatusText += " - dev key";
         }

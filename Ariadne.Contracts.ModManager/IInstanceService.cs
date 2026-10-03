@@ -9,8 +9,6 @@ public interface IInstanceService
 {
     IReadOnlyDictionary<string, DirectoryInfo> Instances { get; }
 
-    /// <summary>The active instance, or null when none is selected.
-    /// <see cref="CurrentInstance.Game"/> is null only when the install cannot be resolved anymore.</summary>
     CurrentInstance? Current { get; }
 
     public bool TryGetInstance([NotNullWhen(true)] out CurrentInstance? instance)

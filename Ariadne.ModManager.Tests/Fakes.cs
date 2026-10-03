@@ -54,7 +54,8 @@ public static class TestAssets
             new VendorInfo(489830, 0),
             new GamePath("Root", "", []),
             [],
-            []
+            [],
+            loadOrderBuilder: "test"
         );
 
     public static InstalledGame GameAt(DirectoryInfo installDir)

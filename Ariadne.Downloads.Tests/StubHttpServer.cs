@@ -82,9 +82,9 @@ internal sealed class StubHttpServer : IDisposable
                     return;
                 }
 
-                if (range is { } rangeGroup)
+                if (range is not null)
                 {
-                    var (start, endInclusive) = rangeGroup;
+                    var (start, endInclusive) = range.Value;
                     if (endInclusive < 0)
                     {
                         endInclusive = Content.Length - 1;

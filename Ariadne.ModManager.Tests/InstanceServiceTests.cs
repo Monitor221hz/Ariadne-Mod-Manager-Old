@@ -155,6 +155,41 @@ public class InstanceServiceTests : IDisposable
     }
 
     [Fact]
+    public void ResolveGame_PreservesLoadOrderBuilderKey()
+    {
+        var configDir = new DirectoryInfo(_temp.Combine("gameconfigs"));
+        configDir.Create();
+        File.WriteAllText(
+            Path.Combine(configDir.FullName, "game.json"),
+            """
+            {
+              "Name": "Test Game",
+              "Platforms": [],
+              "Vendors": { "Steam": 489830, "GOG": 0 },
+              "Root": { "Key": "Root", "DirectoryPath": "", "Patterns": [] },
+              "Deployments": [],
+              "InstallTargets": [],
+              "LoadOrderBuilder": "test-builder"
+            }
+            """
+        );
+        var catalog = new GameCatalog(configDir);
+        var store = new InstanceStore(new FileInfo(_temp.Combine("instances.json")));
+        var service = new InstanceService(store, new InstalledGameSerializer(), catalog);
+        var installDir = new DirectoryInfo(_temp.Combine("game-install"));
+        installDir.Create();
+        service.Create(
+            "Default",
+            new DirectoryInfo(_temp.Combine("Default")),
+            new InstalledGame(installDir, catalog.Games.Single())
+        );
+
+        var resolved = service.ResolveGame("Default");
+
+        Assert.Equal("test-builder", resolved!.Configuration.LoadOrderBuilder);
+    }
+
+    [Fact]
     public void SuggestInstanceName_SuffixesUntilUnique()
     {
         var (sut, _) = CreateService();

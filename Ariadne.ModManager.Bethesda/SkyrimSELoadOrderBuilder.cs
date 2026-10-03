@@ -11,6 +11,8 @@ public class SkyrimSELoadOrderBuilder : ILoadOrderBuilder
 {
     private const string PLUGINS_TXT = "plugins.txt";
 
+    public string Key => "skyrimse";
+
     private static void WriteLoadOrder(
         IReadOnlyList<ILoadOrderInfo> loadOrderInfos,
         string pluginsTxtPath

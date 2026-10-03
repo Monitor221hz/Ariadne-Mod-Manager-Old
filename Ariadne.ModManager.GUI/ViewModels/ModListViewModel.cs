@@ -582,7 +582,8 @@ public sealed class ModListViewModel : ViewModelBase, IDisposable
     private void ForwardToSelected<TNode>(Func<TNode, ReactiveCommand<Unit, Unit>> commandOf)
         where TNode : TreeNodeViewModel
     {
-        if (SelectedNodes.OfType<TNode>().FirstOrDefault() is { } node)
+        var node = SelectedNodes.OfType<TNode>().FirstOrDefault();
+        if (node is not null)
         {
             commandOf(node).Execute().Subscribe();
         }

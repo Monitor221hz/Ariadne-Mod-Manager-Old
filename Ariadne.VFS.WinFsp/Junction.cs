@@ -17,12 +17,12 @@ internal static partial class Junction
     {
         var info = new DirectoryInfo(path);
         info.Refresh();
-        if (info.LinkTarget is not { } linkTarget)
+        if (info.LinkTarget is null)
         {
             return false;
         }
         return string.Equals(
-            Normalize(linkTarget),
+            Normalize(info.LinkTarget),
             Normalize(target),
             StringComparison.OrdinalIgnoreCase
         );

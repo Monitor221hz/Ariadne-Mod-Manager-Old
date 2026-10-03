@@ -15,11 +15,12 @@ public static class DownloadInstallInfo
 
     public static ModID? Provenance(DownloadManifest? manifest)
     {
-        if (manifest?.ModId is not { } modId)
+        if (manifest?.ModId is null)
         {
             return null;
         }
 
+        var modId = manifest.ModId.Value;
         var source = manifest.Repository switch
         {
             ProtocolSchemes.Nxm => SourceType.NexusMods,

@@ -84,6 +84,8 @@ public class MainViewModelTests : IDisposable
 
     private sealed class FakeBuilder : ILoadOrderBuilder
     {
+        public string Key => "test";
+
         public IEnumerable<ILoadOrderInfo> Fetch(IInstalledGame game, IModList mods) => [];
 
         public void Deploy(
@@ -153,7 +155,7 @@ public class MainViewModelTests : IDisposable
             new NoEditor(),
             new GameCatalog([]),
             null!,
-            new FakeBuilder(),
+            new LoadOrderBuilderResolver([new FakeBuilder()]),
             modFactory: new FakeModFactory(),
             deploymentService: deployment,
             profiles: new ProfileService(serializer, _paths)

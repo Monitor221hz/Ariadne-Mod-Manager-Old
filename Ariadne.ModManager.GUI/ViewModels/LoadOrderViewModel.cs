@@ -16,8 +16,9 @@ public sealed class LoadOrderViewModel : ViewModelBase, IWorkspaceTab, IDisposab
 {
     private static readonly TimeSpan SyncDelay = TimeSpan.FromMilliseconds(300);
     private readonly IModProfile _profile;
-    private readonly ILoadOrderBuilder _loadOrderBuilder;
+    private readonly ILoadOrderBuilderResolver _loadOrderBuilders;
     private readonly IInstanceService _instanceService;
+    private ILoadOrderBuilder? _builder;
     private readonly CompositeDisposable _syncHooks = new();
     private CompositeDisposable _rowHooks = new();
     private readonly ReactiveList<LoadOrderInfoViewModel> _loadOrder = new();
@@ -42,11 +43,11 @@ public sealed class LoadOrderViewModel : ViewModelBase, IWorkspaceTab, IDisposab
 
     public LoadOrderViewModel(
         IModProfile profile,
-        ILoadOrderBuilder loadOrderBuilder,
+        ILoadOrderBuilderResolver loadOrderBuilders,
         IInstanceService instanceService
     )
     {
-        _loadOrderBuilder = loadOrderBuilder;
+        _loadOrderBuilders = loadOrderBuilders;
         _profile = profile;
         _instanceService = instanceService;
         var orderSubscription = _loadOrder
@@ -80,12 +81,17 @@ public sealed class LoadOrderViewModel : ViewModelBase, IWorkspaceTab, IDisposab
             StatusText = "Game installation could not be located.";
             return;
         }
+        var builder = _loadOrderBuilders.GetFor(game.Configuration);
+        if (builder is null)
+        {
+            StatusText = "This game does not use a plugin load order.";
+            return;
+        }
+        _builder = builder;
         try
         {
-            var infos = await Task.Run(() =>
-                _loadOrderBuilder.Fetch(game, _profile.ModList).ToList()
-            );
-            var sorted = _loadOrderBuilder.Sort(_profile, infos);
+            var infos = await Task.Run(() => builder.Fetch(game, _profile.ModList).ToList());
+            var sorted = builder.Sort(_profile, infos);
             _rowHooks.Dispose();
             _rowHooks = new CompositeDisposable();
             _loadOrder.Clear();
@@ -106,15 +112,16 @@ public sealed class LoadOrderViewModel : ViewModelBase, IWorkspaceTab, IDisposab
 
     private async Task SyncLoadOrderAsync()
     {
-        if (!_initialized)
+        if (!_initialized || _builder is null)
         {
             return;
         }
+        var builder = _builder;
         await Task.Run(() =>
         {
             try
             {
-                _loadOrderBuilder.Save(_profile, _loadOrder.Select(vm => vm.Model).ToList());
+                builder.Save(_profile, _loadOrder.Select(vm => vm.Model).ToList());
             }
             catch (Exception ex)
             {

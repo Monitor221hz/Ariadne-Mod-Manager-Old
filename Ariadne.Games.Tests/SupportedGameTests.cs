@@ -90,6 +90,40 @@ public class SupportedGameTests
     }
 
     [Fact]
+    public void LoadOrderBuilder_RoundTripsThroughJson()
+    {
+        var game = GameCatalog.LoadGame(
+            """
+            {
+              "Name": "Test Game",
+              "Platforms": [],
+              "Vendors": { "Steam": 123, "GOG": 456 },
+              "Root": { "Key": "Root", "DirectoryPath": "", "Patterns": [] },
+              "Deployments": [],
+              "InstallTargets": [],
+              "LoadOrderBuilder": "skyrimse"
+            }
+            """
+        );
+
+        Assert.Equal("skyrimse", game.LoadOrderBuilder);
+
+        var without = GameCatalog.LoadGame(
+            """
+            {
+              "Name": "Test Game",
+              "Platforms": [],
+              "Vendors": { "Steam": 123, "GOG": 456 },
+              "Root": { "Key": "Root", "DirectoryPath": "", "Patterns": [] },
+              "Deployments": [],
+              "InstallTargets": []
+            }
+            """
+        );
+        Assert.Null(without.LoadOrderBuilder);
+    }
+
+    [Fact]
     public void Constructor_DuplicateKeysAcrossDeploymentsAndTargets_Throws()
     {
         var root = new GamePath("Root", "", []);

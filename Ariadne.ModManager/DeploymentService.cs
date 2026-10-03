@@ -6,7 +6,7 @@ namespace Ariadne.ModManager;
 public sealed class DeploymentService(
     IInstanceService instances,
     IModDeploymentMethodFactory deploymentMethods,
-    ILoadOrderBuilder loadOrderBuilder
+    ILoadOrderBuilderResolver loadOrderBuilders
 ) : IDeploymentService
 {
     private IModDeploymentMethod? _deployment;
@@ -52,11 +52,12 @@ public sealed class DeploymentService(
                 .ModList.Where(entry => entry.Active)
                 .Select(entry => entry.Mod)
                 .ToList();
+            var loadOrderBuilder = loadOrderBuilders.GetFor(game.Configuration);
             await Task.Run(
                 () =>
                 {
                     method.Deploy(game, mods);
-                    loadOrderBuilder.Deploy(game, method, loadOrder);
+                    loadOrderBuilder?.Deploy(game, method, loadOrder);
                 },
                 cancellationToken
             );

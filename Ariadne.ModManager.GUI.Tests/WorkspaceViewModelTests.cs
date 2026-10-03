@@ -40,6 +40,7 @@ public sealed class WorkspaceViewModelTests
 
     private sealed class FakeBuilder(IReadOnlyList<ILoadOrderInfo> rows) : ILoadOrderBuilder
     {
+        public string Key => "test";
         public int FetchCalls { get; private set; }
 
         public IEnumerable<ILoadOrderInfo> Fetch(IInstalledGame game, IModList mods)
@@ -66,6 +67,7 @@ public sealed class WorkspaceViewModelTests
     private sealed class FakeGameConfiguration(string name) : ISupportedGame
     {
         public string Name => name;
+        public string? LoadOrderBuilder => "test";
         public IVendorInfo Vendors => null!;
         public IReadOnlyDictionary<string, string> ProtocolGameIds =>
             new Dictionary<string, string>();
@@ -221,7 +223,8 @@ public sealed class WorkspaceViewModelTests
             {
                 throw DeployError;
             }
-            if (DeployGate is { } gate)
+            var gate = DeployGate;
+            if (gate is not null)
             {
                 await gate.Task;
             }
@@ -232,7 +235,8 @@ public sealed class WorkspaceViewModelTests
         public async Task UndeployAsync()
         {
             UndeployCalls++;
-            if (UndeployGate is { } gate)
+            var gate = UndeployGate;
+            if (gate is not null)
             {
                 await Task.Run(() => gate.Wait(TimeSpan.FromSeconds(10)));
             }
@@ -280,7 +284,7 @@ public sealed class WorkspaceViewModelTests
             new NullModSerializer(),
             new FakePaths(),
             new NoEditor(),
-            builder,
+            new LoadOrderBuilderResolver([builder]),
             new FakeInstances(new FakeGame(new FakeGameConfiguration("G"))),
             deploymentService: deployment,
             notifyScheduler: System.Reactive.Concurrency.Scheduler.Immediate

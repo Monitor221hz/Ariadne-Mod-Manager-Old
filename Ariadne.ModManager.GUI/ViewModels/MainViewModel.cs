@@ -20,7 +20,7 @@ public class MainViewModel : ViewModelBase
     private readonly IModProfileEditor? _editor;
     private readonly IGameCatalog? _catalog;
     private readonly IGameLocator? _locator;
-    private readonly ILoadOrderBuilder? _loadOrderBuilder;
+    private readonly ILoadOrderBuilderResolver? _loadOrderBuilders;
     private readonly ILibraryModFactory? _modFactory;
     private readonly IDownloadQueue? _downloads;
     private readonly IModInstallService? _installService;
@@ -160,7 +160,7 @@ public class MainViewModel : ViewModelBase
         IModProfileEditor editor,
         IGameCatalog catalog,
         IGameLocator locator,
-        ILoadOrderBuilder loadOrderBuilder,
+        ILoadOrderBuilderResolver loadOrderBuilders,
         SourcesMenuViewModel? sources = null,
         IDownloadQueue? downloads = null,
         ILibraryModFactory? modFactory = null,
@@ -184,7 +184,7 @@ public class MainViewModel : ViewModelBase
         _editor = editor;
         _catalog = catalog;
         _locator = locator;
-        _loadOrderBuilder = loadOrderBuilder;
+        _loadOrderBuilders = loadOrderBuilders;
         _downloads = downloads;
         _modFactory = modFactory;
         _installService = installService;
@@ -373,7 +373,7 @@ public class MainViewModel : ViewModelBase
             _modSerializer!,
             _paths!,
             _editor!,
-            _loadOrderBuilder!,
+            _loadOrderBuilders!,
             _instances!,
             _downloads,
             _installService,
@@ -436,6 +436,7 @@ public class MainViewModel : ViewModelBase
         if (
             _profiles is null
             || _profiles.Active is null
+            || _imports is null
             || ActiveModList is null
             || name == _profiles.Active.ProfileFolder.Name
         )
@@ -454,7 +455,7 @@ public class MainViewModel : ViewModelBase
             Debug.WriteLine(ex);
             return;
         }
-        foreach (var mod in _imports!.FindMissingMods(_profiles.Active, source))
+        foreach (var mod in _imports.FindMissingMods(_profiles.Active, source))
         {
             ActiveModList.RegisterMod(mod);
         }

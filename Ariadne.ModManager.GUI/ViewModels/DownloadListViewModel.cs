@@ -44,11 +44,9 @@ public sealed class DownloadListViewModel : ViewModelBase, IWorkspaceTab, IDispo
         _downloadsFolder = paths.DownloadsFolder;
         _installService = installService;
         _onInstalled = onInstalled;
+        var installTargets = instances?.Current?.Game?.Configuration.InstallTargets;
         _installTargets =
-            installService is not null
-            && instances?.Current?.Game?.Configuration.InstallTargets is { } targets
-                ? targets
-                : [];
+            installService is not null && installTargets is not null ? installTargets : [];
         sampleScheduler ??= Scheduler.Default;
         notifyScheduler ??= AvaloniaScheduler.Instance;
         _folderWatcher = folderWatcher ?? new DownloadFolderWatcher(_downloadsFolder);

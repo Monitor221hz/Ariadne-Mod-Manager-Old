@@ -1,5 +1,6 @@
 using Ariadne.Contracts.Games;
 using Ariadne.Contracts.ModManager;
+using Ariadne.Games;
 using Ariadne.VFS;
 using Xunit;
 
@@ -36,6 +37,7 @@ public class DeploymentServiceTests : IDisposable
 
     private sealed class FakeLoadOrderBuilder : ILoadOrderBuilder
     {
+        public string Key => "test";
         public IReadOnlyList<ILoadOrderInfo>? DeployedLoadOrder { get; private set; }
 
         public IEnumerable<ILoadOrderInfo> Fetch(IInstalledGame game, IModList mods) => [];
@@ -116,7 +118,7 @@ public class DeploymentServiceTests : IDisposable
             Service = new DeploymentService(
                 new FakeInstances(game),
                 new ModDeploymentMethodFactory(_ => Method),
-                LoadOrderBuilder
+                new LoadOrderBuilderResolver([LoadOrderBuilder])
             );
         }
     }
@@ -155,6 +157,30 @@ public class DeploymentServiceTests : IDisposable
         var deployed = Assert.Single(harness.Method.DeployedMods!);
         Assert.Same(active, deployed);
         Assert.Same(loadOrder, harness.LoadOrderBuilder.DeployedLoadOrder);
+    }
+
+    [Fact]
+    public async Task DeployAsync_GameWithoutLoadOrderBuilder_DeploysModsOnly()
+    {
+        var temp = new TempDirectory();
+        _temps.Add(temp);
+        var config = new SupportedGame(
+            "Plain Game",
+            [],
+            new VendorInfo(0, 0),
+            new GamePath("Root", "", []),
+            [],
+            []
+        );
+        var installDir = new DirectoryInfo(temp.Path);
+        installDir.Create();
+        var harness = new Harness(new InstalledGame(installDir, config), new FakeMod("A", true));
+
+        await harness.Service.DeployAsync(harness.Profile, []);
+
+        Assert.True(harness.Service.IsDeployed);
+        Assert.Single(harness.Method.DeployedMods!);
+        Assert.Null(harness.LoadOrderBuilder.DeployedLoadOrder);
     }
 
     [Fact]

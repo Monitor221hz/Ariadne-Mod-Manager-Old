@@ -11,6 +11,7 @@ public class LoadOrderViewModelTests
     private sealed class FakeLoadOrderBuilder(IReadOnlyList<ILoadOrderInfo> rows)
         : ILoadOrderBuilder
     {
+        public string Key => "test";
         public int SaveCalls { get; private set; }
         public int FetchCalls { get; private set; }
         public IReadOnlyList<ILoadOrderInfo>? LastSaved { get; private set; }
@@ -66,9 +67,11 @@ public class LoadOrderViewModelTests
         public IInstalledGame? ResolveGame(string instanceName) => game;
     }
 
-    private sealed class FakeGameConfiguration(string name) : ISupportedGame
+    private sealed class FakeGameConfiguration(string name, string? loadOrderBuilder = "test")
+        : ISupportedGame
     {
         public string Name => name;
+        public string? LoadOrderBuilder => loadOrderBuilder;
         public IVendorInfo Vendors => null!;
         public IReadOnlyDictionary<string, string> ProtocolGameIds =>
             new Dictionary<string, string>();
@@ -113,13 +116,52 @@ public class LoadOrderViewModelTests
     public async Task NoGame_ShowsError_AndDoesNotSave()
     {
         var builder = new FakeLoadOrderBuilder([]);
-        var vm = new LoadOrderViewModel(FakeProfile(), builder, new FakeInstanceService(null));
+        var vm = new LoadOrderViewModel(
+            FakeProfile(),
+            new LoadOrderBuilderResolver([builder]),
+            new FakeInstanceService(null)
+        );
 
         await vm.EnsureInitializedAsync();
 
         Assert.Equal("Game installation could not be located.", vm.StatusText);
         Assert.Empty(vm.LoadOrder);
         Assert.Equal(0, builder.SaveCalls);
+    }
+
+    [Fact]
+    public async Task GameWithoutLoadOrderBuilder_ShowsStatus_AndStaysEmpty()
+    {
+        var builder = new FakeLoadOrderBuilder([new FakeLoadOrderInfo("a.esp")]);
+        var vm = new LoadOrderViewModel(
+            FakeProfile(),
+            new LoadOrderBuilderResolver([builder]),
+            new FakeInstanceService(
+                new FakeGame(new FakeGameConfiguration("Test Game", loadOrderBuilder: null))
+            )
+        );
+
+        await vm.EnsureInitializedAsync();
+
+        Assert.Equal("This game does not use a plugin load order.", vm.StatusText);
+        Assert.Empty(vm.LoadOrder);
+        Assert.Equal(0, builder.FetchCalls);
+    }
+
+    [Fact]
+    public async Task UnknownLoadOrderBuilderKey_ShowsStatus_AndStaysEmpty()
+    {
+        var builder = new FakeLoadOrderBuilder([new FakeLoadOrderInfo("a.esp")]);
+        var vm = new LoadOrderViewModel(
+            FakeProfile(),
+            new LoadOrderBuilderResolver([]),
+            new FakeInstanceService(new FakeGame(new FakeGameConfiguration("Test Game")))
+        );
+
+        await vm.EnsureInitializedAsync();
+
+        Assert.Equal("This game does not use a plugin load order.", vm.StatusText);
+        Assert.Empty(vm.LoadOrder);
     }
 
     [Fact]
@@ -130,7 +172,7 @@ public class LoadOrderViewModelTests
         );
         var vm = new LoadOrderViewModel(
             FakeProfile(),
-            builder,
+            new LoadOrderBuilderResolver([builder]),
             new FakeInstanceService(new FakeGame(new FakeGameConfiguration("Test Game")))
         );
 
@@ -146,7 +188,7 @@ public class LoadOrderViewModelTests
         var builder = new FakeLoadOrderBuilder([new FakeLoadOrderInfo("a.esp")]);
         var vm = new LoadOrderViewModel(
             FakeProfile(),
-            builder,
+            new LoadOrderBuilderResolver([builder]),
             new FakeInstanceService(new FakeGame(new FakeGameConfiguration("Test Game")))
         );
 
@@ -165,7 +207,7 @@ public class LoadOrderViewModelTests
         var builder = new FakeLoadOrderBuilder([new FakeLoadOrderInfo("a.esp")]);
         var vm = new LoadOrderViewModel(
             FakeProfile(),
-            builder,
+            new LoadOrderBuilderResolver([builder]),
             new FakeInstanceService(new FakeGame(new FakeGameConfiguration("Test Game")))
         );
         await vm.EnsureInitializedAsync();

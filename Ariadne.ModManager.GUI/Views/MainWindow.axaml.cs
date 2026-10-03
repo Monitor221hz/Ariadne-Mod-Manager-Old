@@ -29,7 +29,8 @@ public partial class MainWindow : Window
         viewModel.ShowInfo.RegisterHandler(HandleInfoPrompt);
         viewModel.AskProfileName.RegisterHandler(HandleProfileNamePrompt);
 
-        if (viewModel.Sources is { } sources)
+        var sources = viewModel.Sources;
+        if (sources is not null)
         {
             sources.ShowInfo.RegisterHandler(HandleInfoPrompt);
             SourcesItem.SubmenuOpened += (_, _) => sources.RefreshCommand.Execute().Subscribe();

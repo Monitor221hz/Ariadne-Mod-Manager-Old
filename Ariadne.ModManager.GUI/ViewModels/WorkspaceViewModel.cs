@@ -73,7 +73,7 @@ public sealed class WorkspaceViewModel : ViewModelBase, IDisposable
         ILibraryModSerializer modSerializer,
         IModManagerPaths paths,
         IModProfileEditor editor,
-        ILoadOrderBuilder loadOrderBuilder,
+        ILoadOrderBuilderResolver loadOrderBuilders,
         IInstanceService instances,
         IDownloadQueue? downloads = null,
         IModInstallService? installService = null,
@@ -100,7 +100,7 @@ public sealed class WorkspaceViewModel : ViewModelBase, IDisposable
             fileOpener,
             contentMoves
         );
-        _loadOrderTab = new LoadOrderViewModel(profile, loadOrderBuilder, instances);
+        _loadOrderTab = new LoadOrderViewModel(profile, loadOrderBuilders, instances);
         _deployedTab = new DeployedViewModel(profile, instances, deploymentPreview);
         if (downloads is not null)
         {

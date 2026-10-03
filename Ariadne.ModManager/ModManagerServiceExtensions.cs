@@ -30,6 +30,7 @@ public static class ModManagerServiceExtensions
         services.AddSingleton<IModProfileSerializer, ModProfileSerializer>();
         services.AddSingleton<IProfileService, ProfileService>();
         services.AddSingleton<IModProfileEditor, ModProfileEditor>();
+        services.AddSingleton<ILoadOrderBuilderResolver, LoadOrderBuilderResolver>();
         services.AddSingleton<IConflictAnalysisService, ConflictAnalysisService>();
         services.AddSingleton<IDeploymentPreviewService, DeploymentPreviewService>();
         services.AddSingleton<IContentMoveService, ContentMoveService>();

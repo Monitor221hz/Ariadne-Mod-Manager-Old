@@ -130,9 +130,9 @@ public sealed class DeployedViewModel : ViewModelBase, IWorkspaceTab
         if (initialized || stillExists is null)
         {
             var preferred = buckets.FirstOrDefault(b =>
-                b.Path is { } pp
+                b.Path is not null
                 && config?.InstallTargets.Any(t =>
-                    t.Key.Equals(pp.Key, StringComparison.OrdinalIgnoreCase)
+                    t.Key.Equals(b.Path.Key, StringComparison.OrdinalIgnoreCase)
                 ) == true
             );
             SelectedTarget =

@@ -65,14 +65,11 @@ public sealed class DeploymentPreviewService : IDeploymentPreviewService
             return config?.InstallTargets.FirstOrDefault(t => t.DirectoryPath.Length == 0)?.Key
                 ?? "Root";
         }
-        return
-            config?.InstallTargets.FirstOrDefault(t =>
-                t.Key.Equals(rawTarget, StringComparison.OrdinalIgnoreCase)
-                || t.DirectoryPath.Equals(rawTarget, StringComparison.OrdinalIgnoreCase)
-            )
-                is { } target
-            ? target.Key
-            : $"<unresolved: {rawTarget}>";
+        var target = config?.InstallTargets.FirstOrDefault(t =>
+            t.Key.Equals(rawTarget, StringComparison.OrdinalIgnoreCase)
+            || t.DirectoryPath.Equals(rawTarget, StringComparison.OrdinalIgnoreCase)
+        );
+        return target is not null ? target.Key : $"<unresolved: {rawTarget}>";
     }
 
     private static IGamePath? ResolveGamePath(string rawTarget, ISupportedGame? config)

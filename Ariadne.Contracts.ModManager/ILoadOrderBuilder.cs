@@ -4,6 +4,8 @@ namespace Ariadne.Contracts.ModManager;
 
 public interface ILoadOrderBuilder
 {
+    string Key { get; }
+
     IEnumerable<ILoadOrderInfo> Fetch(IInstalledGame game, IModList mods);
     void Deploy(
         IInstalledGame game,

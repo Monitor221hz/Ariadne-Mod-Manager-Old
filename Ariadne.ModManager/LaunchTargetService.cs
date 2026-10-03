@@ -28,7 +28,8 @@ public sealed class LaunchTargetService : ILaunchTargetService, IDisposable
     {
         var targets = new List<LaunchTarget>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        if (_instances.Current?.Game is { } game)
+        var game = _instances.Current?.Game;
+        if (game is not null)
         {
             foreach (var path in _deployment.DeployedPaths)
             {

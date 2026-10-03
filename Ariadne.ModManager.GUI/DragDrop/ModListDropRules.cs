@@ -105,7 +105,8 @@ public sealed class ModListDropRules(IContentMoveService moves)
                     }
                 }
                 affected.Add(node.Owner);
-                if (TargetOwner(target) is { } targetOwner)
+                var targetOwner = TargetOwner(target);
+                if (targetOwner is not null)
                 {
                     affected.Add(targetOwner);
                 }

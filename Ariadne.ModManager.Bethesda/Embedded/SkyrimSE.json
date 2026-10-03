@@ -30,6 +30,7 @@
     "SkyrimSELauncher.exe": 2,
     "Pandora*.exe": 3
   },
+  "LoadOrderBuilder": "skyrimse",
   "Root": {
     "Key": "_root",
     "DirectoryPath": "",
